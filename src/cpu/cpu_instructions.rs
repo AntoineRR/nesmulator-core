@@ -1,7 +1,11 @@
 // Implements the CPU instructions
 
+// ===== IMPORTS =====
+
 use super::cpu_enums::AdressingMode as am;
 use super::cpu::CPU;
+
+// ===== CPU INSTRUCTION STRUCT =====
 
 pub struct CpuInstruction {
     pub name: &'static str,
@@ -11,6 +15,8 @@ pub struct CpuInstruction {
     pub cycles: u8,
     pub bytes: u8,
 }
+
+// ===== GLOBAL CONSTANT =====
 
 // The whole set of instructions of the CPU.
 // Some instructions are not valid, and some are not documented and not implemented here.

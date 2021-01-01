@@ -4,13 +4,13 @@
 // ====== IMPORTS =====
 
 use crate::NES;
+use crate::bus::STACK_OFFSET;
 use super::cpu_instructions::{CpuInstruction,INSTRUCTIONS};
 use super::cpu_enums::{AdressingMode as am,Flag,Interrupt};
 
 // ===== CONSTANTS =====
 
-const STACK_OFFSET: u16 = 0x100;
-const CPU_FREQUENCY: u32 = 1789773; // NTSC NES / Famicom frequency
+pub const CPU_FREQUENCY: u32 = 1789773; // NTSC NES / Famicom frequency (Hz)
 
 // ===== GLOBAL VARIABLES =====
 

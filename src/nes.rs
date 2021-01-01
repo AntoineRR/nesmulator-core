@@ -1,5 +1,13 @@
-use crate::cpu::cpu::CPU;
+// Represents the NES system
+
+// ===== IMPORTS =====
+
+use cartridge::mapper::Mapper;
+
+use crate::{CARTRIDGE, cartridge, cpu::cpu::CPU};
 use crate::bus::Bus;
+
+// ===== NES STRUCT =====
 
 #[derive(Debug)]
 pub struct NES {
@@ -11,37 +19,31 @@ impl NES {
     pub const fn new() -> Self {
         NES {
             bus: Bus::new(),
-            cpu: CPU::new()
+            cpu: CPU::new(),
         }
     }
 
     // Simulates the insertion of a NES cartridge
+    // Sets the mapper that is needed to read the data of the cartridge
     pub fn insert_cartdrige(&mut self) {
-        let test_code: [u8;28] = [
-            0xA2,0x0A,0x8E,0x00,0x00,0xA2,0x03,0x8E,0x01,0x00,0xAC,0x00,0x00,0xA9,
-            0x00,0x18,0x6D,0x01,0x00,0x88,0xD0,0xFA,0x8D,0x02,0x00,0xEA,0xEA,0xEA
-        ];
-        let cartridge_offset: u16 = 0x8000;
-        let mut counter: u16 = 0;
-        for inst in test_code.iter() {
-            self.bus.write(cartridge_offset + counter, *inst);
-            counter += 1;
+        let mut mapper_number: u8 = 0;
+        unsafe {
+            mapper_number += CARTRIDGE.as_ref().unwrap().header.control_1 >> 4;
+            mapper_number += (CARTRIDGE.as_ref().unwrap().header.control_2 >> 4) << 4;
         }
-        self.bus.write(0xFFFC, 0x00);
-        self.bus.write(0xFFFD, 0x80);
-        println!("ram : {:?}",self.bus.ram[0x8000]);
+        
+        self.bus.mapper = Mapper::new(mapper_number);
     }
 
     // Resets the CPU and launches the game
     pub fn launch_game(&mut self) {
         self.cpu.reset();
-        let mut counter = 200;
+        let mut counter: u32 = 100;
         while counter != 0 {
             self.cpu.clock();
             println!("{:?}",self.cpu);
             counter -= 1;
         }
-        println!("{}",self.bus.ram[0x0002]);
         println!("DONE.");
     }
 }

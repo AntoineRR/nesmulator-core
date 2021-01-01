@@ -1,3 +1,6 @@
+// Implements the required enums for the CPU emulation
+
+// ===== ENUMS =====
 
 // All the possible adressing modes of the CPU
 #[derive(Clone, Copy)]
