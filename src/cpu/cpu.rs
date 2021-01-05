@@ -3,18 +3,16 @@
 
 // ====== IMPORTS =====
 
-use crate::NES;
+use std::sync::{Arc, Mutex};
+
+use crate::{bus::Bus};
 use crate::bus::STACK_OFFSET;
 use super::cpu_instructions::{CpuInstruction,INSTRUCTIONS};
 use super::cpu_enums::{AdressingMode as am,Flag,Interrupt};
 
 // ===== CONSTANTS =====
 
-pub const CPU_FREQUENCY: u32 = 1789773; // NTSC NES / Famicom frequency (Hz)
-
-// ===== GLOBAL VARIABLES =====
-
-static mut CYCLES: u8 = 0;
+//pub const CPU_FREQUENCY: u32 = 1789773; // NTSC NES / Famicom frequency (Hz)
 
 // ===== CPU STRUCT =====
 
@@ -28,10 +26,16 @@ pub struct CPU {
     pub pc: u16, // program counter
     pub sp: u8, // stack pointer
     pub p: u8, // status flags
+
+    // Cycles required by the instruction to complete
+    pub cycles: u8,
+
+    // pointer to the data bus where we read from and write to
+    pub p_bus: Arc<Mutex<Bus>>
 }
 
 impl CPU {
-    pub const fn new() -> Self {
+    pub fn new(p_bus: Arc<Mutex<Bus>>) -> Self {
         CPU {
             a: 0,
             x: 0,
@@ -39,6 +43,10 @@ impl CPU {
             pc: 0,
             sp: 0xFD,
             p: 0x34,
+
+            cycles: 0,
+
+            p_bus
         }
     }
 
@@ -46,16 +54,12 @@ impl CPU {
 
     // Reads data from the bus at the given address
     pub fn read_bus(& self, address: u16) -> u8 {
-        unsafe {
-            NES.bus.read(address)
-        }
+        self.p_bus.lock().unwrap().read(address)
     }
 
     // Writes data to the bus at the given address
     pub fn write_bus(&mut self, address: u16, data: u8) {
-        unsafe {
-            NES.bus.write(address, data);
-        }
+        self.p_bus.lock().unwrap().write(address, data);
     }
 
     // ===== FLAG SETTER AND GETTER =====
@@ -98,12 +102,8 @@ impl CPU {
                 Interrupt::Reset => start_address = 0xFFFC
             }
             self.pc = self.read_bus(start_address) as u16 + ((self.read_bus(start_address + 1) as u16) << 8) as u16;
-            println!("pc : {:#x}",self.pc);
-            println!("type : {:?}",interrupt_type);
 
-            unsafe  {
-                CYCLES = 7;
-            }
+            self.cycles = 7;
         }
     }
 
@@ -118,23 +118,21 @@ impl CPU {
         self.interrupt(Interrupt::Reset);
     }
 
-    // ===== MAIN LOOP =====
+    // ===== CLOCK =====
 
     // Executes a clock cycle
     // opcodes for operations are stored in the INSTRUCTIONS const
     pub fn clock(&mut self) {
-        unsafe {
-            if CYCLES == 0 {
-                let opcode: u8 = self.read_bus(self.pc);
-                println!("opcode : {:#x}", opcode);
-                let instruction: &CpuInstruction = &INSTRUCTIONS[opcode as usize];
-                (instruction.execute)(self, instruction.adressing_mode);
-                self.pc += 1;
-                CYCLES += instruction.cycles - 1;
-            }
-            else {
-                CYCLES -= 1;
-            }
+        if self.cycles == 0 {
+            let opcode: u8 = self.read_bus(self.pc);
+            //println!("opcode : {:#x}", opcode);
+            let instruction: &CpuInstruction = &INSTRUCTIONS[opcode as usize];
+            (instruction.execute)(self, instruction.adressing_mode);
+            self.pc += 1;
+            self.cycles += instruction.cycles - 1;
+        }
+        else {
+            self.cycles -= 1;
         }
     }
 
@@ -185,9 +183,7 @@ impl CPU {
                 let address: u16 = lo as u16 + ((hi as u16) << 8);
                 let result: u16 = address + self.x as u16;
                 if (result & 0xFF00) != (address & 0xFF00) {
-                    unsafe {
-                        CYCLES += 1;
-                    }
+                    self.cycles += 1;
                 }
                 result
             },
@@ -199,9 +195,7 @@ impl CPU {
                 let address: u16 = lo as u16 + ((hi as u16) << 8);
                 let result: u16 = address + self.y as u16;
                 if (result & 0xFF00) != (address & 0xFF00) {
-                    unsafe {
-                        CYCLES += 1;
-                    }
+                    self.cycles += 1;
                 }
                 result
             },
@@ -236,9 +230,7 @@ impl CPU {
                 let address: u16 = address_lo as u16 + (address_hi as u16) << 8;
                 let result: u16 = address + self.y as u16;
                 if (result & 0xFF00) != (address & 0xFF00) {
-                    unsafe {
-                        CYCLES += 1;
-                    }
+                    self.cycles += 1;
                 }
                 result
             },
@@ -297,11 +289,9 @@ impl CPU {
         if !self.get_flag(Flag::Carry) {
             let data: i8 = self.read_bus(address) as i8;
             let result: i16 = self.pc as i16 + data as i16;
-            unsafe {
-                CYCLES += 1;
-                if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
-                    CYCLES += 1;
-                }
+            self.cycles += 1;
+            if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
             }
             self.pc = result as u16;
         }
@@ -314,11 +304,9 @@ impl CPU {
         if self.get_flag(Flag::Carry) {
             let data: i8 = self.read_bus(address) as i8;
             let result: i16 = self.pc as i16 + data as i16;
-            unsafe {
-                CYCLES += 1;
-                if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
-                    CYCLES += 1;
-                }
+            self.cycles += 1;
+            if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
             }
             self.pc = result as u16;
         }
@@ -331,11 +319,9 @@ impl CPU {
         if self.get_flag(Flag::Zero) {
             let data: i8 = self.read_bus(address) as i8;
             let result: i16 = self.pc as i16 + data as i16;
-            unsafe {
-                CYCLES += 1;
-                if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
-                    CYCLES += 1;
-                }
+            self.cycles += 1;
+            if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
             }
             self.pc = result as u16;
         }
@@ -359,11 +345,9 @@ impl CPU {
         if self.get_flag(Flag::Negative) {
             let data: i8 = self.read_bus(address) as i8;
             let result: i16 = self.pc as i16 + data as i16;
-            unsafe {
-                CYCLES += 1;
-                if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
-                    CYCLES += 1;
-                }
+            self.cycles += 1;
+            if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
             }
             self.pc = result as u16;
         }
@@ -376,11 +360,9 @@ impl CPU {
         if !self.get_flag(Flag::Zero) {
             let data: i8 = self.read_bus(address) as i8;
             let result: i16 = self.pc as i16 + data as i16;
-            unsafe {
-                CYCLES += 1;
-                if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
-                    CYCLES += 1;
-                }
+            self.cycles += 1;
+            if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
             }
             self.pc = result as u16;
         }
@@ -393,18 +375,16 @@ impl CPU {
         if !self.get_flag(Flag::Negative) {
             let data: i8 = self.read_bus(address) as i8;
             let result: i16 = self.pc as i16 + data as i16;
-            unsafe {
-                CYCLES += 1;
-                if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
-                    CYCLES += 1;
-                }
+            self.cycles += 1;
+            if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
             }
             self.pc = result as u16;
         }
     }
 
     // Force interrupt
-    pub fn brk(&mut self, mode: am) {
+    pub fn brk(&mut self, _: am) {
         self.interrupt(Interrupt::IRQ);
         self.set_flag(Flag::Break, true);
     }
@@ -416,11 +396,9 @@ impl CPU {
         if !self.get_flag(Flag::Overflow) {
             let data: i8 = self.read_bus(address) as i8;
             let result: i16 = self.pc as i16 + data as i16;
-            unsafe {
-                CYCLES += 1;
-                if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
-                    CYCLES += 1;
-                }
+            self.cycles += 1;
+            if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
             }
             self.pc = result as u16;
         }
@@ -433,11 +411,9 @@ impl CPU {
         if self.get_flag(Flag::Overflow) {
             let data: i8 = self.read_bus(address) as i8;
             let result: i16 = self.pc as i16 + data as i16;
-            unsafe {
-                CYCLES += 1;
-                if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
-                    CYCLES += 1;
-                }
+            self.cycles += 1;
+            if (result as u16 & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
             }
             self.pc = result as u16;
         }
@@ -445,25 +421,25 @@ impl CPU {
 
     // Clear carry flag
     // C = 0
-    pub fn clc(&mut self, mode: am) {
+    pub fn clc(&mut self, _: am) {
         self.set_flag(Flag::Carry, false);
     }
 
     // Clear decimal mode
     // D = 0
-    pub fn cld(&mut self, mode: am) {
+    pub fn cld(&mut self, _: am) {
         self.set_flag(Flag::Decimal, false);
     }
 
     // Clear interrupt disable
     // I = 0
-    pub fn cli(&mut self, mode: am) {
+    pub fn cli(&mut self, _: am) {
         self.set_flag(Flag::InterruptDisable, false);
     }
 
     // Clear overflow flag
     // V = 0
-    pub fn clv(&mut self, mode: am) {
+    pub fn clv(&mut self, _: am) {
         self.set_flag(Flag::Overflow, false);
     }
 
@@ -513,7 +489,7 @@ impl CPU {
 
     // Decrement x register
     // X,Z,N = X-1
-    pub fn dex(&mut self, mode: am) {
+    pub fn dex(&mut self, _: am) {
         self.x -= 1;
         self.set_flag(Flag::Zero, self.x == 0);
         self.set_flag(Flag::Negative, (self.x & 0x80) == 0x80);
@@ -521,7 +497,7 @@ impl CPU {
 
     // Decrement y register
     // Y,Z,N = Y-1
-    pub fn dey(&mut self, mode: am) {
+    pub fn dey(&mut self, _: am) {
         self.y -= 1;
         self.set_flag(Flag::Zero, self.y == 0);
         self.set_flag(Flag::Negative, (self.y & 0x80) == 0x80);
@@ -550,7 +526,7 @@ impl CPU {
 
     // Increment x register
     // X,Z,N = X+1
-    pub fn inx(&mut self, mode: am) {
+    pub fn inx(&mut self, _: am) {
         self.x += 1;
         self.set_flag(Flag::Zero, self.x == 0);
         self.set_flag(Flag::Negative, (self.x & 0x80) == 0x80);
@@ -558,7 +534,7 @@ impl CPU {
 
     // Increment y register
     // Y,Z,N = Y+1
-    pub fn iny(&mut self, mode: am) {
+    pub fn iny(&mut self, _: am) {
         self.y += 1;
         self.set_flag(Flag::Zero, self.y == 0);
         self.set_flag(Flag::Negative, (self.y & 0x80) == 0x80);
@@ -627,7 +603,7 @@ impl CPU {
     }
 
     // No operation
-    pub fn nop(&mut self, mode: am) {
+    pub fn nop(&mut self, _: am) {
         
     }
 
@@ -643,7 +619,7 @@ impl CPU {
 
     // Push accumulator
     // A => stack
-    pub fn pha(&mut self, mode: am) {
+    pub fn pha(&mut self, _: am) {
         let address: u16 = STACK_OFFSET + self.sp as u16;
         self.write_bus(address, self.a);
         self.sp -= 1;
@@ -651,7 +627,7 @@ impl CPU {
 
     // Push processor status
     // status => stack
-    pub fn php(&mut self, mode: am) {
+    pub fn php(&mut self, _: am) {
         let address: u16 = STACK_OFFSET + self.sp as u16;
         self.write_bus(address, self.p);
         self.sp -= 1;
@@ -659,7 +635,7 @@ impl CPU {
 
     // Pull accumulator
     // A <= stack
-    pub fn pla(&mut self, mode: am) {
+    pub fn pla(&mut self, _: am) {
         self.sp += 1;
         let address: u16 = STACK_OFFSET + self.sp as u16;
         self.a = self.read_bus(address);
@@ -667,7 +643,7 @@ impl CPU {
 
     // Pull processor status
     // status <= stack
-    pub fn plp(&mut self, mode: am) {
+    pub fn plp(&mut self, _: am) {
         self.sp += 1;
         let address: u16 = STACK_OFFSET + self.sp as u16;
         self.p = self.read_bus(address);
@@ -703,7 +679,7 @@ impl CPU {
 
     // Return from interrupt
     // status <= stack, pc <= stack
-    pub fn rti(&mut self, mode: am) {
+    pub fn rti(&mut self, _: am) {
         self.sp += 1;
         self.p = self.read_bus(STACK_OFFSET + self.sp as u16);
         self.sp += 1;
@@ -715,7 +691,7 @@ impl CPU {
 
     // Return from subroutine
     // pc - 1 <= stack
-    pub fn rts(&mut self, mode: am) {
+    pub fn rts(&mut self, _: am) {
         self.sp += 1;
         let mut address: u16 = (self.read_bus(STACK_OFFSET + self.sp as u16) as u16) << 8;
         self.sp += 1;
@@ -740,19 +716,19 @@ impl CPU {
 
     // Set carry flag
     // C = 1
-    pub fn sec(&mut self, mode: am) {
+    pub fn sec(&mut self, _: am) {
         self.set_flag(Flag::Carry, true);
     }
 
     // Set decimal flag
     // D = 1
-    pub fn sed(&mut self, mode: am) {
+    pub fn sed(&mut self, _: am) {
         self.set_flag(Flag::Decimal, true);
     }
 
     // Set interrupt disable
     // I = 1
-    pub fn sei(&mut self, mode: am) {
+    pub fn sei(&mut self, _: am) {
         self.set_flag(Flag::InterruptDisable, true);
     }
 
@@ -779,7 +755,7 @@ impl CPU {
 
     // Transfer accumulator to x
     // X = A
-    pub fn tax(&mut self, mode: am) {
+    pub fn tax(&mut self, _: am) {
         self.x = self.a;
         self.set_flag(Flag::Zero, self.x == 0x00);
         self.set_flag(Flag::Negative, (self.x & 0x80) == 0x80);
@@ -787,7 +763,7 @@ impl CPU {
 
     // Transfer accumulator to y
     // Y = A
-    pub fn tay(&mut self, mode: am) {
+    pub fn tay(&mut self, _: am) {
         self.y = self.a;
         self.set_flag(Flag::Zero, self.y == 0x00);
         self.set_flag(Flag::Negative, (self.y & 0x80) == 0x80);
@@ -795,7 +771,7 @@ impl CPU {
 
     // Transfer stack pointer to x
     // X = S
-    pub fn tsx(&mut self, mode: am) {
+    pub fn tsx(&mut self, _: am) {
         self.x = self.sp;
         self.set_flag(Flag::Zero, self.x == 0x00);
         self.set_flag(Flag::Negative, (self.x & 0x80) == 0x80);
@@ -803,7 +779,7 @@ impl CPU {
 
     // Transfer x to accumulator
     // A = X
-    pub fn txa(&mut self, mode: am) {
+    pub fn txa(&mut self, _: am) {
         self.a = self.x;
         self.set_flag(Flag::Zero, self.a == 0x00);
         self.set_flag(Flag::Negative, (self.a & 0x80) == 0x80);
@@ -811,20 +787,20 @@ impl CPU {
 
     // Transfer x to stack pointer
     // S = X
-    pub fn txs(&mut self, mode: am) {
+    pub fn txs(&mut self, _: am) {
         self.sp = self.x;
     }
 
     // Transfer y to accumulator
     // A = Y
-    pub fn tya(&mut self, mode: am) {
+    pub fn tya(&mut self, _: am) {
         self.a = self.y;
         self.set_flag(Flag::Zero, self.a == 0x00);
         self.set_flag(Flag::Negative, (self.a & 0x80) == 0x80);
     }
 
     // Used for unvalid operation codes
-    pub fn err(&mut self, mode: am) {
+    pub fn err(&mut self, _: am) {
         panic!("Encountered an unvalid opcode !");
     }
 }

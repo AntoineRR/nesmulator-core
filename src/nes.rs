@@ -2,48 +2,52 @@
 
 // ===== IMPORTS =====
 
-use cartridge::mapper::Mapper;
+use std::sync::{Arc, Mutex};
 
-use crate::{CARTRIDGE, cartridge, cpu::cpu::CPU};
+use cartridge::{cartridge::Cartridge, mapper::Mapper};
+
+use crate::{cartridge, cpu::cpu::CPU};
 use crate::bus::Bus;
+use crate::ppu::ppu::PPU;
 
 // ===== NES STRUCT =====
 
 #[derive(Debug)]
 pub struct NES {
-    pub bus: Bus,
-    pub cpu: CPU
+    pub p_bus: Arc<Mutex<Bus>>,
+    pub p_cpu: Arc<Mutex<CPU>>,
+    pub p_ppu: Arc<Mutex<PPU>>
 }
 
 impl NES {
-    pub const fn new() -> Self {
+    pub fn new(p_bus: Arc<Mutex<Bus>>, p_cpu: Arc<Mutex<CPU>>, p_ppu: Arc<Mutex<PPU>>) -> Self {
         NES {
-            bus: Bus::new(),
-            cpu: CPU::new(),
+            p_bus,
+            p_cpu,
+            p_ppu
         }
     }
 
     // Simulates the insertion of a NES cartridge
     // Sets the mapper that is needed to read the data of the cartridge
-    pub fn insert_cartdrige(&mut self) {
-        let mut mapper_number: u8 = 0;
-        unsafe {
-            mapper_number += CARTRIDGE.as_ref().unwrap().header.control_1 >> 4;
-            mapper_number += (CARTRIDGE.as_ref().unwrap().header.control_2 >> 4) << 4;
-        }
-        
-        self.bus.mapper = Mapper::new(mapper_number);
+    pub fn insert_cartdrige(&mut self, cartridge: Cartridge) {
+        self.p_bus.lock().unwrap().mapper = Arc::new(Mutex::new(Some(Mapper::new(cartridge))));
     }
 
     // Resets the CPU and launches the game
     pub fn launch_game(&mut self) {
-        self.cpu.reset();
-        let mut counter: u32 = 100;
-        while counter != 0 {
-            self.cpu.clock();
-            println!("{:?}",self.cpu);
-            counter -= 1;
+        
+        self.p_cpu.lock().unwrap().reset();
+        let mut counter: u32 = 0;
+        
+        loop {
+            // Calculate one pixel color
+            self.p_ppu.lock().unwrap().clock();
+            // CPU is clocked every 3 PPU cycles
+            if counter%3 == 0 {
+                self.p_cpu.lock().unwrap().clock();
+            }
+            counter += 1;
         }
-        println!("DONE.");
     }
 }
