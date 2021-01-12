@@ -118,7 +118,7 @@ impl PPU {
 
         // Get the next 8 pixels colors
         if self.scanline < 240 || self.scanline == 261 {
-            if (self.cycles >= 2 && self.cycles <= 257) || (self.cycles > 320 && self.cycles < 338) {
+            if self.cycles >= 1 && self.cycles <= 257 || (self.cycles > 320 && self.cycles < 338) {
                 self.update_shifters();
                 // Get the nametable values
                 if (self.cycles - 1) % 8 == 0 {
@@ -153,7 +153,7 @@ impl PPU {
                     }
                     // Only get the 2 lower bits
                     self.next_attribute_table_byte &= 0x03;
-                    //println!("AT : {:#X}, {:#X}",address,self.next_attribute_table_byte);
+                    //println!("AT : {:#X}, {:#X} ; scanline : {}, cycle {}",address,self.next_attribute_table_byte,self.scanline,self.cycles);
                 }
                 // Get the low background tile byte
                 else if (self.cycles - 1) % 8 == 4 {
@@ -221,7 +221,7 @@ impl PPU {
             self.p_gui
                 .lock()
                 .unwrap()
-                .update_buffer(256*self.scanline as u32 + self.cycles as u32 - 1, self.get_pixel_color(palette, color));
+                .update_main_buffer(256*self.scanline as u32 + self.cycles as u32 - 1, self.get_pixel_color(palette, color));
         }
 
         // Increasing cycles and scanlines to reach a 341*261 matrix
@@ -232,8 +232,13 @@ impl PPU {
             self.cycles = 0;
             if self.scanline > MAX_SCANLINES {
                 self.scanline = 0;
+
+                // Debugging
+                if self.p_gui.lock().unwrap().debug {
+                    self.debug(); // Updates debug buffer to display pattern tables
+                }
+
                 // A frame is ready to be displayed
-                //self.display_pattern_table(0); // Displays pattern table number 0
                 self.p_gui.lock().unwrap().update();
             }
         }
@@ -378,11 +383,11 @@ impl PPU {
             self.palette_shifters[0] = (self.palette_shifters[0] & 0xFF00) | 0x00FF;
             self.palette_shifters[1] = (self.palette_shifters[1] & 0xFF00) | 0x0000;
         }
-        else if (self.next_attribute_table_byte & 0x03) == 0x10 {
+        else if (self.next_attribute_table_byte & 0x03) == 0x02 {
             self.palette_shifters[0] = (self.palette_shifters[0] & 0xFF00) | 0x0000;
             self.palette_shifters[1] = (self.palette_shifters[1] & 0xFF00) | 0x00FF;
         }
-        else if (self.next_attribute_table_byte & 0x03) == 0x11 {
+        else if (self.next_attribute_table_byte & 0x03) == 0x03 {
             self.palette_shifters[0] = (self.palette_shifters[0] & 0xFF00) | 0x00FF;
             self.palette_shifters[1] = (self.palette_shifters[1] & 0xFF00) | 0x00FF;
         }
@@ -424,7 +429,7 @@ impl PPU {
     pub fn increment_x(&mut self) {
         if self.get_mask_flag(MaskFlag::ShowSprites) || self.get_mask_flag(MaskFlag::ShowBackground) {
             let x: u16 = self.ppu_bus.vram_address.get_address_part(VRAMAddressMask::CoarseXScroll);
-            if x >= 31 {
+            if x == 31 {
                 self.ppu_bus.vram_address.set_address_part(VRAMAddressMask::CoarseXScroll, 0);
                 let nametable_x: u16 = self.ppu_bus.vram_address.get_address_part(VRAMAddressMask::NametableX);
                 self.ppu_bus.vram_address.set_address_part(VRAMAddressMask::NametableX, (nametable_x == 0) as u16);
@@ -484,9 +489,15 @@ impl PPU {
         }
     }
 
-    // ===== DEBUGGING ONLY =====
+    // ===== DEBUGGING =====
 
-    #[allow(dead_code)]
+    pub fn debug(&self) {
+        self.display_pattern_table(0);
+        self.display_pattern_table(1);
+        self.display_separation();
+        self.display_palette();
+    }
+
     pub fn display_pattern_table(&self, number: u16) {
         for n_tile_y in 0..16 {
             for n_tile_x in 0..16 {
@@ -495,7 +506,6 @@ impl PPU {
         }
     }
 
-    #[allow(dead_code)]
     pub fn display_tile(&self, n_tile_y: u16, n_tile_x: u16, number: u16) {
         let n_offset = n_tile_y*256 + n_tile_x*16;
         for row in 0..8 {
@@ -506,7 +516,31 @@ impl PPU {
                 tile_high >>= 1;
                 tile_low >>= 1;
                 let c: ARGBColor = self.get_pixel_color(0, color);
-                self.p_gui.lock().unwrap().update_buffer((n_tile_x*8+(7-col) + (n_tile_y*8+row)*256) as u32, c);
+                self.p_gui.lock().unwrap().update_debug_buffer((n_tile_x*8+(7-col) + number*128 + (n_tile_y*8+row)*256) as u32, c);
+            }
+        }
+    }
+
+    pub fn display_separation(&self) {
+        for i in 0..512 {
+            self.p_gui.lock().unwrap().update_debug_buffer(
+                256*128 + i,
+                ARGBColor::new(255, 50, 50, 50)
+            );
+        }
+    }
+
+    pub fn display_palette(&self) {
+        for address in 0x3F00..0x3F20 {
+            let offset = address & 0x00FF;
+            for i in 0..6 {
+                for j in 0..6 {
+                    let index = 258*128 + (offset * 6) + (((offset % 4) == 0) as u32)*2 + i + j*256;
+                    self.p_gui
+                        .lock()
+                        .unwrap()
+                        .update_debug_buffer(index, PALETTE[(self.ppu_bus.read(address as u16) & 0x3F) as usize]);
+                }
             }
         }
     }

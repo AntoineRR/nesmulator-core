@@ -17,13 +17,14 @@ I would also like to pass most of the tests from some tests roms listed in the N
 
 The CPU is emulated and a cartridge in the iNES format can be loaded into the emulator.
 For now, only cartridges using mapper 0 can be read.
-The PPU background display is emulated and works well for nestest.nes ROM, but not for other games (colors and tiles are not right).
+The PPU background display is emulated and works well for nestest.nes ROM, but not for other games (tiles are not right).
 The GUI is created using [minifb](https://docs.rs/minifb/0.19.1/minifb/), and only displays the game screen.
 
 ## Tests
 
 The CPU has been tested on automation with the nestest.nes ROM.
 The logs of the CPU and the PPU, including the disassembly of the ROM code, can be displayed in a similar manner to [Nintendulator](https://www.qmtpro.com/~nes/nintendulator/). This has been useful to compare the logs of my emulator to Nintendulator. The logs are not exactly the same for now : PPU and CPU cycles are not the same and the undocumented opcodes are not implemented (code panics when 0x04 opcode is encountered).
+The pattern tables and palettes can be displayed in a separate window when the "debug" variable in main is set to true.
 
 ## To do
 

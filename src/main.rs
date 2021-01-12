@@ -16,11 +16,13 @@ use gui::GUI;
 
 fn main() {
     // Create the cartridge based on the file located at the given path
-    let path: &Path = Path::new("../ROM/Tests/nestest.nes");
+    //let path: &Path = Path::new("../ROM/Tests/nestest.nes");
+    let path: &Path = Path::new("../ROM/bf.nes");
     let cartridge: Cartridge = Cartridge::new(path);
 
     // Create the GUI for displaying the graphics
-    let p_gui: Arc<Mutex<GUI>> = Arc::new(Mutex::new(GUI::new()));
+    let debug: bool = true;
+    let p_gui: Arc<Mutex<GUI>> = Arc::new(Mutex::new(GUI::new(debug)));
 
     // Creates the NES architecture
     let p_ppu: Arc<Mutex<PPU>> = Arc::new(Mutex::new(PPU::new(p_gui.clone())));
