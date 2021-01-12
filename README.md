@@ -17,8 +17,8 @@ I would also like to pass most of the tests from some tests roms listed in the N
 
 The CPU is emulated and a cartridge in the iNES format can be loaded into the emulator.
 For now, only cartridges using mapper 0 can be read.
-The PPU background display is emulated and works well for nestest.nes ROM, but not for other games (tiles are not right).
-The GUI is created using [minifb](https://docs.rs/minifb/0.19.1/minifb/), and only displays the game screen.
+The PPU background display is emulated and works well for nestest.nes ROM, but not for other games using mapper 0 (tiles are not right).
+The GUI is created using [minifb](https://docs.rs/minifb/0.19.1/minifb/), and displays the game screen, and a debugging screen depending on the value of "debug" in main.
 
 ## Tests
 
