@@ -2,7 +2,7 @@
 
 // ===== IMPORTS =====
 
-use super::cpu_enums::AdressingMode as am;
+use super::enums::AdressingMode as am;
 use super::cpu::CPU;
 
 // ===== CPU INSTRUCTION STRUCT =====
@@ -82,7 +82,7 @@ pub const INSTRUCTIONS: [CpuInstruction;256] =
     CpuInstruction {name: "rla", opcode: 0x33, execute: CPU::err, adressing_mode: am::IndirectY, cycles: 1, bytes: 1},
     CpuInstruction {name: "nop", opcode: 0x34, execute: CPU::err, adressing_mode: am::ZeroPageX, cycles: 1, bytes: 1},
     CpuInstruction {name: "AND", opcode: 0x35, execute: CPU::and, adressing_mode: am::ZeroPageX, cycles: 4, bytes: 2},
-    CpuInstruction {name: "ROL", opcode: 0x36, execute: CPU::asl, adressing_mode: am::ZeroPageX, cycles: 6, bytes: 2},
+    CpuInstruction {name: "ROL", opcode: 0x36, execute: CPU::rol, adressing_mode: am::ZeroPageX, cycles: 6, bytes: 2},
     CpuInstruction {name: "rla", opcode: 0x37, execute: CPU::err, adressing_mode: am::ZeroPageX, cycles: 1, bytes: 1},
     CpuInstruction {name: "SEC", opcode: 0x38, execute: CPU::sec, adressing_mode: am::Implicit, cycles: 2, bytes: 1},
     CpuInstruction {name: "AND", opcode: 0x39, execute: CPU::and, adressing_mode: am::AbsoluteY, cycles: 4, bytes: 3},
@@ -184,7 +184,7 @@ pub const INSTRUCTIONS: [CpuInstruction;256] =
     CpuInstruction {name: "sha", opcode: 0x93, execute: CPU::err, adressing_mode: am::IndirectY, cycles: 1, bytes: 1},
     CpuInstruction {name: "STY", opcode: 0x94, execute: CPU::sty, adressing_mode: am::ZeroPageX, cycles: 4, bytes: 2},
     CpuInstruction {name: "STA", opcode: 0x95, execute: CPU::sta, adressing_mode: am::ZeroPageX, cycles: 4, bytes: 2},
-    CpuInstruction {name: "STX", opcode: 0x96, execute: CPU::stx, adressing_mode: am::ZeroPageX, cycles: 4, bytes: 2},
+    CpuInstruction {name: "STX", opcode: 0x96, execute: CPU::stx, adressing_mode: am::ZeroPageY, cycles: 4, bytes: 2},
     CpuInstruction {name: "sax", opcode: 0x97, execute: CPU::err, adressing_mode: am::ZeroPageX, cycles: 1, bytes: 1},
     CpuInstruction {name: "TYA", opcode: 0x98, execute: CPU::tya, adressing_mode: am::Implicit, cycles: 2, bytes: 1},
     CpuInstruction {name: "STA", opcode: 0x99, execute: CPU::sta, adressing_mode: am::AbsoluteY, cycles: 5, bytes: 3},
@@ -216,7 +216,7 @@ pub const INSTRUCTIONS: [CpuInstruction;256] =
     CpuInstruction {name: "LDA", opcode: 0xB1, execute: CPU::lda, adressing_mode: am::IndirectY, cycles: 5, bytes: 2},
     CpuInstruction {name: "???", opcode: 0xB2, execute: CPU::err, adressing_mode: am::NoMode, cycles: 1, bytes: 1},
     CpuInstruction {name: "lax", opcode: 0xB3, execute: CPU::err, adressing_mode: am::IndirectY, cycles: 1, bytes: 1},
-    CpuInstruction {name: "LDY", opcode: 0xB4, execute: CPU::err, adressing_mode: am::ZeroPageX, cycles: 4, bytes: 2},
+    CpuInstruction {name: "LDY", opcode: 0xB4, execute: CPU::ldy, adressing_mode: am::ZeroPageX, cycles: 4, bytes: 2},
     CpuInstruction {name: "LDA", opcode: 0xB5, execute: CPU::lda, adressing_mode: am::ZeroPageX, cycles: 4, bytes: 2},
     CpuInstruction {name: "LDX", opcode: 0xB6, execute: CPU::ldx, adressing_mode: am::ZeroPageY, cycles: 4, bytes: 2},
     CpuInstruction {name: "lax", opcode: 0xB7, execute: CPU::err, adressing_mode: am::ZeroPageY, cycles: 1, bytes: 1},
@@ -293,7 +293,7 @@ pub const INSTRUCTIONS: [CpuInstruction;256] =
     CpuInstruction {name: "nop", opcode: 0xFA, execute: CPU::err, adressing_mode: am::Implicit, cycles: 1, bytes: 1},
     CpuInstruction {name: "isb", opcode: 0xFB, execute: CPU::err, adressing_mode: am::AbsoluteY, cycles: 1, bytes: 1},
     CpuInstruction {name: "nop", opcode: 0xFC, execute: CPU::err, adressing_mode: am::AbsoluteX, cycles: 1, bytes: 1},
-    CpuInstruction {name: "SBC", opcode: 0xFD, execute: CPU::ora, adressing_mode: am::AbsoluteX, cycles: 4, bytes: 3},
+    CpuInstruction {name: "SBC", opcode: 0xFD, execute: CPU::sbc, adressing_mode: am::AbsoluteX, cycles: 4, bytes: 3},
     CpuInstruction {name: "INC", opcode: 0xFE, execute: CPU::inc, adressing_mode: am::AbsoluteX, cycles: 7, bytes: 3},
     CpuInstruction {name: "isb", opcode: 0xFF, execute: CPU::err, adressing_mode: am::AbsoluteX, cycles: 1, bytes: 1},
 ];

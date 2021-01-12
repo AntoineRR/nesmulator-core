@@ -55,7 +55,7 @@ impl Cartridge {
         // This is the header of the file
         match file.read(&mut buffer) {
             Err(why) => panic!("Couldn't read {}: {}", path.display(), why),
-            Ok(_) => println!("{} contains:\n{:?}", path.display(), buffer)
+            Ok(_) => ()
         }
 
         let mut _header: INesHeader = INesHeader::new();
@@ -73,7 +73,7 @@ impl Cartridge {
         for _i in 0.._header.n_prg_rom {
             match file.read(&mut buffer) {
                 Err(why) => panic!("Couldn't read {}: {}", path.display(), why),
-                Ok(_) => println!("Opened prg rom.")
+                Ok(_) => ()
             }
             _prg_rom.push(buffer);
         }
@@ -84,7 +84,7 @@ impl Cartridge {
         for _i in 0.._header.n_chr_rom {
             match file.read(&mut buffer) {
                 Err(why) => panic!("Couldn't read {}: {}", path.display(), why),
-                Ok(_) => println!("Opened chr rom.")
+                Ok(_) => ()
             }
             _chr_rom.push(buffer);
         }

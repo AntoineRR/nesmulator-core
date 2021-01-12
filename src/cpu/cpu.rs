@@ -3,16 +3,14 @@
 
 // ====== IMPORTS =====
 
+use core::panic;
 use std::sync::{Arc, Mutex};
 
 use crate::{bus::Bus};
 use crate::bus::STACK_OFFSET;
-use super::cpu_instructions::{CpuInstruction,INSTRUCTIONS};
-use super::cpu_enums::{AdressingMode as am,Flag,Interrupt};
-
-// ===== CONSTANTS =====
-
-//pub const CPU_FREQUENCY: u32 = 1789773; // NTSC NES / Famicom frequency (Hz)
+use super::instructions::{CpuInstruction,INSTRUCTIONS};
+use super::enums::{AdressingMode as am,Flag,Interrupt};
+use std::fmt::Write;
 
 // ===== CPU STRUCT =====
 
@@ -30,6 +28,9 @@ pub struct CPU {
     // Cycles required by the instruction to complete
     pub cycles: u8,
 
+    // Total clock cycles from the start of the CPU
+    pub total_clock: u64,
+
     // pointer to the data bus where we read from and write to
     pub p_bus: Arc<Mutex<Bus>>
 }
@@ -45,6 +46,8 @@ impl CPU {
             p: 0x34,
 
             cycles: 0,
+
+            total_clock: 0,
 
             p_bus
         }
@@ -84,14 +87,17 @@ impl CPU {
     // Called when an interrupt occurs
     // The interrupt disable flag from the status register needs to be 0
     pub fn interrupt(&mut self, interrupt_type: Interrupt) {
-        if !self.get_flag(Flag::InterruptDisable) {
-            // Push program counter and status register on the stack
-            self.write_bus(STACK_OFFSET + self.sp as u16, ((self.pc & 0xFF00) >> 8) as u8);
-            self.sp -= 1;
-            self.write_bus(STACK_OFFSET + self.sp as u16, (self.pc & 0x00FF) as u8);
-            self.sp -= 1;
-            self.write_bus(STACK_OFFSET + self.sp as u16, self.p);
-            self.sp -= 1;
+        if !self.get_flag(Flag::InterruptDisable) || interrupt_type == Interrupt::NMI {
+            
+            if interrupt_type != Interrupt::Reset {
+                // Push program counter and status register on the stack
+                self.write_bus(STACK_OFFSET + self.sp as u16, ((self.pc & 0xFF00) >> 8) as u8);
+                self.sp -= 1;
+                self.write_bus(STACK_OFFSET + self.sp as u16, (self.pc & 0x00FF) as u8);
+                self.sp -= 1;
+                self.write_bus(STACK_OFFSET + self.sp as u16, self.p);
+                self.sp -= 1;
+            }
             // Disable interrupts
             self.set_flag(Flag::InterruptDisable, true);
             // Load interrupt handler address into the program counter
@@ -103,18 +109,22 @@ impl CPU {
             }
             self.pc = self.read_bus(start_address) as u16 + ((self.read_bus(start_address + 1) as u16) << 8) as u16;
 
-            self.cycles = 7;
+            if interrupt_type == Interrupt::NMI {
+                self.cycles = 8;
+            }
+            else {
+                self.cycles = 7;
+            }
         }
     }
 
     // Called when the reset button is pressed on the NES
     pub fn reset(&mut self) {
-        println!("RESET");
         self.a = 0x00;
         self.x = 0x00;
         self.y = 0x00;
         self.sp = 0xFD;
-        self.p = 0x00;
+        self.p = 0x20;
         self.interrupt(Interrupt::Reset);
     }
 
@@ -123,17 +133,29 @@ impl CPU {
     // Executes a clock cycle
     // opcodes for operations are stored in the INSTRUCTIONS const
     pub fn clock(&mut self) {
+        // Basic cycle emulation :
+        // cycle 0 does the operation and the others do nothing
         if self.cycles == 0 {
+            // Get operation code
             let opcode: u8 = self.read_bus(self.pc);
-            //println!("opcode : {:#x}", opcode);
+            //self.display_cpu_log(opcode); // Uncomment for debugging
+            
+            // Get instruction information for the operation code
             let instruction: &CpuInstruction = &INSTRUCTIONS[opcode as usize];
+            
+            // Execute the instruction
             (instruction.execute)(self, instruction.adressing_mode);
+            
+            // Increase program counter
             self.pc += 1;
+            
+            // Sets the correct number of cycles
             self.cycles += instruction.cycles - 1;
         }
         else {
             self.cycles -= 1;
         }
+        self.total_clock += 1;
     }
 
     // ===== ADDRESSING MODES =====
@@ -142,7 +164,6 @@ impl CPU {
     pub fn fetch_address(&mut self, mode: am) -> u16 {
         match mode {
             am::Accumulator => {
-                self.pc += 1;
                 self.a as u16
             },
             am::Immediate => {
@@ -157,12 +178,12 @@ impl CPU {
             am::ZeroPageX => {
                 self.pc += 1;
                 let address: u8 = self.read_bus(self.pc);
-                address as u16 + self.x as u16
+                (address as u16 + self.x as u16) % 0x100
             },
             am::ZeroPageY => {
                 self.pc += 1;
                 let address: u8 = self.read_bus(self.pc);
-                address as u16 + self.y as u16
+                (address as u16 + self.y as u16) % 0x100
             },
             am::Relative => {
                 self.pc += 1;
@@ -193,7 +214,8 @@ impl CPU {
                 self.pc += 1;
                 let hi: u8 = self.read_bus(self.pc);
                 let address: u16 = lo as u16 + ((hi as u16) << 8);
-                let result: u16 = address + self.y as u16;
+                let addition: u32 = address as u32 + self.y as u32;
+                let result: u16 = (addition & 0x0000_FFFF) as u16;
                 if (result & 0xFF00) != (address & 0xFF00) {
                     self.cycles += 1;
                 }
@@ -205,30 +227,33 @@ impl CPU {
                 self.pc += 1;
                 let hi: u8 = self.read_bus(self.pc);
                 let ptr: u16 = lo as u16 + ((hi as u16) << 8);
-                let address_lo: u8 = self.read_bus(ptr);
-                let address_hi: u8 = self.read_bus(ptr + 1);
-                address_lo as u16 + (address_hi as u16) << 8
+                let address_lo: u8;
+                let address_hi: u8;
+                if lo == 0xFF {
+                    // Hardware bug
+                    address_lo = self.read_bus(ptr);
+                    address_hi = self.read_bus(ptr & 0xFF00);
+                }
+                else {
+                    address_lo = self.read_bus(ptr);
+                    address_hi = self.read_bus(ptr + 1);
+                }
+                address_lo as u16 + ((address_hi as u16) << 8)
             },
             am::IndirectX => {
                 self.pc += 1;
-                let lo: u8 = self.read_bus(self.pc);
-                self.pc += 1;
-                let hi: u8 = self.read_bus(self.pc);
-                let ptr: u16 = lo as u16 + ((hi as u16) << 8);
-                let address_lo: u8 = self.read_bus(ptr);
-                let address_hi: u8 = self.read_bus(ptr + 1);
-                address_lo as u16 + (address_hi as u16) << 8 + self.x as u16
+                let ptr_lo: u16 = (self.read_bus(self.pc) as u16 + self.x as u16) % 0x100; // address in the 0x00 page
+                let ptr_hi: u16 = (ptr_lo + 1) % 0x100;
+                self.read_bus(ptr_lo) as u16 + ((self.read_bus(ptr_hi) as u16) << 8)
             },
             am::IndirectY => {
                 self.pc += 1;
-                let lo: u8 = self.read_bus(self.pc);
-                self.pc += 1;
-                let hi: u8 = self.read_bus(self.pc);
-                let ptr: u16 = lo as u16 + ((hi as u16) << 8);
-                let address_lo: u8 = self.read_bus(ptr);
-                let address_hi: u8 = self.read_bus(ptr + 1);
-                let address: u16 = address_lo as u16 + (address_hi as u16) << 8;
-                let result: u16 = address + self.y as u16;
+                let ptr_lo: u16 = (self.read_bus(self.pc) as u16) % 0x100; // address in the 0x00 page
+                let ptr_hi: u16 = (ptr_lo + 1) % 0x100;
+                let address_lo: u8 = self.read_bus(ptr_lo);
+                let address_hi: u8 = self.read_bus(ptr_hi);
+                let address: u16 = address_lo as u16 + ((address_hi as u16) << 8);
+                let result: u16 = ((address as u32 + self.y as u32) % 0x10000) as u16;
                 if (result & 0xFF00) != (address & 0xFF00) {
                     self.cycles += 1;
                 }
@@ -254,7 +279,7 @@ impl CPU {
         self.set_flag(Flag::Carry, (result & 0x0100) == 0x0100);
         self.set_flag(Flag::Zero, self.a == 0x00);
         self.set_flag(Flag::Negative, (self.a & 0x80) == 0x80);
-        self.set_flag(Flag::Overflow, !(previous_a ^ data) & (previous_a ^ self.a) == 0x01);
+        self.set_flag(Flag::Overflow, !(previous_a ^ data) & (previous_a ^ (result as u8)) == 0x80);
     }
 
     // Logical and
@@ -272,14 +297,20 @@ impl CPU {
     pub fn asl(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u16 = self.read_bus(address) as u16;
-        let result: u8 = ((data << 1) & 0x00FF) as u8;
+        let result: u16;
         match mode {
-            am::Accumulator => self.a = result,
-            _ => self.write_bus(address, result)
+            am::Accumulator => {
+                result = (self.a as u16) << 1;
+                self.a = result as u8;
+            }
+            _ => {
+                result = data << 1;
+                self.write_bus(address, result as u8);
+            }
         }
-        self.set_flag(Flag::Carry, ((data << 1) & 0xFF00) > 0);
-        self.set_flag(Flag::Zero, self.a == 0);
-        self.set_flag(Flag::Negative, result & 0x80 == 0x80);
+        self.set_flag(Flag::Carry, (result & 0xFF00) > 0);
+        self.set_flag(Flag::Zero, (result & 0x00FF) == 0);
+        self.set_flag(Flag::Negative, result & 0x0080 == 0x0080);
     }
 
     // Branch if carry clear
@@ -334,8 +365,8 @@ impl CPU {
         let data: u8 = self.read_bus(address);
         let result: u8 = self.a & data;
         self.set_flag(Flag::Zero, result == 0x00);
-        self.set_flag(Flag::Negative, (result & 0b1000_0000) == 0b1000_0000);
-        self.set_flag(Flag::Overflow, (result & 0b0100_0000) == 0b0100_0000);
+        self.set_flag(Flag::Negative, (data & 0b1000_0000) == 0b1000_0000);
+        self.set_flag(Flag::Overflow, (data & 0b0100_0000) == 0b0100_0000);
     }
 
     // Branch if minus
@@ -448,10 +479,16 @@ impl CPU {
     pub fn cmp(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8 = self.a - data;
+        let result: u8;
+        if self.a > data {
+            result = self.a - data;
+        }
+        else {
+            result = data - self.a;
+        }
         self.set_flag(Flag::Zero, result == 0x00);
-        self.set_flag(Flag::Carry, result > 0x00);
-        self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
+        self.set_flag(Flag::Carry, self.a >= data);
+        self.set_flag(Flag::Negative, (data > self.a) | ((data == 0) & ((self.a & 0x80) == 0x80)));
     }
 
     // Compare x register
@@ -459,10 +496,16 @@ impl CPU {
     pub fn cpx(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8 = self.x - data;
+        let result: u8;
+        if self.x > data {
+            result = self.x - data;
+        }
+        else {
+            result = data - self.x;
+        }
         self.set_flag(Flag::Zero, result == 0x00);
-        self.set_flag(Flag::Carry, result > 0x00);
-        self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
+        self.set_flag(Flag::Carry, self.x >= data);
+        self.set_flag(Flag::Negative, (data > self.x) | ((data == 0) & ((self.x & 0x80) == 0x80)));
     }
 
     // Compare y register
@@ -470,10 +513,16 @@ impl CPU {
     pub fn cpy(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8 = self.y - data;
+        let result: u8;
+        if self.y > data {
+            result = self.y - data;
+        }
+        else {
+            result = data - self.y;
+        }
         self.set_flag(Flag::Zero, result == 0x00);
-        self.set_flag(Flag::Carry, result > 0x00);
-        self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
+        self.set_flag(Flag::Carry, self.y >= data);
+        self.set_flag(Flag::Negative, (data > self.y) | ((data == 0) & ((self.y & 0x80) == 0x80)));
     }
 
     // Decrement memory
@@ -481,7 +530,13 @@ impl CPU {
     pub fn dec(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8 = data - 1;
+        let result: u8;
+        if data != 0 {
+            result = data - 1;
+        }
+        else {
+            result = 255;
+        }
         self.write_bus(address, result);
         self.set_flag(Flag::Zero, result == 0);
         self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
@@ -490,7 +545,12 @@ impl CPU {
     // Decrement x register
     // X,Z,N = X-1
     pub fn dex(&mut self, _: am) {
-        self.x -= 1;
+        if self.x != 0 {
+            self.x -= 1;
+        }
+        else {
+            self.x = 255;
+        }
         self.set_flag(Flag::Zero, self.x == 0);
         self.set_flag(Flag::Negative, (self.x & 0x80) == 0x80);
     }
@@ -498,7 +558,12 @@ impl CPU {
     // Decrement y register
     // Y,Z,N = Y-1
     pub fn dey(&mut self, _: am) {
-        self.y -= 1;
+        if self.y != 0 {
+            self.y -= 1;
+        }
+        else {
+            self.y = 255;
+        }
         self.set_flag(Flag::Zero, self.y == 0);
         self.set_flag(Flag::Negative, (self.y & 0x80) == 0x80);
     }
@@ -518,7 +583,13 @@ impl CPU {
     pub fn inc(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8 = data + 1;
+        let result: u8;
+        if data != 255 {
+            result = data + 1;
+        }
+        else {
+            result = 0;
+        }
         self.write_bus(address, result);
         self.set_flag(Flag::Zero, result == 0);
         self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
@@ -527,7 +598,12 @@ impl CPU {
     // Increment x register
     // X,Z,N = X+1
     pub fn inx(&mut self, _: am) {
-        self.x += 1;
+        if self.x != 255 {
+            self.x += 1;
+        }
+        else {
+            self.x = 0;
+        }
         self.set_flag(Flag::Zero, self.x == 0);
         self.set_flag(Flag::Negative, (self.x & 0x80) == 0x80);
     }
@@ -535,7 +611,12 @@ impl CPU {
     // Increment y register
     // Y,Z,N = Y+1
     pub fn iny(&mut self, _: am) {
-        self.y += 1;
+        if self.y != 255 {
+            self.y += 1;
+        }
+        else {
+            self.y = 0;
+        }
         self.set_flag(Flag::Zero, self.y == 0);
         self.set_flag(Flag::Negative, (self.y & 0x80) == 0x80);
     }
@@ -544,7 +625,7 @@ impl CPU {
     // pc = addr
     pub fn jmp(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
-        self.pc = address;
+        self.pc = address - 1;
     }
 
     // Jump to subroutine
@@ -552,9 +633,9 @@ impl CPU {
         let address: u16 = self.fetch_address(mode);
         self.write_bus(STACK_OFFSET + self.sp as u16, (self.pc >> 8) as u8);
         self.sp -= 1;
-        self.write_bus(STACK_OFFSET + self.sp as u16, self.pc as u8 + 0x01);
+        self.write_bus(STACK_OFFSET + self.sp as u16, self.pc as u8);
         self.sp -= 1;
-        self.pc = address;
+        self.pc = address - 1;
     }
 
     // Load accumulator
@@ -592,13 +673,19 @@ impl CPU {
     pub fn lsr(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u16 = self.read_bus(address) as u16;
-        let result: u8 = ((data >> 1) & 0x00FF) as u8;
+        let result: u8;
         match mode {
-            am::Accumulator => self.a = result,
-            _ => self.write_bus(address, result)
+            am::Accumulator => {
+                result = self.a >> 1;
+                self.a = result;
+            }
+            _ => {
+                result = ((data >> 1) & 0x00FF) as u8;
+                self.write_bus(address, result);
+            }
         }
         self.set_flag(Flag::Carry, (data & 0x01) > 0);
-        self.set_flag(Flag::Zero, self.a == 0x00);
+        self.set_flag(Flag::Zero, result == 0x00);
         self.set_flag(Flag::Negative, result & 0x80 == 0x80);
     }
 
@@ -629,7 +716,7 @@ impl CPU {
     // status => stack
     pub fn php(&mut self, _: am) {
         let address: u16 = STACK_OFFSET + self.sp as u16;
-        self.write_bus(address, self.p);
+        self.write_bus(address, self.p | Flag::Break as u8 | Flag::Unused as u8);
         self.sp -= 1;
     }
 
@@ -639,6 +726,8 @@ impl CPU {
         self.sp += 1;
         let address: u16 = STACK_OFFSET + self.sp as u16;
         self.a = self.read_bus(address);
+        self.set_flag(Flag::Zero, self.a == 0x00);
+        self.set_flag(Flag::Negative, self.a & 0x80 == 0x80);
     }
 
     // Pull processor status
@@ -646,19 +735,35 @@ impl CPU {
     pub fn plp(&mut self, _: am) {
         self.sp += 1;
         let address: u16 = STACK_OFFSET + self.sp as u16;
-        self.p = self.read_bus(address);
+        let status: u8 = self.read_bus(address);
+        self.set_flag(Flag::Carry, status & (Flag::Carry as u8) == Flag::Carry as u8);
+        self.set_flag(Flag::Zero, status & (Flag::Zero as u8) == Flag::Zero as u8);
+        self.set_flag(Flag::InterruptDisable, status & (Flag::InterruptDisable as u8) == Flag::InterruptDisable as u8);
+        self.set_flag(Flag::Decimal, status & (Flag::Decimal as u8) == Flag::Decimal as u8);
+        self.set_flag(Flag::Unused, true);
+        self.set_flag(Flag::Overflow, status & (Flag::Overflow as u8) == Flag::Overflow as u8);
+        self.set_flag(Flag::Negative, status & (Flag::Negative as u8) == Flag::Negative as u8);
     }
 
     // Rotate left
     pub fn rol(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8 = (data << 1) + self.get_flag(Flag::Carry) as u8;
+        let result: u8;
+        let previous_value: u8;
         match mode {
-            am::Accumulator => self.a = result,
-            _ => self.write_bus(address, result)
+            am::Accumulator => {
+                previous_value = self.a;
+                result = (self.a << 1) + (self.get_flag(Flag::Carry) as u8);
+                self.a = result;
+            }
+            _ => {
+                previous_value = data;
+                result = (data << 1) + (self.get_flag(Flag::Carry) as u8);
+                self.write_bus(address, result);
+            }
         }
-        self.set_flag(Flag::Carry, (data & 0x80) == 0x80);
+        self.set_flag(Flag::Carry, (previous_value & 0x80) == 0x80);
         self.set_flag(Flag::Zero, result == 0x00);
         self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
     }
@@ -667,12 +772,21 @@ impl CPU {
     pub fn ror(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8 = (data >> 1) + (self.get_flag(Flag::Carry) as u8 * 0b1000_0000);
+        let result: u8;
+        let previous_value: u8;
         match mode {
-            am::Accumulator => self.a = result,
-            _ => self.write_bus(address, result)
+            am::Accumulator => {
+                previous_value = self.a;
+                result = (self.a >> 1) + (self.get_flag(Flag::Carry) as u8 * 0x80);
+                self.a = result;
+            }
+            _ => {
+                previous_value = data;
+                result = (data >> 1) + (self.get_flag(Flag::Carry) as u8 * 0x80);
+                self.write_bus(address, result);
+            }
         }
-        self.set_flag(Flag::Carry, (data & 0x01) == 0x01);
+        self.set_flag(Flag::Carry, (previous_value & 0x01) == 0x01);
         self.set_flag(Flag::Zero, result == 0x00);
         self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
     }
@@ -681,22 +795,29 @@ impl CPU {
     // status <= stack, pc <= stack
     pub fn rti(&mut self, _: am) {
         self.sp += 1;
-        self.p = self.read_bus(STACK_OFFSET + self.sp as u16);
+        let status: u8 = self.read_bus(STACK_OFFSET + self.sp as u16);
+        self.set_flag(Flag::Carry, status & (Flag::Carry as u8) == Flag::Carry as u8);
+        self.set_flag(Flag::Zero, status & (Flag::Zero as u8) == Flag::Zero as u8);
+        self.set_flag(Flag::InterruptDisable, status & (Flag::InterruptDisable as u8) == Flag::InterruptDisable as u8);
+        self.set_flag(Flag::Decimal, status & (Flag::Decimal as u8) == Flag::Decimal as u8);
+        self.set_flag(Flag::Unused, true);
+        self.set_flag(Flag::Overflow, status & (Flag::Overflow as u8) == Flag::Overflow as u8);
+        self.set_flag(Flag::Negative, status & (Flag::Negative as u8) == Flag::Negative as u8);
         self.sp += 1;
-        let mut address: u16 = (self.read_bus(STACK_OFFSET + self.sp as u16) as u16) << 8;
+        let mut address: u16 = self.read_bus(STACK_OFFSET + self.sp as u16) as u16;
         self.sp += 1;
-        address += self.read_bus(STACK_OFFSET + self.sp as u16) as u16;
-        self.pc = address;
+        address += (self.read_bus(STACK_OFFSET + self.sp as u16) as u16) << 8;
+        self.pc = address - 1;
     }
 
     // Return from subroutine
     // pc - 1 <= stack
     pub fn rts(&mut self, _: am) {
         self.sp += 1;
-        let mut address: u16 = (self.read_bus(STACK_OFFSET + self.sp as u16) as u16) << 8;
+        let mut address: u16 = self.read_bus(STACK_OFFSET + self.sp as u16) as u16;
         self.sp += 1;
-        address += self.read_bus(STACK_OFFSET + self.sp as u16) as u16;
-        self.pc = address + 1;
+        address += (self.read_bus(STACK_OFFSET + self.sp as u16) as u16) << 8;
+        self.pc = address;
     }
 
     // Substract with carry
@@ -704,14 +825,15 @@ impl CPU {
     pub fn sbc(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let original_data: u8 = self.read_bus(address);
-        let data: u16 = (original_data as u16) ^ 0x00FF; // Converts data into a negative value
-        let result: u16 = self.a as u16 + data + self.get_flag(Flag::Carry) as u16;
+        let data: u8 = original_data ^ 0xFF; // Converts data into a negative value + 1
+        let result: u16 = self.a as u16 + data as u16 + self.get_flag(Flag::Carry) as u16;
         let previous_a: u8 = self.a;
         self.a = result as u8;
         self.set_flag(Flag::Carry, (result & 0x0100) == 0x0100);
         self.set_flag(Flag::Zero, self.a == 0x00);
         self.set_flag(Flag::Negative, (self.a & 0x80) == 0x80);
-        self.set_flag(Flag::Overflow, !(previous_a ^ original_data) & (previous_a ^ self.a) == 0x01);
+        // !!((A ^ Val) & (A ^ result) & 0x80) Only this, taken from Nintendulator could pass the nestest
+        self.set_flag(Flag::Overflow, !!((previous_a ^ original_data) & (previous_a ^ (result as u8)) & 0x80) == 0x80);
     }
 
     // Set carry flag
@@ -802,5 +924,131 @@ impl CPU {
     // Used for unvalid operation codes
     pub fn err(&mut self, _: am) {
         panic!("Encountered an unvalid opcode !");
+    }
+
+    // ===== DEBUGGING =====
+
+    #[allow(dead_code)]
+    pub fn display_cpu_log(&self, opcode: u8) {
+        let mut instruction_and_parameters_str: String = String::from(format!("{:02X} ",opcode));
+        let mut instruction_parameters: Vec<u8> = vec![];
+        for i in 0..INSTRUCTIONS[opcode as usize].bytes - 1 {
+            instruction_parameters.push(self.read_bus(self.pc + i as u16 + 1));
+            match write!(instruction_and_parameters_str, "{:02X} ", instruction_parameters[i as usize]) {
+                Err(why) => panic!("Error during write : {}",why),
+                Ok(_) => ()
+            }
+        }
+        while instruction_and_parameters_str.len() < 9 {
+            instruction_and_parameters_str.push_str(" ");
+        }
+        let cpu_log: String = String::from(format!("{:04X}  {} {}A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}"
+            ,self.pc,instruction_and_parameters_str,self.dissassemble(opcode, instruction_parameters),
+            self.a,self.x,self.y,self.p,self.sp));
+        
+        let scanline: u16 = self.p_bus.lock().unwrap().p_ppu.lock().unwrap().scanline;
+        let mut scanline_str: String = scanline.to_string();
+        while scanline_str.len() < 3 {
+            scanline_str = String::from(format!(" {}",scanline_str));
+        }
+        let cycle: u16 = self.p_bus.lock().unwrap().p_ppu.lock().unwrap().cycles;
+        let mut cycle_str: String = cycle.to_string();
+        while cycle_str.len() < 3 {
+            cycle_str = String::from(format!(" {}",cycle_str));
+        }
+        let ppu_log: String = String::from(format!("PPU:{},{}",scanline_str,cycle_str));
+
+        println!("{} {} CYC:{}",cpu_log,ppu_log,self.total_clock);
+    }
+
+    #[allow(dead_code)]
+    pub fn dissassemble(&self, opcode: u8, parameters: Vec<u8>) -> String {
+        let mut dissassembly: String = String::from(INSTRUCTIONS[opcode as usize].name);
+        dissassembly.push_str(" ");
+        match INSTRUCTIONS[opcode as usize].adressing_mode {
+            am::Accumulator => {
+                if (opcode != 0xAA) && (opcode != 0x8A) {
+                    dissassembly.push_str("A");
+                }
+            }
+            am::Implicit => (),
+            am::Immediate => dissassembly.push_str(&format!("#${:02X}",parameters[0])),
+            am::ZeroPage => {
+                let value: u8 = self.read_bus(parameters[0] as u16);
+                dissassembly.push_str(&format!("${:02X} = {:02X}",parameters[0],value));
+            },
+            am::ZeroPageX => {
+                let address: u16 = (parameters[0] as u16 + self.x as u16) % 0x100;
+                let value: u8 = self.read_bus(address);
+                dissassembly.push_str(&format!("${:02X},X @ {:02X} = {:02X}",parameters[0],address,value));
+            },
+            am::ZeroPageY => {
+                let address: u16 = (parameters[0] as u16 + self.y as u16) % 0x100;
+                let value: u8 = self.read_bus(address);
+                dissassembly.push_str(&format!("${:02X},Y @ {:02X} = {:02X}",parameters[0],address,value));
+            },
+            am::Relative => {
+                dissassembly.push_str(&format!("${:04X}",self.pc + 2 + parameters[0] as u16));
+            },
+            am::Absolute => {
+                let address: u16 = parameters[0] as u16 + ((parameters[1] as u16) << 8) as u16;
+                let value: u8 = self.read_bus(address);
+                // Don't print value if it's a JMP / JSR
+                if (opcode == 0x4C) || (opcode == 0x20) {
+                    dissassembly.push_str(&format!("${:02X}{:02X}",parameters[1],parameters[0]));
+                }
+                else {
+                    dissassembly.push_str(&format!("${:02X}{:02X} = {:02X}",parameters[1],parameters[0],value));
+                }
+            },
+            am::AbsoluteX => {
+                let address: u16 = parameters[0] as u16 + ((parameters[1] as u16) << 8) + self.x as u16;
+                let value: u8 = self.read_bus(address);
+                dissassembly.push_str(&format!("${:02X}{:02X},X @ {:04X} = {:02X}",parameters[1],parameters[0],address,value));
+            },
+            am::AbsoluteY => {
+                let address: u16 = ((parameters[0] as u32 + ((parameters[1] as u32) << 8) + self.y as u32) % 0x10000) as u16;
+                let value: u8 = self.read_bus(address);
+                dissassembly.push_str(&format!("${:02X}{:02X},Y @ {:04X} = {:02X}",parameters[1],parameters[0],address,value));
+            },
+            am::Indirect => {
+                let ptr: u16 = parameters[0] as u16 + ((parameters[1] as u16) << 8);
+                let address_lo: u8;
+                let address_hi: u8;
+                if (ptr & 0x00FF) == 0x00FF {
+                    // Hardware bug
+                    address_lo = self.read_bus(ptr);
+                    address_hi = self.read_bus(ptr & 0xFF00);
+                }
+                else {
+                    address_lo = self.read_bus(ptr);
+                    address_hi = self.read_bus(ptr + 1);
+                }
+                let address: u16 = address_lo as u16 + ((address_hi as u16) << 8);
+                dissassembly.push_str(&format!("(${:02X}{:02X}) = {:04X}",parameters[1],parameters[0],address));
+            },
+            am::IndirectX => {
+                let ptr_lo: u16 = (parameters[0] as u16 + self.x as u16) % 0x100;
+                let ptr_hi: u16 = (ptr_lo + 1) % 0x100;
+                let address: u16 = self.read_bus(ptr_lo) as u16 + ((self.read_bus(ptr_hi) as u16) << 8);
+                let value: u8 = self.read_bus(address);
+                dissassembly.push_str(&format!("(${:02X},X) @ {:02X} = {:04X} = {:02X}",parameters[0],ptr_lo,address,value));
+            },
+            am::IndirectY => {
+                let ptr_lo: u16 = (parameters[0] as u16) % 0x100;
+                let ptr_hi: u16 = (ptr_lo + 1) % 0x100;
+                let address_ptr: u16 = self.read_bus(ptr_lo) as u16 + ((self.read_bus(ptr_hi) as u16) << 8);
+                let address: u16 = ((address_ptr as u32 + self.y as u32) % 0x10000) as u16;
+                let value: u8 = self.read_bus(address);
+                dissassembly.push_str(&format!("(${:02X}),Y = {:04X} @ {:04X} = {:02X}",parameters[0],address_ptr,address,value));
+            },
+            am::NoMode => {
+                panic!("No mode specified when trying to fetch data !");
+            }
+        };
+        while dissassembly.len() < 32 {
+            dissassembly.push_str(" ");
+        }
+        dissassembly
     }
 }
