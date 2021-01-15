@@ -14,12 +14,6 @@ use super::{bus::PPUBus, enums::{ControlFlag, MaskFlag, StatusFlag, VRAMAddressM
 const MAX_CYCLES: u16 = 340;
 const MAX_SCANLINES: u16 = 261;
 
-const SET_V_BLANK_SCANLINE: u16 = 241;
-const SET_V_BLANK_CYCLE: u16 = 1;
-
-const CLEAR_V_BLANK_SCANLINE: u16 = 261;
-const CLEAR_V_BLANK_CYCLE: u16 = 1;
-
 // ===== STRUCT =====
 
 #[derive(Debug)]
@@ -34,6 +28,10 @@ pub struct PPU {
     pub addr: u8,
     pub data: u8,
     pub oam_dma: u8,
+
+    // decay register
+    pub decay: u8,
+    pub decay_timer: u32,
 
     // Data buffer for reading to 2007
     pub data_buffer: u8,
@@ -59,6 +57,9 @@ pub struct PPU {
     // Variables required for display
     pub cycles: u16,
     pub scanline: u16,
+    pub odd_frame: bool,
+
+    pub total_clock: u32,
 
     // GUI
     pub p_gui: Arc<Mutex<GUI>>
@@ -76,6 +77,9 @@ impl PPU {
             addr: 0,
             data: 0,
             oam_dma: 0,
+
+            decay: 0,
+            decay_timer: 0,
 
             data_buffer: 0,
 
@@ -95,6 +99,9 @@ impl PPU {
 
             cycles: 0,
             scanline: 0,
+            odd_frame: false,
+
+            total_clock: 0,
             
             p_gui
         }
@@ -104,16 +111,11 @@ impl PPU {
 
     // Executes a clock cycle
     pub fn clock(&mut self) {
-        //println!("scanline : {}, cycles : {}, vram address : {:#X}",self.scanline,self.cycles,self.ppu_bus.vram_address.address);
+        //println!("scanline : {}, cycles : {}, VBL : {}",self.scanline,self.cycles,(self.status & 0x80) != 0);
 
         // This cycle is skipped
-        if self.scanline == 0 && self.cycles == 0 {
+        if self.scanline == 0 && self.cycles == 0 && self.odd_frame {
             self.cycles = 1;
-        }
-
-        // Clear the v blank flag at the end of the v blank period
-        if self.scanline == CLEAR_V_BLANK_SCANLINE && self.cycles == CLEAR_V_BLANK_CYCLE {
-            self.set_status_flag(StatusFlag::VBlank, false);
         }
 
         // Get the next 8 pixels colors
@@ -121,7 +123,7 @@ impl PPU {
             if self.cycles >= 1 && self.cycles <= 257 || (self.cycles > 320 && self.cycles < 338) {
                 self.update_shifters();
                 // Get the nametable values
-                if (self.cycles - 1) % 8 == 0 {
+                if ((self.cycles - 1) % 8) == 0 {
                     self.load_next_background();
                     // Coarse x and Coarse y index the row and column in the name table
                     // That's why we mask the vram address to get those + the name table index
@@ -133,7 +135,7 @@ impl PPU {
                     self.next_name_table_byte = self.ppu_bus.read(address);
                 }
                 // Get the attribute table values
-                else if (self.cycles - 1) % 8 == 2 {
+                else if ((self.cycles - 1) % 8) == 2 {
                     // One byte in attribute table represents 4 nametables
                     // We have to divide Coarse x and Coarse y by 4 to get the right index
                     let address: u16 =
@@ -156,7 +158,7 @@ impl PPU {
                     //println!("AT : {:#X}, {:#X} ; scanline : {}, cycle {}",address,self.next_attribute_table_byte,self.scanline,self.cycles);
                 }
                 // Get the low background tile byte
-                else if (self.cycles - 1) % 8 == 4 {
+                else if ((self.cycles - 1) % 8) == 4 {
                     // The control flag decides if the data comes from the first or second pattern table
                     // Fine y choose the row
                     let address: u16 =
@@ -167,7 +169,7 @@ impl PPU {
                     self.next_low_background_byte = self.ppu_bus.read(address);
                 }
                 // Get the high background tile byte
-                else if (self.cycles - 1) % 8 == 6 {
+                else if ((self.cycles - 1) % 8) == 6 {
                     // Same as above with a +8 offset for choosing high bits
                     let address: u16 =
                         self.ppu_bus.vram_address.get_address_part(VRAMAddressMask::FineY)
@@ -178,7 +180,7 @@ impl PPU {
                     self.next_high_background_byte = self.ppu_bus.read(address);
                 }
                 // Increment VRAM Address
-                else if (self.cycles - 1) % 8 == 7 {
+                else if ((self.cycles - 1) % 8) == 7 {
                     self.increment_x();
                 }
             }
@@ -199,19 +201,24 @@ impl PPU {
         }
 
         // Set the v blank flag at the beginning of the v blank period
-        if self.scanline == SET_V_BLANK_SCANLINE && self.cycles == SET_V_BLANK_CYCLE {
+        if self.scanline == 241 && self.cycles == 1 {
             self.set_status_flag(StatusFlag::VBlank, true);
-            if self.get_control_flag(ControlFlag::VBlank) == 1 {
+            if self.get_control_flag(ControlFlag::VBlank) != 0 {
                 self.emit_nmi = true;
             }
         }
 
-        if (self.cycles == 280 && self.cycles < 305) && self.scanline == 261 {
+        // Clear the v blank flag at the end of the v blank period
+        if self.scanline == 261 && self.cycles == 1 {
+            self.set_status_flag(StatusFlag::VBlank, false);
+        }
+
+        if self.scanline == 261 && (self.cycles > 279 && self.cycles < 305) {
             self.copy_tmp_y_to_vram_address();
         }
 
         // Set the color of one pixel
-        if (self.scanline < 240) && (self.cycles > 1 && self.cycles < 257) {
+        if (self.scanline < 240) && (self.cycles >= 1 && self.cycles < 257) {
             let mut palette: u8 = 0;
             let mut color: u8 = 0;
             if self.get_mask_flag(MaskFlag::ShowBackground) {
@@ -224,15 +231,16 @@ impl PPU {
                 .update_main_buffer(256*self.scanline as u32 + self.cycles as u32 - 1, self.get_pixel_color(palette, color));
         }
 
-        // Increasing cycles and scanlines to reach a 341*261 matrix
+        // Increasing cycles and scanlines to reach a 341*262 matrix
         // Only the 256*240 matrix in the top left corner is used for displaying the screen
+        self.total_clock += 1;
         self.cycles += 1;
         if self.cycles > MAX_CYCLES {
             self.scanline += 1;
             self.cycles = 0;
             if self.scanline > MAX_SCANLINES {
                 self.scanline = 0;
-
+                self.odd_frame = !self.odd_frame;
                 // Debugging
                 if self.p_gui.lock().unwrap().debug {
                     self.debug(); // Updates debug buffer to display pattern tables
@@ -242,13 +250,21 @@ impl PPU {
                 self.p_gui.lock().unwrap().update();
             }
         }
+
+        // Decay timer
+        // Reset decay register after less than one second (5 350 000 clocks)
+        self.decay_timer += 1;
+        if self.decay_timer == 5000000 {
+            self.decay = 0;
+            self.decay_timer = 0;
+        }
     }
 
     // ===== GET COLOR METHOD =====
 
     pub fn get_pixel_color(&self, palette: u8, color: u8) -> ARGBColor {
-        let address: u16 = ((palette as u16) << 2) + color as u16 + 0x3F00;
-        PALETTE[(self.ppu_bus.read(address)) as usize]
+        let address: u16 = ((palette as u16) << 2) + (color as u16) + 0x3F00;
+        PALETTE[(self.ppu_bus.read(address) & 0x3F) as usize]
     }
 
     // ===== REGISTERS METHODS =====
@@ -258,10 +274,13 @@ impl PPU {
         match address {
             0x2000 => {
                 self.ctrl = value;
+                if self.get_status_flag(StatusFlag::VBlank) && (value & 0x80) == 0x80 {
+                    self.emit_nmi = true;
+                }
                 self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::NametableSelect, (value & 0x03) as u16);
             }
             0x2001 => self.mask = value,
-            0x2002 => panic!("2002 is not writable !"),
+            0x2002 => (),
             0x2003 => self.oam_addr = value,
             0x2004 => self.oam_data = value,
             0x2005 => {
@@ -282,19 +301,16 @@ impl PPU {
                 if self.w {
                     self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::SW2006, value as u16);
                     self.ppu_bus.vram_address.address = self.ppu_bus.tmp_vram_address.address;
-                    println!("2006 => vram {:04X}",self.ppu_bus.vram_address.address);
                     self.w = false;
                 }
                 else {
                     self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::FW2006, (value & 0x3F) as u16);
                     self.ppu_bus.tmp_vram_address.address &= 0x3FFF; // Sets the 2 higher bits to 0
-                    println!("2006 => tmp {:04X}, value {:02X}",self.ppu_bus.tmp_vram_address.address,value);
                     self.w = true;
                 }
             }
             0x2007 => {
                 self.data = value;
-                println!("2007 => write {:02X} in {:04X}",value,self.ppu_bus.vram_address.address);
                 self.ppu_bus.write(self.ppu_bus.vram_address.address & 0x3FFF, value);
                 if self.get_control_flag(ControlFlag::VRAMAddressIncrement) == 0 {
                     self.ppu_bus.vram_address.address += 1; // Horizontal scrolling
@@ -306,30 +322,39 @@ impl PPU {
             0x4014 => self.oam_dma = value,
             _ => panic!("Wrong address given to PPU : {:#x}",address)
         }
+        self.decay = value;
+        self.decay_timer = 0;
     }
 
     // Reads value from one of the PPU registers
     pub fn read_register(&mut self, address: u16) -> u8 {
         let mut value: u8;
         match address {
-            0x2000 => panic!("2000 is not readable !"),
-            0x2001 => panic!("2001 is not readable !"),
+            0x2000 => value = self.decay,
+            0x2001 => value = self.decay,
             0x2002 => {
-                value = self.status;
+                value = (self.status & 0xE0) | (self.decay & 0x1F);
+                self.decay = value;
                 self.set_status_flag(StatusFlag::VBlank, false);
                 self.w = false;
             },
-            0x2003 => panic!("2003 is not readable !"),
-            0x2004 => value = self.oam_data,
-            0x2005 => panic!("2005 is not readable !"),
-            0x2006 => panic!("2006 is not readable !"),
+            0x2003 => value = self.decay,
+            0x2004 => {
+                value = self.oam_data;
+                self.decay = value;
+            }
+            0x2005 => value = self.decay,
+            0x2006 => value = self.decay,
             0x2007 => {
                 // Read to 2007 is delayed by one read except for the palette
                 value = self.data_buffer;
                 self.data_buffer = self.ppu_bus.read(self.ppu_bus.vram_address.address);
                 if self.ppu_bus.vram_address.address >= 0x3F00 {
-                    value = self.data_buffer;
+                    value = (self.decay & 0xC0) | (self.data_buffer & 0x3F);
+                    // Fill the buffer with the mirrored nametable "under" palette RAM
+                    self.data_buffer = self.ppu_bus.read(self.ppu_bus.vram_address.address & 0x2FFF);
                 }
+                self.decay = value;
                 // Increment VRAM Address
                 if self.get_control_flag(ControlFlag::VRAMAddressIncrement) == 0 {
                     self.ppu_bus.vram_address.address += 1; // Horizontal scrolling
@@ -354,10 +379,14 @@ impl PPU {
         }
     }
 
+    pub fn get_status_flag(&self, flag: StatusFlag) -> bool {
+        (self.status & (flag as u8)) == (flag as u8)
+    }
+
     // Get the flags from the control register
     pub fn get_control_flag(&mut self, flag: ControlFlag) -> u8 {
         if flag != ControlFlag::NametableAddress {
-            ((self.ctrl & flag as u8) == flag as u8) as u8
+            ((self.ctrl & (flag as u8)) == (flag as u8)) as u8
         }
         else {
             (self.ctrl & 0x03) as u8 // Last two bits
@@ -366,7 +395,7 @@ impl PPU {
 
     // Get the flags from the mask register
     pub fn get_mask_flag(&self, flag: MaskFlag) -> bool {
-        (self.mask & flag as u8) == flag as u8
+        (self.mask & (flag as u8)) == (flag as u8)
     }
 
     // ===== BACKGROUND SHIFTERS METHODS =====
@@ -543,5 +572,23 @@ impl PPU {
                 }
             }
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn read_register_without_modification(&self, address: u16) -> u8 {
+        let value: u8;
+        match address {
+            0x2000 => value = self.ctrl,
+            0x2001 => value = self.mask,
+            0x2002 => value = self.status,
+            0x2003 => value = self.oam_addr,
+            0x2004 => value = self.oam_data,
+            0x2005 => value = self.scroll,
+            0x2006 => value = self.addr,
+            0x2007 => value = self.data_buffer,
+            0x4014 => value = self.oam_dma,
+            _ => panic!("Wrong address given to PPU : {:#x}",address)
+        }
+        value
     }
 }

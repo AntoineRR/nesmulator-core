@@ -88,6 +88,9 @@ impl Cartridge {
             }
             _chr_rom.push(buffer);
         }
+        if _chr_rom.len() == 0 {
+            _chr_rom.push(buffer);
+        }
 
         Cartridge {
             header: _header,

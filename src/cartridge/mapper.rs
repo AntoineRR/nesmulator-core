@@ -6,7 +6,8 @@ use super::cartridge::Cartridge;
 pub struct Mapper {
     pub number: u8,
     pub mirroring: bool,
-    pub cartridge: Cartridge
+    pub cartridge: Cartridge,
+    pub ram: [u8;0x2000] // Additionnal RAM located on the cartridge
 }
 
 impl Mapper {
@@ -17,51 +18,75 @@ impl Mapper {
         Mapper {
             number,
             mirroring,
-            cartridge
+            cartridge,
+            ram: [0;0x2000]
         }
     }
 
-    pub fn read_prg(&self, address: u16) -> u8 {
+    // ===== READS AND WRITES FROM THE BUS =====
+
+    pub fn bus_read(&self, address: u16) -> u8 {
         match self.number {
-            0 => self.read_prg_0(address),
+            0 => self.bus_read_000(address),
             _ => panic!("Invalid mapper number : {} !",self.number)
         }
     }
 
-    pub fn read_chr(&self, address: u16) -> u8 {
+    pub fn bus_read_000(&self, address: u16) -> u8 {
+        let value: u8;
+        match address {
+            0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}",address),
+            0x4020..=0x5FFF => panic!("Mapper 0 doesn't use this address : {:#X}",address),
+            0x6000..=0x7FFF => value = self.ram[(address & 0x1FFF) as usize],
+            0x8000..=0xBFFF => value = self.cartridge.prg_rom[0][(address & 0x3FFF) as usize],
+            0xC000..=0xFFFF => value = self.cartridge.prg_rom[(self.cartridge.header.n_prg_rom - 1) as usize][(address & 0x3FFF) as usize]
+        }
+        value
+    }
+
+    pub fn bus_write(&mut self, address: u16, value: u8) {
         match self.number {
-            0 => self.read_chr_0(address),
+            0 => self.bus_write_000(address, value),
             _ => panic!("Invalid mapper number : {} !",self.number)
         }
     }
 
-    // Not sure it is useful
-    // pub fn write_prg(&mut self, address: u16, data: u8) {
-    //     match self.number {
-    //         _ => panic!("Invalid mapper number : {} !",self.number)
-    //     }
-    // }
-
-    // Mapper 0 read PRG ROM method
-    pub fn read_prg_0(&self, address: u16) -> u8 {
-        // If there is only 1 PRG ROM
-        if self.cartridge.header.n_prg_rom == 1 {
-            self.cartridge.prg_rom[0][(address & 0x3FFF) as usize]
-        }
-        // Else there are 2
-        else {
-            if address < 0xC000 {
-                self.cartridge.prg_rom[0][(address & 0x3FFF) as usize]
-            }
-            else {
-                self.cartridge.prg_rom[1][(address & 0x3FFF) as usize]
-            }
+    pub fn bus_write_000(&mut self, address: u16, value: u8) {
+        match address {
+            0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}",address),
+            0x4020..=0x5FFF => panic!("Mapper 0 doesn't use this address : {:#X}",address),
+            0x6000..=0x7FFF => self.ram[(address & 0x1FFF) as usize] = value,
+            0x8000..=0xFFFF => panic!("Tried to write to the PRG ROM : {:#X}",address)
         }
     }
 
-    // Mapper 0 read CHR ROM method
-    pub fn read_chr_0(&self, address: u16) -> u8 {
+    // ===== READS AND WRITES FROM THE PPU =====
+
+    pub fn ppu_read(&self, address: u16) -> u8 {
+        match self.number {
+            0 => self.ppu_read_000(address),
+            _ => panic!("Invalid mapper number : {}",self.number)
+        }
+    }
+
+    pub fn ppu_read_000(&self, address: u16) -> u8 {
         // There is only one CHR ROM
         self.cartridge.chr_rom[0][address as usize]
+    }
+
+    pub fn ppu_write(&mut self, address: u16, value: u8) {
+        match self.number {
+            0 => self.ppu_write_000(address, value),
+            _ => panic!("Invalid mapper number : {}",self.number)
+        }
+    }
+
+    pub fn ppu_write_000(&mut self, address: u16, value: u8) {
+        match address {
+            0x0000..=0x1FFF => {
+                self.cartridge.chr_rom[0][address as usize] = value;
+            }
+            _ => panic!("Invalid address given to PPU bus : {:#X}",address)
+        }
     }
 }

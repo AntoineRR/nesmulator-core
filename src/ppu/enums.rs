@@ -1,5 +1,6 @@
 // Implements the required enum for PPU emulation
 
+#[derive(Clone, Copy)]
 pub enum StatusFlag {
     VBlank = 1 << 7,
     Sprite0Hit = 1 << 6,

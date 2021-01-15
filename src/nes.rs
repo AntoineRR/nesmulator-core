@@ -6,7 +6,7 @@ use std::{sync::{Arc, Mutex}, time::Instant};
 
 use cartridge::{cartridge::Cartridge, mapper::Mapper};
 
-use crate::{cartridge, cpu::{cpu::CPU, enums::Interrupt}};
+use crate::{cartridge, cpu::{cpu::CPU, enums::Interrupt}, gui::GUI};
 use crate::bus::Bus;
 use crate::ppu::ppu::PPU;
 
@@ -16,15 +16,17 @@ use crate::ppu::ppu::PPU;
 pub struct NES {
     pub p_bus: Arc<Mutex<Bus>>,
     pub p_cpu: Arc<Mutex<CPU>>,
-    pub p_ppu: Arc<Mutex<PPU>>
+    pub p_ppu: Arc<Mutex<PPU>>,
+    pub p_gui: Arc<Mutex<GUI>>
 }
 
 impl NES {
-    pub fn new(p_bus: Arc<Mutex<Bus>>, p_cpu: Arc<Mutex<CPU>>, p_ppu: Arc<Mutex<PPU>>) -> Self {
+    pub fn new(p_bus: Arc<Mutex<Bus>>, p_cpu: Arc<Mutex<CPU>>, p_ppu: Arc<Mutex<PPU>>, p_gui: Arc<Mutex<GUI>>) -> Self {
         NES {
             p_bus,
             p_cpu,
-            p_ppu
+            p_ppu,
+            p_gui
         }
     }
 
@@ -44,18 +46,30 @@ impl NES {
         //self.p_cpu.lock().unwrap().pc = 0xC000; // Run nestest in automation mode (Fails at C6BD because of unofficial opcode)
         loop {
             //let now = Instant::now();
-            // Clock PPU
-            self.p_ppu.lock().unwrap().clock();
 
             // CPU is clocked every 3 PPU cycles
             if counter%3 == 0 {
                 self.p_cpu.lock().unwrap().clock();
             }
 
+            // Clock PPU
+            self.p_ppu.lock().unwrap().clock();
+
+            // Check if an NMI interrupt should be thrown
             if self.p_ppu.lock().unwrap().emit_nmi {
                 self.p_ppu.lock().unwrap().emit_nmi = false;
                 self.p_cpu.lock().unwrap().interrupt(Interrupt::NMI);
             }
+
+            // Check if a key is pressed
+            self.p_gui.lock().unwrap().check_keys(self.p_cpu.clone());
+
+            // if self.p_gui.lock().unwrap().frame_ready {
+            //     println!("CPU : {}, PPU : {}",self.p_cpu.lock().unwrap().total_clock, self.p_ppu.lock().unwrap().total_clock);
+            //     self.p_cpu.lock().unwrap().total_clock = 0;
+            //     self.p_ppu.lock().unwrap().total_clock = 0;
+            //     self.p_gui.lock().unwrap().frame_ready = false;
+            // }
 
             counter += 1;
             //println!("{}",now.elapsed().as_nanos());
