@@ -5,11 +5,11 @@
 
 // ===== IMPORTS =====
 
-use std::{env::consts::FAMILY, sync::{Arc, Mutex}};
+use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
 
-use minifb::{Key, KeyRepeat, ScaleMode, Window, WindowOptions};
+use minifb::{InputCallback, ScaleMode, Window, WindowOptions};
 
-use crate::{cpu::cpu::CPU, ppu::palette::ARGBColor};
+use crate::{bus::Bus, cpu::cpu::CPU, ppu::palette::ARGBColor};
 
 // ===== CONSTANTS =====
 
@@ -18,6 +18,25 @@ pub const MAIN_WINDOW_HEIGHT: usize = 240;
 
 pub const DEBUG_WINDOW_WIDTH: usize = 256;
 pub const DEBUG_WINDOW_HEIGHT: usize = 128 + 2 + 6; // 2 rows to separate pattern tables and palette
+
+// ===== STRUCTS FOR INPUTS =====
+
+type KeyVec = Rc<RefCell<Vec<u32>>>;
+struct Input {
+    keys: KeyVec,
+}
+
+impl Input {
+    fn new(data: &KeyVec) -> Input {
+        Input { keys: data.clone() }
+    }
+}
+
+impl InputCallback for Input {
+    fn add_char(&mut self, uni_char: u32) {
+        self.keys.borrow_mut().push(uni_char);
+    }
+}
 
 // ===== STRUCT =====
 
@@ -30,7 +49,7 @@ pub struct GUI {
     pub main_buffer: [u32;MAIN_WINDOW_WIDTH*MAIN_WINDOW_HEIGHT],
     pub debug_buffer: [u32;DEBUG_WINDOW_WIDTH*DEBUG_WINDOW_HEIGHT],
     // Keys
-    pub lock_keys: bool,
+    pub keys: KeyVec,
     // Debug
     pub debug: bool,
     pub frame_ready: bool
@@ -38,7 +57,7 @@ pub struct GUI {
 
 impl GUI {
     pub fn new() -> Self {
-        let main_window = Window::new(
+        let mut main_window = Window::new(
             "Nesmulator",
             MAIN_WINDOW_WIDTH,
             MAIN_WINDOW_HEIGHT,
@@ -50,12 +69,16 @@ impl GUI {
         )
         .expect("Unable to open Main Window");
 
+        let keys: KeyVec = KeyVec::new(RefCell::new(Vec::new()));
+        let input = Box::new(Input::new(&keys));
+        main_window.set_input_callback(input);
+
         GUI {
             main_window: Arc::new(Mutex::new(main_window)),
             debugging_window: Arc::new(Mutex::new(None)),
             main_buffer: [0;MAIN_WINDOW_WIDTH*MAIN_WINDOW_HEIGHT],
             debug_buffer: [0;DEBUG_WINDOW_WIDTH*DEBUG_WINDOW_HEIGHT],
-            lock_keys: false,
+            keys,
             debug: false,
             frame_ready: false
         }
@@ -120,20 +143,52 @@ impl GUI {
 
     // ===== INPUTS =====
 
-    pub fn check_keys(&mut self, p_cpu: Arc<Mutex<CPU>>) {
-        if !self.lock_keys {
-            if self.main_window.lock().unwrap().is_key_down(Key::R) {
-                self.reset_cpu(p_cpu);
-                self.lock_keys = true;
+    pub fn check_keys(&mut self, p_cpu: Arc<Mutex<CPU>>, p_bus: Arc<Mutex<Bus>>) {
+        let keys = self.keys.clone();
+        p_bus.lock().unwrap().controllers[0] = 0x00;
+        for k in keys.borrow_mut().iter() {
+            // R => Reset CPU
+            if *k == 114 {
+                self.reset_cpu(p_cpu.clone());
             }
-            else if self.main_window.lock().unwrap().is_key_pressed(Key::E, KeyRepeat::No) {
+            // E => Toggle debug window
+            if *k == 101 {
                 self.toggle_debugging();
-                self.lock_keys = true;
             }
-            else {
-                self.lock_keys = false;
+            // I => A button
+            if *k == 105 {
+                p_bus.lock().unwrap().controllers[0] = 0x80;
+            }
+            // O => B button
+            if *k == 111 {
+                p_bus.lock().unwrap().controllers[0] = 0x40;
+            }
+            // C => Select button
+            if *k == 99 {
+                p_bus.lock().unwrap().controllers[0] = 0x20;
+            }
+            // X => Start button
+            if *k == 120 {
+                p_bus.lock().unwrap().controllers[0] = 0x10;
+            }
+            // Z => Up button
+            if *k == 122 {
+                p_bus.lock().unwrap().controllers[0] = 0x08;
+            }
+            // S => Down button
+            if *k == 115 {
+                p_bus.lock().unwrap().controllers[0] = 0x04;
+            }
+            // Q => Left button
+            if *k == 113 {
+                p_bus.lock().unwrap().controllers[0] = 0x02;
+            }
+            // D => Right button
+            if *k == 100 {
+                p_bus.lock().unwrap().controllers[0] = 0x01;
             }
         }
+        self.keys.borrow_mut().clear();
     }
 
     // r => Reset CPU

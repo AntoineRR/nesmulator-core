@@ -134,7 +134,7 @@ impl PPUBus {
 
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
-            0x0000..=0x1FFF => (),//self.o_p_mapper.as_mut().unwrap().lock().unwrap().ppu_write(address, value),
+            0x0000..=0x1FFF => self.o_p_mapper.as_mut().unwrap().lock().unwrap().ppu_write(address, value),
             0x2000..=0x2FFF => self.write_name_tables(address, value),
             0x3000..=0x3EFF => self.write_name_tables(address & 0x2FFF, value),
             0x3F00..=0x3FFF => self.write_palette_table(address & 0x001F, value),

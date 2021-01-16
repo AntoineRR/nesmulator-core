@@ -59,6 +59,9 @@ pub struct PPU {
     pub scanline: u16,
     pub odd_frame: bool,
 
+    // Required to check for inputs
+    pub frame_ready: bool,
+
     pub total_clock: u32,
 
     // GUI
@@ -100,6 +103,8 @@ impl PPU {
             cycles: 0,
             scanline: 0,
             odd_frame: false,
+
+            frame_ready: false,
 
             total_clock: 0,
             
@@ -241,11 +246,11 @@ impl PPU {
             if self.scanline > MAX_SCANLINES {
                 self.scanline = 0;
                 self.odd_frame = !self.odd_frame;
+                self.frame_ready = true;
                 // Debugging
                 if self.p_gui.lock().unwrap().debug {
                     self.debug(); // Updates debug buffer to display pattern tables
                 }
-
                 // A frame is ready to be displayed
                 self.p_gui.lock().unwrap().update();
             }

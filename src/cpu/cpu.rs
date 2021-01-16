@@ -697,17 +697,20 @@ impl CPU {
         let address: u16 = self.fetch_address(mode);
         let data: u16 = self.read_bus(address) as u16;
         let result: u8;
+        let previous: u8;
         match mode {
             am::Accumulator => {
+                previous = self.a;
                 result = self.a >> 1;
                 self.a = result;
             }
             _ => {
+                previous = data as u8;
                 result = ((data >> 1) & 0x00FF) as u8;
                 self.write_bus(address, result);
             }
         }
-        self.set_flag(Flag::Carry, (data & 0x01) > 0);
+        self.set_flag(Flag::Carry, (previous & 0x01) > 0);
         self.set_flag(Flag::Zero, result == 0x00);
         self.set_flag(Flag::Negative, result & 0x80 == 0x80);
     }

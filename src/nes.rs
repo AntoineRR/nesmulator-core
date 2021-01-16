@@ -62,7 +62,10 @@ impl NES {
             }
 
             // Check if a key is pressed
-            self.p_gui.lock().unwrap().check_keys(self.p_cpu.clone());
+            if self.p_ppu.lock().unwrap().frame_ready {
+                self.p_gui.lock().unwrap().check_keys(self.p_cpu.clone(),self.p_bus.clone());
+                self.p_ppu.lock().unwrap().frame_ready = false;
+            }
 
             // if self.p_gui.lock().unwrap().frame_ready {
             //     println!("CPU : {}, PPU : {}",self.p_cpu.lock().unwrap().total_clock, self.p_ppu.lock().unwrap().total_clock);

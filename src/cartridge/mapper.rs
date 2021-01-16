@@ -36,7 +36,7 @@ impl Mapper {
         let value: u8;
         match address {
             0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}",address),
-            0x4020..=0x5FFF => panic!("Mapper 0 doesn't use this address : {:#X}",address),
+            0x4020..=0x5FFF => value = 0,//panic!("Mapper 0 doesn't use this address : {:#X}",address),
             0x6000..=0x7FFF => value = self.ram[(address & 0x1FFF) as usize],
             0x8000..=0xBFFF => value = self.cartridge.prg_rom[0][(address & 0x3FFF) as usize],
             0xC000..=0xFFFF => value = self.cartridge.prg_rom[(self.cartridge.header.n_prg_rom - 1) as usize][(address & 0x3FFF) as usize]
