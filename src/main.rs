@@ -4,6 +4,7 @@ mod cartridge;
 mod ppu;
 mod nes;
 mod gui;
+mod controllers;
 
 use std::{path::Path, sync::{Arc, Mutex}};
 
@@ -17,7 +18,7 @@ use gui::GUI;
 fn main() {
     // Create the cartridge based on the file located at the given path
     //let path: &Path = Path::new("../ROM/Tests/nestest.nes");
-    let path: &Path = Path::new("../ROM/dk.nes");
+    let path: &Path = Path::new("../ROM/smb.nes");
     let cartridge: Cartridge = Cartridge::new(path);
 
     // Create the GUI for displaying the graphics

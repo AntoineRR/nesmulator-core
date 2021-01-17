@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use cartridge::mapper::Mapper;
 
-use crate::{cartridge, ppu::ppu::PPU};
+use crate::{cartridge, controllers::Controller, ppu::ppu::PPU};
 
 // ===== CONSTANTS =====
 
@@ -19,8 +19,8 @@ pub struct Bus {
     pub data: [u8;0x10000],
     pub o_p_mapper: Option<Arc<Mutex<Mapper>>>,
     pub p_ppu: Arc<Mutex<PPU>>,
-    pub controllers: [u8;2],
-    pub controllers_shifters: [u8;2]
+    
+    pub controllers: [Controller;2]
 }
 
 impl Bus {
@@ -29,8 +29,8 @@ impl Bus {
             data: [0;0x10000], // 64KB of ram
             o_p_mapper:None,
             p_ppu,
-            controllers: [0;2],
-            controllers_shifters: [0;2]
+            
+            controllers: [Controller::new();2]
         }
     }
 
@@ -53,15 +53,9 @@ impl Bus {
             // 0x4015 / NES APU Register
             0x4015 => value = self.data[address as usize],
             // 0x4016 / First controller
-            0x4016 => {
-                value = ((self.controllers_shifters[0] & 0x80) > 0) as u8;
-                self.controllers_shifters[0] <<= 1;
-            }
+            0x4016 => value = self.controllers[0].check_shifter(),
             // 0x4017 / Second controller
-            0x4017 => {
-                value = ((self.controllers_shifters[1] & 0x80) > 0) as u8;
-                self.controllers_shifters[1] <<= 1;
-            }
+            0x4017 => value = self.controllers[1].check_shifter(),
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => value = self.data[address as usize],
             // 0x4021 - 0xFFFF / Handled by the mapper
@@ -121,9 +115,9 @@ impl Bus {
             // 0x4015 / NES APU Register
             0x4015 => self.data[address as usize] = value,
             // 0x4016 / First controller
-            0x4016 => self.controllers_shifters[0] = self.controllers[0],
+            0x4016 => self.controllers[0].update_shifter(),
             // 0x4017 / Second controller
-            0x4017 => self.controllers_shifters[1] = self.controllers[1],
+            0x4017 => self.controllers[1].update_shifter(),
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => self.data[address as usize] = value,
             // 0x4021 - 0xFFFF / Handled by the mapper

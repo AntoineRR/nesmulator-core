@@ -92,13 +92,6 @@ impl NES {
                 self.p_ppu.lock().unwrap().frame_ready = false;
             }
 
-            // if self.p_gui.lock().unwrap().frame_ready {
-            //     println!("CPU : {}, PPU : {}",self.p_cpu.lock().unwrap().total_clock, self.p_ppu.lock().unwrap().total_clock);
-            //     self.p_cpu.lock().unwrap().total_clock = 0;
-            //     self.p_ppu.lock().unwrap().total_clock = 0;
-            //     self.p_gui.lock().unwrap().frame_ready = false;
-            // }
-
             self.total_clock += 1;
             //println!("{}",now.elapsed().as_nanos());
         }

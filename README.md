@@ -17,10 +17,18 @@ I would also like to pass most of the tests from some tests roms listed in the N
 
 The CPU is emulated and a cartridge in the iNES format can be loaded into the emulator.
 For now, only cartridges using mapper 0 can be read.
-The PPU background and sprite display is emulated. Sprite 0 hit is missing for now (games like super mario bros are not playable).
+The PPU background and sprite display is emulated.
 The GUI is created using [minifb](https://docs.rs/minifb/0.19.1/minifb/), and displays the game screen, as well as a debugging screen that can be activated by pressing "e" on the keyboard.
 A press on the "r" key resets CPU.
-The first controller is emulated too (see controls).
+The first controller is emulated too (see controls), but there are still work to do on this, as super mario bros is unplayable for now.
+
+## How to run
+
+You will need a rust stable installation.
+
+* Clone the repository locally.
+* The path to your ROM must be changed in main.rs.
+* Run `cargo run` in a terminal, in the "nesmulator" folder.
 
 ## Controls
 
@@ -44,7 +52,8 @@ The pattern tables and palettes can be displayed in a separate window when "e" k
 
 ## To do
 
-Next step is to add sprite 0 hit on the PPU, and clean PPU code.
+Next step is to correct the controller behaviour, and clean the code.
+I might also change the GUI handler, as minifb doesn't provide everything I need.
 
 ## References
 

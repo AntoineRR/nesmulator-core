@@ -50,6 +50,8 @@ pub struct PPU {
     pub secondary_oam: [Sprite;8],
     pub next_sprite_count: u8,
     pub current_sprite_count: u8,
+    pub next_contains_sprite_0: bool,
+    pub current_contains_sprite_0: bool,
 
     // Variables for displaying sprites
     pub sprite_shifters: [[u8;2];8],
@@ -67,6 +69,7 @@ pub struct PPU {
     pub next_attribute_table_byte: u8,
     pub next_low_background_byte: u8,
     pub next_high_background_byte: u8,
+    pub is_sprite_0_rendered: bool,
 
     // Addressing variables
     pub ppu_bus: PPUBus,
@@ -118,6 +121,9 @@ impl PPU {
             secondary_oam: [Sprite::default();8],
             next_sprite_count: 0,
             current_sprite_count: 0,
+            next_contains_sprite_0: false,
+            current_contains_sprite_0: false,
+            is_sprite_0_rendered: false,
 
             sprite_shifters: [[0;2];8],
             sprite_x: [0;8],
@@ -166,7 +172,7 @@ impl PPU {
 
             // === BACKGROUND ===
 
-            if self.cycles >= 1 && self.cycles <= 257 || (self.cycles > 320 && self.cycles < 338) {
+            if self.cycles >= 2 && self.cycles <= 257 || (self.cycles > 320 && self.cycles < 338) {
                 self.update_shifters();
                 // Get the nametable values
                 if ((self.cycles - 1) % 8) == 0 {
@@ -245,6 +251,7 @@ impl PPU {
 
             if self.cycles == 0 {
                 self.current_sprite_count = self.next_sprite_count;
+                self.current_contains_sprite_0 = self.next_contains_sprite_0;
             }
 
             // Initializes secondary OAM with FF
@@ -258,6 +265,7 @@ impl PPU {
             if self.cycles > 64 && self.cycles < 257 {
                 if self.cycles == 65 {
                     self.next_sprite_count = 0;
+                    self.next_contains_sprite_0 = false;
                 }
                 self.evaluate_sprites();
             }
@@ -284,6 +292,8 @@ impl PPU {
         // Clear the v blank flag at the end of the v blank period
         if self.scanline == 261 && self.cycles == 1 {
             self.set_status_flag(StatusFlag::VBlank, false);
+            self.set_status_flag(StatusFlag::Sprite0Hit, false);
+            self.set_status_flag(StatusFlag::SpriteOverflow, false);
         }
 
         if self.scanline == 261 && (self.cycles > 279 && self.cycles < 305) {
@@ -306,6 +316,7 @@ impl PPU {
             let mut fg_priority: bool = false;
             // Calculates foreground (sprite) color
             if self.get_mask_flag(MaskFlag::ShowSprites) {
+                self.is_sprite_0_rendered = false;
                 for i in (0..self.current_sprite_count).rev() {
                     if self.sprite_x[i as usize] == 0 {
                         fg_palette = (self.sprite_attributes[i as usize] & 0x03) + 0x04;
@@ -313,6 +324,9 @@ impl PPU {
                         fg_priority = (self.sprite_attributes[i as usize] & (SpriteAttribute::Priority as u8)) == 1;
 
                         if fg_pattern !=0 {
+                            if i ==0 {
+                                self.is_sprite_0_rendered = true;
+                            }
                             break;
                         }
                     }
@@ -334,13 +348,29 @@ impl PPU {
                 palette = bg_palette;
                 pattern = bg_pattern;
             }
-            else if bg_pattern != 0 && fg_pattern != 0 && fg_priority {
-                palette = bg_palette;
-                pattern = bg_pattern;
-            }
             else {
-                palette = fg_palette;
-                pattern = fg_pattern;
+                if fg_priority {
+                    palette = bg_palette;
+                    pattern = bg_pattern;
+                }
+                else {
+                    palette = fg_palette;
+                    pattern = fg_pattern;
+                }
+
+                // Detect sprite 0 hit
+                if self.current_contains_sprite_0 && self.is_sprite_0_rendered {
+                    if self.get_mask_flag(MaskFlag::ShowBackground) && self.get_mask_flag(MaskFlag::ShowSprites) {
+                        if !self.get_mask_flag(MaskFlag::ShowOffScreenBackground) || self.get_mask_flag(MaskFlag::ShowOffScreenSprites) {
+                            if self.cycles >= 9 {
+                                self.set_status_flag(StatusFlag::Sprite0Hit, true);
+                            }
+                        }
+                        else {
+                            self.set_status_flag(StatusFlag::Sprite0Hit, true);
+                        }
+                    }
+                }
             }
 
             // Renders pixel
@@ -540,23 +570,6 @@ impl PPU {
         }
     }
 
-    pub fn read_oam(&self, address: u8) -> u8 {
-        let sprite_index: usize = (address / 4) as usize;
-        let value: u8;
-        match address % 4 {
-            // Y
-            0 => value = self.oam[sprite_index].y,
-            // ID
-            1 => value = self.oam[sprite_index].id,
-            // Attribute
-            2 => value = self.oam[sprite_index].attribute,
-            // X
-            3 => value = self.oam[sprite_index].x,
-            _ => panic!("Impossible to reach pattern")
-        }
-        value
-    }
-
     pub fn write_secondary_oam(&mut self, address: u8, data: u8) {
         let sprite_index: usize = (address / 4) as usize;
         match address % 4 {
@@ -579,8 +592,8 @@ impl PPU {
         if (self.cycles - 65) % 3 == 0 {
             let sprite_index: usize = ((self.cycles - 65) / 3) as usize;
             // If the sprite should appear on the next scanline
-            if (self.scanline + 1) % 262 >= (self.oam[sprite_index].y as u16)
-                && (self.scanline + 1) % 262 < (self.oam[sprite_index].y as u16) + 8 {
+            if self.scanline % 261 >= (self.oam[sprite_index].y as u16)
+                && self.scanline % 261 < (self.oam[sprite_index].y as u16) + 8 {
                 // If more than 8 sprites has been found
                 if self.next_sprite_count >= 8 {
                     self.set_status_flag(StatusFlag::SpriteOverflow, true);
@@ -588,6 +601,9 @@ impl PPU {
                 else {
                     if self.scanline != 261 {
                         self.secondary_oam[self.next_sprite_count as usize] = self.oam[sprite_index];
+                        if sprite_index == 0 {
+                            self.next_contains_sprite_0 = true;
+                        }
                         self.next_sprite_count += 1;
                     }
                 }
@@ -618,13 +634,13 @@ impl PPU {
                         if !v_flip {
                             lo_address = ((self.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
                                 + ((self.secondary_oam[sprite_index].id as u16) << 4)
-                                + ((self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16))) as u16;
+                                + ((self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16))) as u16;
                         }
                         // Flip sprite vertically
                         else {
                             lo_address = ((self.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
                             + ((self.secondary_oam[sprite_index].id as u16) << 4)
-                            + ((7 - (self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16)))) as u16;
+                            + ((7 - (self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16)))) as u16;
                         }
                     }
                     // 8x16 sprites
@@ -635,13 +651,13 @@ impl PPU {
                             if self.scanline + 1 - (self.secondary_oam[sprite_index].y as u16) < 8 {
                                 lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
                                     + (((self.secondary_oam[sprite_index].id & 0xFE) as u16) << 4)
-                                    + (self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16)) as u16;
+                                    + (self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16)) as u16;
                             }
                             // Second half of the sprite
                             else {
                                 lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
                                     + ((((self.secondary_oam[sprite_index].id & 0xFE) as u16) + 1) << 4)
-                                    + ((self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16)) & 0x07) as u16;
+                                    + ((self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16)) & 0x07) as u16;
                             }
                         }
                         // Flip sprite vertically
@@ -650,13 +666,13 @@ impl PPU {
                             if self.scanline + 1 - (self.secondary_oam[sprite_index].y as u16) < 8 {
                                 lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
                                     + ((((self.secondary_oam[sprite_index].id & 0xFE) as u16) + 1) << 4)
-                                    + ((7 - (self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16))) & 0x07) as u16;
+                                    + ((7 - (self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16))) & 0x07) as u16;
                             }
                             // First half of the sprite
                             else {
                                 lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
                                     + (((self.secondary_oam[sprite_index].id & 0xFE) as u16) << 4) as u16
-                                    + (7 - (self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16))) as u16;
+                                    + (7 - (self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16))) as u16;
                             }
                         }
                     }

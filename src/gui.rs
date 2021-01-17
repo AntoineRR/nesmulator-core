@@ -9,7 +9,7 @@ use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
 
 use minifb::{InputCallback, ScaleMode, Window, WindowOptions};
 
-use crate::{bus::Bus, cpu::cpu::CPU, ppu::palette::ARGBColor};
+use crate::{bus::Bus, controllers::ControllerInput, cpu::cpu::CPU, ppu::palette::ARGBColor};
 
 // ===== CONSTANTS =====
 
@@ -71,6 +71,9 @@ impl GUI {
 
         let keys: KeyVec = KeyVec::new(RefCell::new(Vec::new()));
         let input = Box::new(Input::new(&keys));
+        
+        main_window.set_key_repeat_delay(0.001);
+        main_window.set_key_repeat_rate(0.001);
         main_window.set_input_callback(input);
 
         GUI {
@@ -145,7 +148,7 @@ impl GUI {
 
     pub fn check_keys(&mut self, p_cpu: Arc<Mutex<CPU>>, p_bus: Arc<Mutex<Bus>>) {
         let keys = self.keys.clone();
-        p_bus.lock().unwrap().controllers[0] = 0x00;
+        p_bus.lock().unwrap().controllers[0].buffer = 0x00;
         for k in keys.borrow_mut().iter() {
             // R => Reset CPU
             if *k == 114 {
@@ -157,35 +160,35 @@ impl GUI {
             }
             // I => A button
             if *k == 105 {
-                p_bus.lock().unwrap().controllers[0] = 0x80;
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::A as u8;
             }
             // O => B button
             if *k == 111 {
-                p_bus.lock().unwrap().controllers[0] = 0x40;
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::B as u8;
             }
             // C => Select button
             if *k == 99 {
-                p_bus.lock().unwrap().controllers[0] = 0x20;
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Select as u8;
             }
             // X => Start button
             if *k == 120 {
-                p_bus.lock().unwrap().controllers[0] = 0x10;
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Start as u8;
             }
             // Z => Up button
             if *k == 122 {
-                p_bus.lock().unwrap().controllers[0] = 0x08;
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Up as u8;
             }
             // S => Down button
             if *k == 115 {
-                p_bus.lock().unwrap().controllers[0] = 0x04;
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Down as u8;
             }
             // Q => Left button
             if *k == 113 {
-                p_bus.lock().unwrap().controllers[0] = 0x02;
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Left as u8;
             }
             // D => Right button
             if *k == 100 {
-                p_bus.lock().unwrap().controllers[0] = 0x01;
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Right as u8;
             }
         }
         self.keys.borrow_mut().clear();
