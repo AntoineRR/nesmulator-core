@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::gui::GUI;
 
-use super::{bus::PPUBus, enums::{ControlFlag, MaskFlag, StatusFlag, VRAMAddressMask}, palette::{ARGBColor, PALETTE}};
+use super::{bus::PPUBus, enums::{ControlFlag, MaskFlag, SpriteAttribute, StatusFlag, VRAMAddressMask}, palette::{ARGBColor, PALETTE}, sprite::Sprite};
 
 // ===== CONSTANTS =====
 
@@ -29,6 +29,9 @@ pub struct PPU {
     pub data: u8,
     pub oam_dma: u8,
 
+    // Starts a DMA when set to true
+    pub perform_dma: bool,
+
     // decay register
     pub decay: u8,
     pub decay_timer: u32,
@@ -39,6 +42,25 @@ pub struct PPU {
     // Background shifters ([0] => low bits, [1] => high bits)
     pub pattern_table_shifters: [u16;2],
     pub palette_shifters: [u16;2],
+
+    // OAM : Object Attribute Memory
+    pub oam: [Sprite;64],
+
+    // Next Sprites to draw
+    pub secondary_oam: [Sprite;8],
+    pub next_sprite_count: u8,
+    pub current_sprite_count: u8,
+
+    // Variables for displaying sprites
+    pub sprite_shifters: [[u8;2];8],
+    pub sprite_x: [u8;8],
+    pub sprite_attributes: [u8;8],
+
+    // Sprite evaluation variables
+    pub eval_index: u8,
+    pub eval_data: u8,
+    pub eval_secondary_index: u8,
+    pub copy_sprite: bool,
 
     // Data for the next 8 pixels
     pub next_name_table_byte: u8,
@@ -81,6 +103,8 @@ impl PPU {
             data: 0,
             oam_dma: 0,
 
+            perform_dma: false,
+
             decay: 0,
             decay_timer: 0,
 
@@ -88,6 +112,21 @@ impl PPU {
 
             pattern_table_shifters: [0;2],
             palette_shifters: [0;2],
+
+            oam: [Sprite::default();64],
+
+            secondary_oam: [Sprite::default();8],
+            next_sprite_count: 0,
+            current_sprite_count: 0,
+
+            sprite_shifters: [[0;2];8],
+            sprite_x: [0;8],
+            sprite_attributes: [0;8],
+
+            eval_index: 0,
+            eval_data: 0,
+            eval_secondary_index: 0,
+            copy_sprite: false,
 
             next_name_table_byte: 0,
             next_attribute_table_byte: 0,
@@ -116,7 +155,6 @@ impl PPU {
 
     // Executes a clock cycle
     pub fn clock(&mut self) {
-        //println!("scanline : {}, cycles : {}, VBL : {}",self.scanline,self.cycles,(self.status & 0x80) != 0);
 
         // This cycle is skipped
         if self.scanline == 0 && self.cycles == 0 && self.odd_frame {
@@ -125,6 +163,9 @@ impl PPU {
 
         // Get the next 8 pixels colors
         if self.scanline < 240 || self.scanline == 261 {
+
+            // === BACKGROUND ===
+
             if self.cycles >= 1 && self.cycles <= 257 || (self.cycles > 320 && self.cycles < 338) {
                 self.update_shifters();
                 // Get the nametable values
@@ -136,7 +177,6 @@ impl PPU {
                         (self.ppu_bus.vram_address.address
                         & (VRAMAddressMask::CoarseXScroll as u16 | VRAMAddressMask::CoarseYScroll as u16 | VRAMAddressMask::NametableSelect as u16))
                         + 0x2000; // Name table address space offset
-                    //println!("NT : {:#X}, {:#X}",address,self.ppu_bus.read(address));
                     self.next_name_table_byte = self.ppu_bus.read(address);
                 }
                 // Get the attribute table values
@@ -160,7 +200,6 @@ impl PPU {
                     }
                     // Only get the 2 lower bits
                     self.next_attribute_table_byte &= 0x03;
-                    //println!("AT : {:#X}, {:#X} ; scanline : {}, cycle {}",address,self.next_attribute_table_byte,self.scanline,self.cycles);
                 }
                 // Get the low background tile byte
                 else if ((self.cycles - 1) % 8) == 4 {
@@ -170,7 +209,6 @@ impl PPU {
                         self.ppu_bus.vram_address.get_address_part(VRAMAddressMask::FineY)
                         + ((self.next_name_table_byte as u16)<< 4)
                         + ((self.get_control_flag(ControlFlag::BackgroundPatternTableAddress) as u16) << 12);
-                    //println!("LB : {:#X}, {:#X}",address,self.ppu_bus.read(address));
                     self.next_low_background_byte = self.ppu_bus.read(address);
                 }
                 // Get the high background tile byte
@@ -181,7 +219,6 @@ impl PPU {
                         + ((self.next_name_table_byte as u16)<< 4)
                         + ((self.get_control_flag(ControlFlag::BackgroundPatternTableAddress) as u16) << 12)
                         + 8;
-                    //println!("HB : {:#X}, {:#X}",address,self.ppu_bus.read(address));
                     self.next_high_background_byte = self.ppu_bus.read(address);
                 }
                 // Increment VRAM Address
@@ -189,7 +226,7 @@ impl PPU {
                     self.increment_x();
                 }
             }
-            
+
             if self.cycles == 256 {
                 self.increment_y();
             }
@@ -202,6 +239,37 @@ impl PPU {
             // Unused read
             if self.cycles == 338 || self.cycles == 340 {
                 self.next_name_table_byte = self.ppu_bus.read(0x2000 + (self.ppu_bus.vram_address.address & 0x0FFF));
+            }
+
+            // === SPRITES ===
+
+            if self.cycles == 0 {
+                self.current_sprite_count = self.next_sprite_count;
+            }
+
+            // Initializes secondary OAM with FF
+            if self.cycles > 0 && self.cycles < 65 {
+                if self.cycles % 2 == 1 {
+                    self.write_secondary_oam(((self.cycles - 1) / 2)  as u8, 0xFF);
+                }
+            }
+
+            // Sprite evaluation
+            if self.cycles > 64 && self.cycles < 257 {
+                if self.cycles == 65 {
+                    self.next_sprite_count = 0;
+                }
+                self.evaluate_sprites();
+            }
+
+            // Sprite data fetch
+            if self.cycles > 256 && self.cycles < 321 {
+                if self.cycles == 257 {
+                    self.sprite_shifters = [[0;2];8];
+                    self.sprite_x = [0;8];
+                    self.sprite_attributes = [0;8];
+                }
+                self.fetch_sprite_data();
             }
         }
 
@@ -224,16 +292,65 @@ impl PPU {
 
         // Set the color of one pixel
         if (self.scanline < 240) && (self.cycles >= 1 && self.cycles < 257) {
-            let mut palette: u8 = 0;
-            let mut color: u8 = 0;
+
+            // Calculates background color
+            let mut bg_palette: u8 = 0;
+            let mut bg_pattern: u8 = 0;
             if self.get_mask_flag(MaskFlag::ShowBackground) {
-                palette = self.get_shifter_value(self.palette_shifters);
-                color = self.get_shifter_value(self.pattern_table_shifters);
+                bg_palette = self.get_shifter_value(self.palette_shifters);
+                bg_pattern = self.get_shifter_value(self.pattern_table_shifters);
             }
+
+            let mut fg_palette: u8 = 0;
+            let mut fg_pattern: u8 = 0;
+            let mut fg_priority: bool = false;
+            // Calculates foreground (sprite) color
+            if self.get_mask_flag(MaskFlag::ShowSprites) {
+                for i in (0..self.current_sprite_count).rev() {
+                    if self.sprite_x[i as usize] == 0 {
+                        fg_palette = (self.sprite_attributes[i as usize] & 0x03) + 0x04;
+                        fg_pattern = self.get_sprite_shifters_value(i as usize);
+                        fg_priority = (self.sprite_attributes[i as usize] & (SpriteAttribute::Priority as u8)) == 1;
+
+                        if fg_pattern !=0 {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Calculates the final pixel color
+            let palette: u8;
+            let pattern: u8;
+            if bg_pattern == 0 && fg_pattern == 0 {
+                palette = 0;
+                pattern = 0;
+            }
+            else if bg_pattern == 0 && fg_pattern != 0 {
+                palette = fg_palette;
+                pattern = fg_pattern;
+            }
+            else if bg_pattern != 0 && fg_pattern == 0 {
+                palette = bg_palette;
+                pattern = bg_pattern;
+            }
+            else if bg_pattern != 0 && fg_pattern != 0 && fg_priority {
+                palette = bg_palette;
+                pattern = bg_pattern;
+            }
+            else {
+                palette = fg_palette;
+                pattern = fg_pattern;
+            }
+
+            // Renders pixel
             self.p_gui
                 .lock()
                 .unwrap()
-                .update_main_buffer(256*self.scanline as u32 + self.cycles as u32 - 1, self.get_pixel_color(palette, color));
+                .update_main_buffer(
+                    256*self.scanline as u32 + self.cycles as u32 - 1,
+                    self.get_pixel_color(palette, pattern)
+                );
         }
 
         // Increasing cycles and scanlines to reach a 341*262 matrix
@@ -324,7 +441,10 @@ impl PPU {
                     self.ppu_bus.vram_address.address += 32; // Vertical scrolling
                 }
             }
-            0x4014 => self.oam_dma = value,
+            0x4014 => {
+                self.oam_dma = value;
+                self.perform_dma = true;
+            }
             _ => panic!("Wrong address given to PPU : {:#x}",address)
         }
         self.decay = value;
@@ -403,6 +523,188 @@ impl PPU {
         (self.mask & (flag as u8)) == (flag as u8)
     }
 
+    // ===== SPRITE RELATED METHODS =====
+
+    pub fn write_oam(&mut self, address: u8, data: u8) {
+        let sprite_index: usize = (address / 4) as usize;
+        match address % 4 {
+            // Y
+            0 => self.oam[sprite_index].y = data,
+            // ID
+            1 => self.oam[sprite_index].id = data,
+            // Attribute
+            2 => self.oam[sprite_index].attribute = data,
+            // X
+            3 => self.oam[sprite_index].x = data,
+            _ => panic!("Impossible to reach pattern")
+        }
+    }
+
+    pub fn read_oam(&self, address: u8) -> u8 {
+        let sprite_index: usize = (address / 4) as usize;
+        let value: u8;
+        match address % 4 {
+            // Y
+            0 => value = self.oam[sprite_index].y,
+            // ID
+            1 => value = self.oam[sprite_index].id,
+            // Attribute
+            2 => value = self.oam[sprite_index].attribute,
+            // X
+            3 => value = self.oam[sprite_index].x,
+            _ => panic!("Impossible to reach pattern")
+        }
+        value
+    }
+
+    pub fn write_secondary_oam(&mut self, address: u8, data: u8) {
+        let sprite_index: usize = (address / 4) as usize;
+        match address % 4 {
+            // Y
+            0 => self.secondary_oam[sprite_index].y = data,
+            // ID
+            1 => self.secondary_oam[sprite_index].id = data,
+            // Attribute
+            2 => self.secondary_oam[sprite_index].attribute = data,
+            // X
+            3 => self.secondary_oam[sprite_index].x = data,
+            _ => panic!("Unreachable pattern")
+        }
+    }
+
+    // Performs the sprite evaluation for the next scanline
+    // This is not cycle accurate with a real NES
+    pub fn evaluate_sprites(&mut self) {
+        // 3 cycles are available for each 64 sprites
+        if (self.cycles - 65) % 3 == 0 {
+            let sprite_index: usize = ((self.cycles - 65) / 3) as usize;
+            // If the sprite should appear on the next scanline
+            if (self.scanline + 1) % 262 >= (self.oam[sprite_index].y as u16)
+                && (self.scanline + 1) % 262 < (self.oam[sprite_index].y as u16) + 8 {
+                // If more than 8 sprites has been found
+                if self.next_sprite_count >= 8 {
+                    self.set_status_flag(StatusFlag::SpriteOverflow, true);
+                }
+                else {
+                    if self.scanline != 261 {
+                        self.secondary_oam[self.next_sprite_count as usize] = self.oam[sprite_index];
+                        self.next_sprite_count += 1;
+                    }
+                }
+            }
+        }
+
+        // The first empty entry in the secondary OAM has the 63 sprite y as its y coordinate
+        if self.cycles == 256 {
+            if self.next_sprite_count < 8 {
+                self.write_secondary_oam(self.next_sprite_count*4, self.oam[63].y);
+            }
+        }
+    }
+
+    // Populates the sprite shifters with the data required for next scanline
+    // This doesn't work exactly as in a real NES
+    pub fn fetch_sprite_data(&mut self) {
+        let sprite_index: usize = ((self.cycles - 257) / 8) as usize;
+        if (sprite_index as u8) < self.next_sprite_count {
+            match (self.cycles - 257) % 8 {
+                // Populate sprite shifters
+                0 => {
+                    let lo_address: u16; // Address of the low byte of the sprite
+                    let v_flip: bool = self.secondary_oam[sprite_index].get_attribute_flag(SpriteAttribute::FlipVertically) == 1;
+                    // 8x8 sprites
+                    if self.get_control_flag(ControlFlag::SpriteSize) == 0 {
+                        // Do not flip sprite vertically
+                        if !v_flip {
+                            lo_address = ((self.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
+                                + ((self.secondary_oam[sprite_index].id as u16) << 4)
+                                + ((self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16))) as u16;
+                        }
+                        // Flip sprite vertically
+                        else {
+                            lo_address = ((self.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
+                            + ((self.secondary_oam[sprite_index].id as u16) << 4)
+                            + ((7 - (self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16)))) as u16;
+                        }
+                    }
+                    // 8x16 sprites
+                    else {
+                        // Do not flip sprite vertically
+                        if !v_flip {
+                            // First half of the sprite
+                            if self.scanline + 1 - (self.secondary_oam[sprite_index].y as u16) < 8 {
+                                lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
+                                    + (((self.secondary_oam[sprite_index].id & 0xFE) as u16) << 4)
+                                    + (self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16)) as u16;
+                            }
+                            // Second half of the sprite
+                            else {
+                                lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
+                                    + ((((self.secondary_oam[sprite_index].id & 0xFE) as u16) + 1) << 4)
+                                    + ((self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16)) & 0x07) as u16;
+                            }
+                        }
+                        // Flip sprite vertically
+                        else {
+                            // Second half of the sprite
+                            if self.scanline + 1 - (self.secondary_oam[sprite_index].y as u16) < 8 {
+                                lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
+                                    + ((((self.secondary_oam[sprite_index].id & 0xFE) as u16) + 1) << 4)
+                                    + ((7 - (self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16))) & 0x07) as u16;
+                            }
+                            // First half of the sprite
+                            else {
+                                lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
+                                    + (((self.secondary_oam[sprite_index].id & 0xFE) as u16) << 4) as u16
+                                    + (7 - (self.scanline as i16 + 1 - (self.secondary_oam[sprite_index].y as i16))) as u16;
+                            }
+                        }
+                    }
+
+                    // Get low and high bytes of the sprite
+                    let mut lo_sprite: u8 = self.ppu_bus.read(lo_address);
+                    let mut hi_sprite: u8 = self.ppu_bus.read(lo_address + 8);
+
+                    // Flip horizontally
+                    if self.secondary_oam[sprite_index].get_attribute_flag(SpriteAttribute::FlipHorizontally) == 1 {
+                        lo_sprite = ((lo_sprite & 0xF0) >> 4) | ((lo_sprite & 0x0F) << 4);
+                        lo_sprite = ((lo_sprite & 0xCC) >> 2) | ((lo_sprite & 0x33) << 2);
+                        lo_sprite = ((lo_sprite & 0xAA) >> 1) | ((lo_sprite & 0x55) << 1);
+    
+                        hi_sprite = ((hi_sprite & 0xF0) >> 4) | ((hi_sprite & 0x0F) << 4);
+                        hi_sprite = ((hi_sprite & 0xCC) >> 2) | ((hi_sprite & 0x33) << 2);
+                        hi_sprite = ((hi_sprite & 0xAA) >> 1) | ((hi_sprite & 0x55) << 1);
+                    }
+    
+                    // Finally write the result into our shifters
+                    self.sprite_shifters[sprite_index][0] = lo_sprite;
+                    self.sprite_shifters[sprite_index][1] = hi_sprite;
+                }
+                // Populate X sprite shifters
+                1 => {
+                    self.sprite_x[sprite_index] = self.secondary_oam[sprite_index].x;
+                }
+                // Populate sprite attributes
+                2 => {
+                    self.sprite_attributes[sprite_index] = self.secondary_oam[sprite_index].attribute;
+                }
+                3 => (),
+                4 => (),
+                5 => (),
+                6 => (),
+                7 => (),
+                _ => panic!("Unreachable pattern")
+            }
+        }
+    }
+
+    pub fn get_sprite_shifters_value(&self, sprite_index: usize) -> u8 {
+        let offset_mask: u8 = 0x80;
+        let low: u8 = ((self.sprite_shifters[sprite_index][0] & offset_mask) > 0) as u8;
+        let high: u8 = ((self.sprite_shifters[sprite_index][1] & offset_mask) > 0) as u8;
+        low + (high << 1)
+    }
+
     // ===== BACKGROUND SHIFTERS METHODS =====
 
     // Loads the next 8 bits inside the background shifters
@@ -435,25 +737,25 @@ impl PPU {
             self.palette_shifters[0] <<= 1;
             self.palette_shifters[1] <<= 1;
         }
+
+        if self.get_mask_flag(MaskFlag::ShowSprites) && (self.cycles >= 1 && self.cycles <= 257) {
+            for i in 0..self.current_sprite_count {
+                if self.sprite_x[i as usize] != 0 {
+                    self.sprite_x[i as usize] -= 1;
+                }
+                else {
+                    self.sprite_shifters[i as usize][0] <<= 1;
+                    self.sprite_shifters[i as usize][1] <<= 1;
+                }
+            }
+        }
     }
 
     // Get the right value from the shifters
     pub fn get_shifter_value(&self, shifter: [u16;2]) -> u8 {
         let offset_mask: u16 = 0x8000 >> self.fine_x;
-        let low: u8;
-        if (shifter[0] & offset_mask) == 0 {
-            low = 0;
-        }
-        else {
-            low = 1;
-        }
-        let high: u8;
-        if (shifter[1] & offset_mask) == 0 {
-            high = 0;
-        }
-        else {
-            high = 1;
-        }
+        let low: u8 = ((shifter[0] & offset_mask) > 0) as u8;
+        let high: u8 = ((shifter[1] & offset_mask) > 0) as u8;
         low + (high << 1)
     }
 

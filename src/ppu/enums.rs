@@ -40,3 +40,11 @@ pub enum VRAMAddressMask {
     FW2006 = 0x3F00,          // bits set on the first write to 0x2006
     SW2006 = 0x00FF           // bits set on the second write to 0x2006
 }
+
+#[derive(PartialEq)]
+pub enum SpriteAttribute {
+    FlipVertically = 1 << 7,
+    FlipHorizontally = 1 << 6,
+    Priority = 1 << 5,
+    Palette = 1
+}

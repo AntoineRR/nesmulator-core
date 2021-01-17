@@ -46,8 +46,12 @@ impl Bus {
             0x2000..=0x2007 => value = self.p_ppu.lock().unwrap().read_register(address),
             // 0x2008 - 0x3FFF / NES PPU Registers Mirrors
             0x2008..=0x3FFF => value = self.p_ppu.lock().unwrap().read_register(address & 0x2007),
-            // 0x4000 - 0x4015 / NES APU I/O Registers
-            0x4000..=0x4015 => value = self.data[address as usize],
+            // 0x4000 - 0x4013 / NES APU I/O Registers
+            0x4000..=0x4013 => value = self.data[address as usize],
+            // 0x4014 / NES PPU Register
+            0x4014 => value = self.p_ppu.lock().unwrap().read_register(address),
+            // 0x4015 / NES APU Register
+            0x4015 => value = self.data[address as usize],
             // 0x4016 / First controller
             0x4016 => {
                 value = ((self.controllers_shifters[0] & 0x80) > 0) as u8;
@@ -81,8 +85,12 @@ impl Bus {
             0x2000..=0x2007 => value = self.p_ppu.lock().unwrap().read_register_without_modification(address),
             // 0x2008 - 0x3FFF / NES PPU Registers Mirrors
             0x2008..=0x3FFF => value = self.p_ppu.lock().unwrap().read_register_without_modification(address & 0x2007),
-            // 0x4000 - 0x4015 / NES APU I/O Registers
-            0x4000..=0x4015 => value = self.data[address as usize],
+            // 0x4000 - 0x4013 / NES APU I/O Registers
+            0x4000..=0x4013 => value = self.data[address as usize],
+            // 0x4014 / NES PPU Register
+            0x4014 => value = self.p_ppu.lock().unwrap().read_register_without_modification(address),
+            // 0x4015 / NES APU Register
+            0x4015 => value = self.data[address as usize],
             // 0x4016 / First controller
             0x4016 => value = self.data[address as usize],
             // 0x4017 / Second controller
@@ -106,8 +114,12 @@ impl Bus {
             0x2000..=0x2007 => self.p_ppu.lock().unwrap().write_register(address, value),
             // 0x2008 - 0x3FFF / NES PPU Registers Mirrors
             0x2008..=0x3FFF => self.p_ppu.lock().unwrap().write_register(address & 0x2007, value),
-            // 0x4000 - 0x4015 / NES APU I/O Registers
-            0x4000..=0x4015 => self.data[address as usize] = value,
+            // 0x4000 - 0x4013 / NES APU I/O Registers
+            0x4000..=0x4013 => self.data[address as usize] = value,
+            // 0x4014 / NES PPU Register
+            0x4014 => self.p_ppu.lock().unwrap().write_register(address, value),
+            // 0x4015 / NES APU Register
+            0x4015 => self.data[address as usize] = value,
             // 0x4016 / First controller
             0x4016 => self.controllers_shifters[0] = self.controllers[0],
             // 0x4017 / Second controller

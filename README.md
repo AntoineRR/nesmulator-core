@@ -17,7 +17,7 @@ I would also like to pass most of the tests from some tests roms listed in the N
 
 The CPU is emulated and a cartridge in the iNES format can be loaded into the emulator.
 For now, only cartridges using mapper 0 can be read.
-The PPU background display is emulated and works well. Sprites are missing for now.
+The PPU background and sprite display is emulated. Sprite 0 hit is missing for now (games like super mario bros are not playable).
 The GUI is created using [minifb](https://docs.rs/minifb/0.19.1/minifb/), and displays the game screen, as well as a debugging screen that can be activated by pressing "e" on the keyboard.
 A press on the "r" key resets CPU.
 The first controller is emulated too (see controls).
@@ -44,7 +44,7 @@ The pattern tables and palettes can be displayed in a separate window when "e" k
 
 ## To do
 
-Next step is to emulate the sprite display of the PPU.
+Next step is to add sprite 0 hit on the PPU, and clean PPU code.
 
 ## References
 
