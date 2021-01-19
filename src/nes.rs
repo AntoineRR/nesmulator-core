@@ -69,7 +69,7 @@ impl NES {
             // CPU is clocked every 3 PPU cycles
             if self.total_clock%3 == 0 {
                 // If we initialized a DMA, do not clock CPU for nearly 513 cycles
-                if self.p_ppu.lock().unwrap().perform_dma {
+                if self.p_ppu.lock().unwrap().registers.perform_dma {
                     self.perform_dma();
                 }
                 else {
@@ -81,8 +81,8 @@ impl NES {
             self.p_ppu.lock().unwrap().clock();
 
             // Check if an NMI interrupt should be thrown
-            if self.p_ppu.lock().unwrap().emit_nmi {
-                self.p_ppu.lock().unwrap().emit_nmi = false;
+            if self.p_ppu.lock().unwrap().registers.emit_nmi {
+                self.p_ppu.lock().unwrap().registers.emit_nmi = false;
                 self.p_cpu.lock().unwrap().interrupt(Interrupt::NMI);
             }
 
@@ -102,8 +102,8 @@ impl NES {
         if !self.dma_started {
             // Wait for an even cycle to start
             if self.total_clock % 2 == 0 {
-                self.dma_hi_address = self.p_ppu.lock().unwrap().oam_dma;
-                self.dma_base_address = self.p_ppu.lock().unwrap().oam_addr;
+                self.dma_hi_address = self.p_ppu.lock().unwrap().registers.oam_dma;
+                self.dma_base_address = self.p_ppu.lock().unwrap().registers.oam_addr;
                 self.dma_address = self.dma_base_address;
                 self.dma_started = true;
             }
@@ -116,7 +116,7 @@ impl NES {
             }
             // On odd cycles, write data to the PPU OAM
             else {
-                self.p_ppu.lock().unwrap().write_oam(self.dma_address, self.dma_data);
+                self.p_ppu.lock().unwrap().oam.write_primary(self.dma_address, self.dma_data);
 
                 if self.dma_address < 255 {
                     self.dma_address += 1;
@@ -128,7 +128,7 @@ impl NES {
                 // End DMA
                 if self.dma_address == self.dma_base_address {
                     self.dma_started = false;
-                    self.p_ppu.lock().unwrap().perform_dma = false;
+                    self.p_ppu.lock().unwrap().registers.perform_dma = false;
                 }
             }
         }

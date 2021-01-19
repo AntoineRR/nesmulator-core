@@ -191,6 +191,7 @@ impl GUI {
                 p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Right as u8;
             }
         }
+        //println!("Controller : {}",p_bus.lock().unwrap().controllers[0].buffer);
         self.keys.borrow_mut().clear();
     }
 

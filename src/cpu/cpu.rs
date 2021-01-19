@@ -1103,7 +1103,13 @@ impl CPU {
     // X = (A&X)-M
     pub fn sbx(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
-        let data: u8 = ((self.read_bus(address)) ^ 0xFF) + 1;
+        let mut data: u8 = (self.read_bus(address)) ^ 0xFF;
+        if data < 255 {
+            data += 1;
+        }
+        else {
+            data = 0;
+        }
         let result: u16 = ((self.x as u16) & (self.a as u16)) + (data as u16);
         self.x = result as u8;
         self.set_flag(Flag::Carry, (result & 0x0100) == 0x0100);

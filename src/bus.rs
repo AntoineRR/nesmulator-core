@@ -76,13 +76,13 @@ impl Bus {
             // 0x0800 - 0x1FFF / CPU RAM Mirrors
             0x0800..=0x1FFF => value = self.data[(address & 0x07FF) as usize],
             // 0x2000 - 0x2007 / NES PPU Registers
-            0x2000..=0x2007 => value = self.p_ppu.lock().unwrap().read_register_without_modification(address),
+            0x2000..=0x2007 => value = self.p_ppu.lock().unwrap().registers.read_register_without_modification(address),
             // 0x2008 - 0x3FFF / NES PPU Registers Mirrors
-            0x2008..=0x3FFF => value = self.p_ppu.lock().unwrap().read_register_without_modification(address & 0x2007),
+            0x2008..=0x3FFF => value = self.p_ppu.lock().unwrap().registers.read_register_without_modification(address & 0x2007),
             // 0x4000 - 0x4013 / NES APU I/O Registers
             0x4000..=0x4013 => value = self.data[address as usize],
             // 0x4014 / NES PPU Register
-            0x4014 => value = self.p_ppu.lock().unwrap().read_register_without_modification(address),
+            0x4014 => value = self.p_ppu.lock().unwrap().registers.read_register_without_modification(address),
             // 0x4015 / NES APU Register
             0x4015 => value = self.data[address as usize],
             // 0x4016 / First controller

@@ -25,8 +25,8 @@ pub enum MaskFlag {
     EmphasizeRed = 1 << 5,
     ShowSprites = 1 << 4,
     ShowBackground = 1 << 3,
-    ShowOffScreenSprites = 1 << 2,
-    ShowOffScreenBackground = 1 << 1,
+    ShowLeftScreenSprites = 1 << 2,
+    ShowLeftScreenBackground = 1 << 1,
     GreyScale = 1
 }
 

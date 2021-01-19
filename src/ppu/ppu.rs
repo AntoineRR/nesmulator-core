@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::gui::GUI;
 
-use super::{bus::PPUBus, enums::{ControlFlag, MaskFlag, SpriteAttribute, StatusFlag, VRAMAddressMask}, palette::{ARGBColor, PALETTE}, sprite::Sprite};
+use super::{bus::PPUBus, enums::{ControlFlag, MaskFlag, SpriteAttribute, StatusFlag, VRAMAddressMask}, oam::OAM, palette::{ARGBColor, PALETTE}, registers::Registers};
 
 // ===== CONSTANTS =====
 
@@ -19,35 +19,15 @@ const MAX_SCANLINES: u16 = 261;
 #[derive(Debug)]
 pub struct PPU {
     // PPU registers
-    pub ctrl: u8,
-    pub mask: u8,
-    pub status: u8,
-    pub oam_addr: u8,
-    pub oam_data: u8,
-    pub scroll: u8,
-    pub addr: u8,
-    pub data: u8,
-    pub oam_dma: u8,
-
-    // Starts a DMA when set to true
-    pub perform_dma: bool,
-
-    // decay register
-    pub decay: u8,
-    pub decay_timer: u32,
-
-    // Data buffer for reading to 2007
-    pub data_buffer: u8,
+    pub registers: Registers,
 
     // Background shifters ([0] => low bits, [1] => high bits)
     pub pattern_table_shifters: [u16;2],
     pub palette_shifters: [u16;2],
 
-    // OAM : Object Attribute Memory
-    pub oam: [Sprite;64],
+    // OAM
+    pub oam: OAM,
 
-    // Next Sprites to draw
-    pub secondary_oam: [Sprite;8],
     pub next_sprite_count: u8,
     pub current_sprite_count: u8,
     pub next_contains_sprite_0: bool,
@@ -73,11 +53,6 @@ pub struct PPU {
 
     // Addressing variables
     pub ppu_bus: PPUBus,
-    pub fine_x: u8,
-    pub w: bool, // First / Second write toggle
-
-    // NMI
-    pub emit_nmi: bool,
 
     // Variables required for display
     pub cycles: u16,
@@ -96,29 +71,13 @@ pub struct PPU {
 impl PPU {
     pub fn new(p_gui: Arc<Mutex<GUI>>) -> Self {
         PPU {
-            ctrl: 0,
-            mask: 0,
-            status: 0,
-            oam_addr: 0,
-            oam_data: 0,
-            scroll: 0,
-            addr: 0,
-            data: 0,
-            oam_dma: 0,
-
-            perform_dma: false,
-
-            decay: 0,
-            decay_timer: 0,
-
-            data_buffer: 0,
+            registers: Registers::new(),
 
             pattern_table_shifters: [0;2],
             palette_shifters: [0;2],
 
-            oam: [Sprite::default();64],
+            oam: OAM::new(),
 
-            secondary_oam: [Sprite::default();8],
             next_sprite_count: 0,
             current_sprite_count: 0,
             next_contains_sprite_0: false,
@@ -140,10 +99,6 @@ impl PPU {
             next_high_background_byte: 0,
 
             ppu_bus: PPUBus::new(),
-            fine_x: 0,
-            w: false,
-
-            emit_nmi: false,
 
             cycles: 0,
             scanline: 0,
@@ -164,7 +119,9 @@ impl PPU {
 
         // This cycle is skipped
         if self.scanline == 0 && self.cycles == 0 && self.odd_frame {
-            self.cycles = 1;
+            if self.registers.get_mask_flag(MaskFlag::ShowBackground) {
+                self.cycles = 1;
+            }
         }
 
         // Get the next 8 pixels colors
@@ -214,7 +171,7 @@ impl PPU {
                     let address: u16 =
                         self.ppu_bus.vram_address.get_address_part(VRAMAddressMask::FineY)
                         + ((self.next_name_table_byte as u16)<< 4)
-                        + ((self.get_control_flag(ControlFlag::BackgroundPatternTableAddress) as u16) << 12);
+                        + ((self.registers.get_control_flag(ControlFlag::BackgroundPatternTableAddress) as u16) << 12);
                     self.next_low_background_byte = self.ppu_bus.read(address);
                 }
                 // Get the high background tile byte
@@ -223,7 +180,7 @@ impl PPU {
                     let address: u16 =
                         self.ppu_bus.vram_address.get_address_part(VRAMAddressMask::FineY)
                         + ((self.next_name_table_byte as u16)<< 4)
-                        + ((self.get_control_flag(ControlFlag::BackgroundPatternTableAddress) as u16) << 12)
+                        + ((self.registers.get_control_flag(ControlFlag::BackgroundPatternTableAddress) as u16) << 12)
                         + 8;
                     self.next_high_background_byte = self.ppu_bus.read(address);
                 }
@@ -244,7 +201,9 @@ impl PPU {
 
             // Unused read
             if self.cycles == 338 || self.cycles == 340 {
-                self.next_name_table_byte = self.ppu_bus.read(0x2000 + (self.ppu_bus.vram_address.address & 0x0FFF));
+                self.next_name_table_byte = self.ppu_bus.read(
+                    0x2000
+                    + (self.ppu_bus.vram_address.address & 0x0FFF));
             }
 
             // === SPRITES ===
@@ -257,7 +216,7 @@ impl PPU {
             // Initializes secondary OAM with FF
             if self.cycles > 0 && self.cycles < 65 {
                 if self.cycles % 2 == 1 {
-                    self.write_secondary_oam(((self.cycles - 1) / 2)  as u8, 0xFF);
+                    self.oam.write_secondary(((self.cycles - 1) / 2)  as u8, 0xFF);
                 }
             }
 
@@ -283,17 +242,17 @@ impl PPU {
 
         // Set the v blank flag at the beginning of the v blank period
         if self.scanline == 241 && self.cycles == 1 {
-            self.set_status_flag(StatusFlag::VBlank, true);
-            if self.get_control_flag(ControlFlag::VBlank) != 0 {
-                self.emit_nmi = true;
+            self.registers.set_status_flag(StatusFlag::VBlank, true);
+            if self.registers.get_control_flag(ControlFlag::VBlank) != 0 {
+                self.registers.emit_nmi = true;
             }
         }
 
         // Clear the v blank flag at the end of the v blank period
         if self.scanline == 261 && self.cycles == 1 {
-            self.set_status_flag(StatusFlag::VBlank, false);
-            self.set_status_flag(StatusFlag::Sprite0Hit, false);
-            self.set_status_flag(StatusFlag::SpriteOverflow, false);
+            self.registers.set_status_flag(StatusFlag::VBlank, false);
+            self.registers.set_status_flag(StatusFlag::Sprite0Hit, false);
+            self.registers.set_status_flag(StatusFlag::SpriteOverflow, false);
         }
 
         if self.scanline == 261 && (self.cycles > 279 && self.cycles < 305) {
@@ -306,7 +265,7 @@ impl PPU {
             // Calculates background color
             let mut bg_palette: u8 = 0;
             let mut bg_pattern: u8 = 0;
-            if self.get_mask_flag(MaskFlag::ShowBackground) {
+            if self.registers.get_mask_flag(MaskFlag::ShowBackground) {
                 bg_palette = self.get_shifter_value(self.palette_shifters);
                 bg_pattern = self.get_shifter_value(self.pattern_table_shifters);
             }
@@ -315,7 +274,7 @@ impl PPU {
             let mut fg_pattern: u8 = 0;
             let mut fg_priority: bool = false;
             // Calculates foreground (sprite) color
-            if self.get_mask_flag(MaskFlag::ShowSprites) {
+            if self.registers.get_mask_flag(MaskFlag::ShowSprites) {
                 self.is_sprite_0_rendered = false;
                 for i in (0..self.current_sprite_count).rev() {
                     if self.sprite_x[i as usize] == 0 {
@@ -360,14 +319,17 @@ impl PPU {
 
                 // Detect sprite 0 hit
                 if self.current_contains_sprite_0 && self.is_sprite_0_rendered {
-                    if self.get_mask_flag(MaskFlag::ShowBackground) && self.get_mask_flag(MaskFlag::ShowSprites) {
-                        if !self.get_mask_flag(MaskFlag::ShowOffScreenBackground) || self.get_mask_flag(MaskFlag::ShowOffScreenSprites) {
-                            if self.cycles >= 9 {
-                                self.set_status_flag(StatusFlag::Sprite0Hit, true);
+                    if self.registers.get_mask_flag(MaskFlag::ShowBackground) && self.registers.get_mask_flag(MaskFlag::ShowSprites) {
+                        if self.cycles != 256 {
+                            if !self.registers.get_mask_flag(MaskFlag::ShowLeftScreenBackground)
+                                || !self.registers.get_mask_flag(MaskFlag::ShowLeftScreenSprites) {
+                                if self.cycles >= 9 {
+                                    self.registers.set_status_flag(StatusFlag::Sprite0Hit, true);
+                                }
                             }
-                        }
-                        else {
-                            self.set_status_flag(StatusFlag::Sprite0Hit, true);
+                            else {
+                                self.registers.set_status_flag(StatusFlag::Sprite0Hit, true);
+                            }
                         }
                     }
                 }
@@ -405,10 +367,10 @@ impl PPU {
 
         // Decay timer
         // Reset decay register after less than one second (5 350 000 clocks)
-        self.decay_timer += 1;
-        if self.decay_timer == 5000000 {
-            self.decay = 0;
-            self.decay_timer = 0;
+        self.registers.decay_timer += 1;
+        if self.registers.decay_timer == 5000000 {
+            self.registers.decay = 0;
+            self.registers.decay_timer = 0;
         }
     }
 
@@ -421,169 +383,15 @@ impl PPU {
 
     // ===== REGISTERS METHODS =====
 
-    // Writes value to one of the PPU registers
     pub fn write_register(&mut self, address: u16, value: u8) {
-        match address {
-            0x2000 => {
-                self.ctrl = value;
-                if self.get_status_flag(StatusFlag::VBlank) && (value & 0x80) == 0x80 {
-                    self.emit_nmi = true;
-                }
-                self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::NametableSelect, (value & 0x03) as u16);
-            }
-            0x2001 => self.mask = value,
-            0x2002 => (),
-            0x2003 => self.oam_addr = value,
-            0x2004 => self.oam_data = value,
-            0x2005 => {
-                self.scroll = value;
-                if self.w {
-                    self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::FineY, (value & 0x07) as u16);
-                    self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::CoarseYScroll, ((value & 0xF8) as u16) >> 3);
-                    self.w = false;
-                }
-                else {
-                    self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::CoarseXScroll, ((value & 0xF8) as u16) >> 3);
-                    self.fine_x = value & 0x07;
-                    self.w = true;
-                }
-            }
-            0x2006 => {
-                self.addr = value;
-                if self.w {
-                    self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::SW2006, value as u16);
-                    self.ppu_bus.vram_address.address = self.ppu_bus.tmp_vram_address.address;
-                    self.w = false;
-                }
-                else {
-                    self.ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::FW2006, (value & 0x3F) as u16);
-                    self.ppu_bus.tmp_vram_address.address &= 0x3FFF; // Sets the 2 higher bits to 0
-                    self.w = true;
-                }
-            }
-            0x2007 => {
-                self.data = value;
-                self.ppu_bus.write(self.ppu_bus.vram_address.address & 0x3FFF, value);
-                if self.get_control_flag(ControlFlag::VRAMAddressIncrement) == 0 {
-                    self.ppu_bus.vram_address.address += 1; // Horizontal scrolling
-                }
-                else {
-                    self.ppu_bus.vram_address.address += 32; // Vertical scrolling
-                }
-            }
-            0x4014 => {
-                self.oam_dma = value;
-                self.perform_dma = true;
-            }
-            _ => panic!("Wrong address given to PPU : {:#x}",address)
-        }
-        self.decay = value;
-        self.decay_timer = 0;
+        self.registers.write_register(&mut self.ppu_bus, &mut self.oam, address, value);
     }
 
-    // Reads value from one of the PPU registers
     pub fn read_register(&mut self, address: u16) -> u8 {
-        let mut value: u8;
-        match address {
-            0x2000 => value = self.decay,
-            0x2001 => value = self.decay,
-            0x2002 => {
-                value = (self.status & 0xE0) | (self.decay & 0x1F);
-                self.decay = value;
-                self.set_status_flag(StatusFlag::VBlank, false);
-                self.w = false;
-            },
-            0x2003 => value = self.decay,
-            0x2004 => {
-                value = self.oam_data;
-                self.decay = value;
-            }
-            0x2005 => value = self.decay,
-            0x2006 => value = self.decay,
-            0x2007 => {
-                // Read to 2007 is delayed by one read except for the palette
-                value = self.data_buffer;
-                self.data_buffer = self.ppu_bus.read(self.ppu_bus.vram_address.address);
-                if self.ppu_bus.vram_address.address >= 0x3F00 {
-                    value = (self.decay & 0xC0) | (self.data_buffer & 0x3F);
-                    // Fill the buffer with the mirrored nametable "under" palette RAM
-                    self.data_buffer = self.ppu_bus.read(self.ppu_bus.vram_address.address & 0x2FFF);
-                }
-                self.decay = value;
-                // Increment VRAM Address
-                if self.get_control_flag(ControlFlag::VRAMAddressIncrement) == 0 {
-                    self.ppu_bus.vram_address.address += 1; // Horizontal scrolling
-                }
-                else {
-                    self.ppu_bus.vram_address.address += 32; // Vertical scrolling
-                }
-            }
-            0x4014 => panic!("4014 is not readable !"),
-            _ => panic!("Wrong address given to PPU : {:#x}",address)
-        }
-        value
-    }
-
-    // Sets the flags for the status register
-    pub fn set_status_flag(&mut self, flag: StatusFlag, value: bool) {
-        if value {
-            self.status |= flag as u8;
-        }
-        else {
-            self.status &= !(flag as u8);
-        }
-    }
-
-    pub fn get_status_flag(&self, flag: StatusFlag) -> bool {
-        (self.status & (flag as u8)) == (flag as u8)
-    }
-
-    // Get the flags from the control register
-    pub fn get_control_flag(&mut self, flag: ControlFlag) -> u8 {
-        if flag != ControlFlag::NametableAddress {
-            ((self.ctrl & (flag as u8)) == (flag as u8)) as u8
-        }
-        else {
-            (self.ctrl & 0x03) as u8 // Last two bits
-        }
-    }
-
-    // Get the flags from the mask register
-    pub fn get_mask_flag(&self, flag: MaskFlag) -> bool {
-        (self.mask & (flag as u8)) == (flag as u8)
+        self.registers.read_register(&mut self.ppu_bus, &self.oam, address)
     }
 
     // ===== SPRITE RELATED METHODS =====
-
-    pub fn write_oam(&mut self, address: u8, data: u8) {
-        let sprite_index: usize = (address / 4) as usize;
-        match address % 4 {
-            // Y
-            0 => self.oam[sprite_index].y = data,
-            // ID
-            1 => self.oam[sprite_index].id = data,
-            // Attribute
-            2 => self.oam[sprite_index].attribute = data,
-            // X
-            3 => self.oam[sprite_index].x = data,
-            _ => panic!("Impossible to reach pattern")
-        }
-    }
-
-    pub fn write_secondary_oam(&mut self, address: u8, data: u8) {
-        let sprite_index: usize = (address / 4) as usize;
-        match address % 4 {
-            // Y
-            0 => self.secondary_oam[sprite_index].y = data,
-            // ID
-            1 => self.secondary_oam[sprite_index].id = data,
-            // Attribute
-            2 => self.secondary_oam[sprite_index].attribute = data,
-            // X
-            3 => self.secondary_oam[sprite_index].x = data,
-            _ => panic!("Unreachable pattern")
-        }
-    }
 
     // Performs the sprite evaluation for the next scanline
     // This is not cycle accurate with a real NES
@@ -592,15 +400,17 @@ impl PPU {
         if (self.cycles - 65) % 3 == 0 {
             let sprite_index: usize = ((self.cycles - 65) / 3) as usize;
             // If the sprite should appear on the next scanline
-            if self.scanline % 261 >= (self.oam[sprite_index].y as u16)
-                && self.scanline % 261 < (self.oam[sprite_index].y as u16) + 8 {
+            if self.scanline % 261 >= (self.oam.primary[sprite_index].y as u16)
+                && self.scanline % 261 < (self.oam.primary[sprite_index].y as u16) + 8 {
                 // If more than 8 sprites has been found
                 if self.next_sprite_count >= 8 {
-                    self.set_status_flag(StatusFlag::SpriteOverflow, true);
+                    if self.registers.get_mask_flag(MaskFlag::ShowSprites) || self.registers.get_mask_flag(MaskFlag::ShowBackground) {
+                        self.registers.set_status_flag(StatusFlag::SpriteOverflow, true);
+                    }
                 }
                 else {
                     if self.scanline != 261 {
-                        self.secondary_oam[self.next_sprite_count as usize] = self.oam[sprite_index];
+                        self.oam.secondary[self.next_sprite_count as usize] = self.oam.primary[sprite_index];
                         if sprite_index == 0 {
                             self.next_contains_sprite_0 = true;
                         }
@@ -613,7 +423,7 @@ impl PPU {
         // The first empty entry in the secondary OAM has the 63 sprite y as its y coordinate
         if self.cycles == 256 {
             if self.next_sprite_count < 8 {
-                self.write_secondary_oam(self.next_sprite_count*4, self.oam[63].y);
+                self.oam.write_secondary(self.next_sprite_count*4, self.oam.primary[63].y);
             }
         }
     }
@@ -627,20 +437,20 @@ impl PPU {
                 // Populate sprite shifters
                 0 => {
                     let lo_address: u16; // Address of the low byte of the sprite
-                    let v_flip: bool = self.secondary_oam[sprite_index].get_attribute_flag(SpriteAttribute::FlipVertically) == 1;
+                    let v_flip: bool = self.oam.secondary[sprite_index].get_attribute_flag(SpriteAttribute::FlipVertically) == 1;
                     // 8x8 sprites
-                    if self.get_control_flag(ControlFlag::SpriteSize) == 0 {
+                    if self.registers.get_control_flag(ControlFlag::SpriteSize) == 0 {
                         // Do not flip sprite vertically
                         if !v_flip {
-                            lo_address = ((self.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
-                                + ((self.secondary_oam[sprite_index].id as u16) << 4)
-                                + ((self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16))) as u16;
+                            lo_address = ((self.registers.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
+                                + ((self.oam.secondary[sprite_index].id as u16) << 4)
+                                + ((self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16))) as u16;
                         }
                         // Flip sprite vertically
                         else {
-                            lo_address = ((self.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
-                            + ((self.secondary_oam[sprite_index].id as u16) << 4)
-                            + ((7 - (self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16)))) as u16;
+                            lo_address = ((self.registers.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
+                            + ((self.oam.secondary[sprite_index].id as u16) << 4)
+                            + ((7 - (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)))) as u16;
                         }
                     }
                     // 8x16 sprites
@@ -648,31 +458,31 @@ impl PPU {
                         // Do not flip sprite vertically
                         if !v_flip {
                             // First half of the sprite
-                            if self.scanline + 1 - (self.secondary_oam[sprite_index].y as u16) < 8 {
-                                lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
-                                    + (((self.secondary_oam[sprite_index].id & 0xFE) as u16) << 4)
-                                    + (self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16)) as u16;
+                            if self.scanline + 1 - (self.oam.secondary[sprite_index].y as u16) < 8 {
+                                lo_address = (((self.oam.secondary[sprite_index].id & 0x01) as u16) << 12)
+                                    + (((self.oam.secondary[sprite_index].id & 0xFE) as u16) << 4)
+                                    + (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)) as u16;
                             }
                             // Second half of the sprite
                             else {
-                                lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
-                                    + ((((self.secondary_oam[sprite_index].id & 0xFE) as u16) + 1) << 4)
-                                    + ((self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16)) & 0x07) as u16;
+                                lo_address = (((self.oam.secondary[sprite_index].id & 0x01) as u16) << 12)
+                                    + ((((self.oam.secondary[sprite_index].id & 0xFE) as u16) + 1) << 4)
+                                    + ((self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)) & 0x07) as u16;
                             }
                         }
                         // Flip sprite vertically
                         else {
                             // Second half of the sprite
-                            if self.scanline + 1 - (self.secondary_oam[sprite_index].y as u16) < 8 {
-                                lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
-                                    + ((((self.secondary_oam[sprite_index].id & 0xFE) as u16) + 1) << 4)
-                                    + ((7 - (self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16))) & 0x07) as u16;
+                            if self.scanline + 1 - (self.oam.secondary[sprite_index].y as u16) < 8 {
+                                lo_address = (((self.oam.secondary[sprite_index].id & 0x01) as u16) << 12)
+                                    + ((((self.oam.secondary[sprite_index].id & 0xFE) as u16) + 1) << 4)
+                                    + ((7 - (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16))) & 0x07) as u16;
                             }
                             // First half of the sprite
                             else {
-                                lo_address = (((self.secondary_oam[sprite_index].id & 0x01) as u16) << 12)
-                                    + (((self.secondary_oam[sprite_index].id & 0xFE) as u16) << 4) as u16
-                                    + (7 - (self.scanline as i16 - (self.secondary_oam[sprite_index].y as i16))) as u16;
+                                lo_address = (((self.oam.secondary[sprite_index].id & 0x01) as u16) << 12)
+                                    + (((self.oam.secondary[sprite_index].id & 0xFE) as u16) << 4) as u16
+                                    + (7 - (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16))) as u16;
                             }
                         }
                     }
@@ -682,7 +492,7 @@ impl PPU {
                     let mut hi_sprite: u8 = self.ppu_bus.read(lo_address + 8);
 
                     // Flip horizontally
-                    if self.secondary_oam[sprite_index].get_attribute_flag(SpriteAttribute::FlipHorizontally) == 1 {
+                    if self.oam.secondary[sprite_index].get_attribute_flag(SpriteAttribute::FlipHorizontally) == 1 {
                         lo_sprite = ((lo_sprite & 0xF0) >> 4) | ((lo_sprite & 0x0F) << 4);
                         lo_sprite = ((lo_sprite & 0xCC) >> 2) | ((lo_sprite & 0x33) << 2);
                         lo_sprite = ((lo_sprite & 0xAA) >> 1) | ((lo_sprite & 0x55) << 1);
@@ -698,17 +508,13 @@ impl PPU {
                 }
                 // Populate X sprite shifters
                 1 => {
-                    self.sprite_x[sprite_index] = self.secondary_oam[sprite_index].x;
+                    self.sprite_x[sprite_index] = self.oam.secondary[sprite_index].x;
                 }
                 // Populate sprite attributes
                 2 => {
-                    self.sprite_attributes[sprite_index] = self.secondary_oam[sprite_index].attribute;
+                    self.sprite_attributes[sprite_index] = self.oam.secondary[sprite_index].attribute;
                 }
-                3 => (),
-                4 => (),
-                5 => (),
-                6 => (),
-                7 => (),
+                3..=7 => (),
                 _ => panic!("Unreachable pattern")
             }
         }
@@ -747,14 +553,14 @@ impl PPU {
 
     // Shifts the background shifters one bit left
     pub fn update_shifters(&mut self) {
-        if self.get_mask_flag(MaskFlag::ShowBackground) {
+        if self.registers.get_mask_flag(MaskFlag::ShowBackground) {
             self.pattern_table_shifters[0] <<= 1;
             self.pattern_table_shifters[1] <<= 1;
             self.palette_shifters[0] <<= 1;
             self.palette_shifters[1] <<= 1;
         }
 
-        if self.get_mask_flag(MaskFlag::ShowSprites) && (self.cycles >= 1 && self.cycles <= 257) {
+        if self.registers.get_mask_flag(MaskFlag::ShowSprites) && (self.cycles >= 1 && self.cycles <= 257) {
             for i in 0..self.current_sprite_count {
                 if self.sprite_x[i as usize] != 0 {
                     self.sprite_x[i as usize] -= 1;
@@ -769,7 +575,7 @@ impl PPU {
 
     // Get the right value from the shifters
     pub fn get_shifter_value(&self, shifter: [u16;2]) -> u8 {
-        let offset_mask: u16 = 0x8000 >> self.fine_x;
+        let offset_mask: u16 = 0x8000 >> self.registers.fine_x;
         let low: u8 = ((shifter[0] & offset_mask) > 0) as u8;
         let high: u8 = ((shifter[1] & offset_mask) > 0) as u8;
         low + (high << 1)
@@ -779,7 +585,7 @@ impl PPU {
 
     // Increments the VRAM address to point to the next 8 bits to render
     pub fn increment_x(&mut self) {
-        if self.get_mask_flag(MaskFlag::ShowSprites) || self.get_mask_flag(MaskFlag::ShowBackground) {
+        if self.registers.get_mask_flag(MaskFlag::ShowSprites) || self.registers.get_mask_flag(MaskFlag::ShowBackground) {
             let x: u16 = self.ppu_bus.vram_address.get_address_part(VRAMAddressMask::CoarseXScroll);
             if x == 31 {
                 self.ppu_bus.vram_address.set_address_part(VRAMAddressMask::CoarseXScroll, 0);
@@ -793,7 +599,7 @@ impl PPU {
     }
 
     pub fn increment_y(&mut self) {
-        if self.get_mask_flag(MaskFlag::ShowSprites) || self.get_mask_flag(MaskFlag::ShowBackground) {
+        if self.registers.get_mask_flag(MaskFlag::ShowSprites) || self.registers.get_mask_flag(MaskFlag::ShowBackground) {
             let y: u16 = self.ppu_bus.vram_address.get_address_part(VRAMAddressMask::FineY);
             if y >= 7 {
                 self.ppu_bus.vram_address.set_address_part(VRAMAddressMask::FineY, 0);
@@ -817,7 +623,7 @@ impl PPU {
     }
 
     pub fn copy_tmp_x_to_vram_address(&mut self) {
-        if self.get_mask_flag(MaskFlag::ShowSprites) || self.get_mask_flag(MaskFlag::ShowBackground) {
+        if self.registers.get_mask_flag(MaskFlag::ShowSprites) || self.registers.get_mask_flag(MaskFlag::ShowBackground) {
             // Set coarse x to tmp value
             let tmp_c_x: u16 = self.ppu_bus.tmp_vram_address.get_address_part(VRAMAddressMask::CoarseXScroll);
             self.ppu_bus.vram_address.set_address_part(VRAMAddressMask::CoarseXScroll, tmp_c_x);
@@ -828,7 +634,7 @@ impl PPU {
     }
 
     pub fn copy_tmp_y_to_vram_address(&mut self) {
-        if self.get_mask_flag(MaskFlag::ShowSprites) || self.get_mask_flag(MaskFlag::ShowBackground) {
+        if self.registers.get_mask_flag(MaskFlag::ShowSprites) || self.registers.get_mask_flag(MaskFlag::ShowBackground) {
             // Set coarse y to tmp value
             let tmp_c_y: u16 = self.ppu_bus.tmp_vram_address.get_address_part(VRAMAddressMask::CoarseYScroll);
             self.ppu_bus.vram_address.set_address_part(VRAMAddressMask::CoarseYScroll, tmp_c_y);
@@ -895,23 +701,5 @@ impl PPU {
                 }
             }
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn read_register_without_modification(&self, address: u16) -> u8 {
-        let value: u8;
-        match address {
-            0x2000 => value = self.ctrl,
-            0x2001 => value = self.mask,
-            0x2002 => value = self.status,
-            0x2003 => value = self.oam_addr,
-            0x2004 => value = self.oam_data,
-            0x2005 => value = self.scroll,
-            0x2006 => value = self.addr,
-            0x2007 => value = self.data_buffer,
-            0x4014 => value = self.oam_dma,
-            _ => panic!("Wrong address given to PPU : {:#x}",address)
-        }
-        value
     }
 }
