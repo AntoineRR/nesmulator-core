@@ -115,9 +115,17 @@ impl Bus {
             // 0x4015 / NES APU Register
             0x4015 => self.data[address as usize] = value,
             // 0x4016 / First controller
-            0x4016 => self.controllers[0].update_shifter(),
+            0x4016 => {
+                if (value & 0x01) > 0 {
+                    self.controllers[0].update_shifter();
+                }
+            }
             // 0x4017 / Second controller
-            0x4017 => self.controllers[1].update_shifter(),
+            0x4017 => {
+                if (value & 0x01) > 0 {
+                    self.controllers[1].update_shifter();
+                }
+            }
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => self.data[address as usize] = value,
             // 0x4021 - 0xFFFF / Handled by the mapper

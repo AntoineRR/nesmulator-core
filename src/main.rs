@@ -6,14 +6,17 @@ mod nes;
 mod gui;
 mod controllers;
 
-use std::{path::Path, sync::{Arc, Mutex}};
+use std::{path::Path, sync::{Arc, Mutex}, thread};
 
 use bus::Bus;
 use cartridge::cartridge::Cartridge;
+use controllers::ControllerInput;
 use cpu::cpu::CPU;
 use nes::NES;
 use ppu::ppu::PPU;
 use gui::GUI;
+use winit::{event::{Event, VirtualKeyCode}, event_loop::{ControlFlow, EventLoop}};
+use winit_input_helper::WinitInputHelper;
 
 fn main() {
     // Create the cartridge based on the file located at the given path
@@ -43,7 +46,7 @@ fn main() {
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/palette_ram.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/sprite_ram.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/vbl_clear_time.nes");
-    let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/vram_access.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/vram_access.nes");
 
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/scanline/scanline.nes");
 
@@ -60,13 +63,13 @@ fn main() {
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/oam_read/oam_read.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/oam_stress/oam_stress.nes");
 
-    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/04.flip.nes");
-    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/05.left_clip.nes");
-    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/06.right_edge.nes");
-    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/08.double_height.nes");
-    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/09.timing_basics.nes");
-    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/10.timing_order.nes");
-    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/11.edge_timing.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/04.flip.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/05.left_clip.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/06.right_edge.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/08.double_height.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/09.timing_basics.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/10.timing_order.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_hit_tests_2005.10.05/11.edge_timing.nes");
 
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_overflow_tests/1.Basics.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/sprite_overflow_tests/2.Details.nes");
@@ -76,12 +79,14 @@ fn main() {
 
     // GAMES
 
-    //let path: &Path = Path::new("../ROM/smb.nes");
+    let path: &Path = Path::new("../ROM/smb.nes");
 
     let cartridge: Cartridge = Cartridge::new(path);
 
+    // Create the Eventloop for interacting with the window
+    let event_loop = EventLoop::new();
     // Create the GUI for displaying the graphics
-    let p_gui: Arc<Mutex<GUI>> = Arc::new(Mutex::new(GUI::new()));
+    let p_gui: Arc<Mutex<GUI>> = Arc::new(Mutex::new(GUI::new(&event_loop)));
 
     // Creates the NES architecture
     let p_ppu: Arc<Mutex<PPU>> = Arc::new(Mutex::new(PPU::new(p_gui.clone())));
@@ -91,5 +96,69 @@ fn main() {
 
     // Runs the game on the cartridge
     nes.insert_cartdrige(cartridge);
-    nes.launch_game();
+    thread::spawn(move || nes.launch_game());
+
+    // Event loop for the window
+
+    let mut input_helper = WinitInputHelper::new();
+    let main_pixels = p_gui.clone().lock().unwrap().main_pixels.clone();
+    let inputs = p_gui.clone().lock().unwrap().inputs.clone();
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+
+        if let Event::RedrawRequested(_) = event {
+            if main_pixels.lock().unwrap()
+                .render()
+                .map_err(|e| println!("pixels.render() failed: {}", e))
+                .is_err()
+            {
+                *control_flow = ControlFlow::Exit;
+                return;
+            }
+        }
+
+        if input_helper.update(&event) {
+            // Close event
+            if input_helper.key_pressed(VirtualKeyCode::Escape) || input_helper.quit() {
+                *control_flow = ControlFlow::Exit;
+                return;
+            }
+            // Resize event
+            if let Some(size) = input_helper.window_resized() {
+                main_pixels.lock().unwrap().resize(size.width, size.height);
+            }
+            // Debug window
+            if input_helper.key_pressed(VirtualKeyCode::E) {
+                if !p_gui.lock().unwrap().debug {
+                    //p_gui.lock().unwrap().create_debugging_window(&event_loop);
+                    p_gui.lock().unwrap().debug = true;
+                }
+            }
+            // Controller inputs
+            if input_helper.key_pressed(VirtualKeyCode::Z) {
+                *inputs.lock().unwrap() |= ControllerInput::Up as u8;
+            }
+            if input_helper.key_pressed(VirtualKeyCode::Q) {
+                *inputs.lock().unwrap() |= ControllerInput::Left as u8;
+            }
+            if input_helper.key_pressed(VirtualKeyCode::S) {
+                *inputs.lock().unwrap() |= ControllerInput::Down as u8;
+            }
+            if input_helper.key_pressed(VirtualKeyCode::D) {
+                *inputs.lock().unwrap() |= ControllerInput::Right as u8;
+            }
+            if input_helper.key_pressed(VirtualKeyCode::X) {
+                *inputs.lock().unwrap() |= ControllerInput::Start as u8;
+            }
+            if input_helper.key_pressed(VirtualKeyCode::C) {
+                *inputs.lock().unwrap() |= ControllerInput::Select as u8;
+            }
+            if input_helper.key_pressed(VirtualKeyCode::I) {
+                *inputs.lock().unwrap() |= ControllerInput::A as u8;
+            }
+            if input_helper.key_pressed(VirtualKeyCode::O) {
+                *inputs.lock().unwrap() |= ControllerInput::B as u8;
+            }
+        }
+    });
 }

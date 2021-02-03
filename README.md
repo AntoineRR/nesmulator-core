@@ -18,8 +18,7 @@ I would also like to pass most of the tests from some tests roms listed in the N
 The CPU is emulated and a cartridge in the iNES format can be loaded into the emulator.
 For now, only cartridges using mapper 0 can be read.
 The PPU background and sprite display is emulated.
-The GUI is created using [minifb](https://docs.rs/minifb/0.19.1/minifb/), and displays the game screen, as well as a debugging screen that can be activated by pressing "e" on the keyboard.
-A press on the "r" key resets CPU.
+The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels), and displays the game screen.
 The first controller is emulated too (see controls), but there are still work to do on this, as super mario bros is unplayable for now.
 
 ## How to run
@@ -54,13 +53,10 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 ### CPU
 
 * [X] nestest
-
 * [X] branch_timing_tests/1.Branch_Basics
 * [X] branch_timing_tests/2.Backward_Branch
 * [X] branch_timing_tests/3.Forward_Branch
-
 * [ ] cpu_timing_test6/cpu_timing_test
-
 * [X] nes_instr_test/rom_singles/01-implied
 * [ ] nes_instr_test/rom_singles/02-immediate
 * [ ] nes_instr_test/rom_singles/03-zero_page
@@ -79,11 +75,8 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 * [ ] blargg_ppu_tests_2005.09.15b/sprite_ram
 * [ ] blargg_ppu_tests_2005.09.15b/vbl_clear_time
 * [X] blargg_ppu_tests_2005.09.15b/vram_access
-
 * [ ] ppu_open_bus/ppu_open_bus
-
 * [ ] scanline/scanline
-
 * [X] vbl_nmi_timing/1.frame_basics
 * [ ] vbl_nmi_timing/2.vbl_timing
 * [ ] vbl_nmi_timing/3.even_odd_frames
@@ -91,10 +84,8 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 * [ ] vbl_nmi_timing/5.nmi_suppression
 * [ ] vbl_nmi_timing/6.nmi_disable
 * [ ] vbl_nmi_timing/7.nmi_timing
-
 * [X] oam_read/oam_read
 * [ ] oam_stress/oam_stress
-
 * [X] sprite_hit_tests_2005.10.05/01.basics
 * [X] sprite_hit_tests_2005.10.05/02.alignment
 * [X] sprite_hit_tests_2005.10.05/03.corners
@@ -106,7 +97,6 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 * [X] sprite_hit_tests_2005.10.05/09.timing_basics
 * [X] sprite_hit_tests_2005.10.05/10.timing_order
 * [X] sprite_hit_tests_2005.10.05/11.edge_timing
-
 * [X] sprite_overflow_tests/1.Basics
 * [ ] sprite_overflow_tests/2.Details
 * [ ] sprite_overflow_tests/3.Timing
@@ -115,8 +105,7 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 
 ## To do
 
-Next step is to correct the controller behaviour, and clean the code.
-I might also change the GUI handler, as minifb doesn't provide everything I need.
+Next step is to correct the controller behaviour.
 
 ## References
 
@@ -124,4 +113,5 @@ I might also change the GUI handler, as minifb doesn't provide everything I need
 * [javidx9 tutorial](https://www.youtube.com/watch?v=F8kx56OZQhg&list=PLrOv9FMX8xJHqMvSGB_9G9nZZ_4IgteYf&index=2)
 * [Nintendulator nestest.nes logs](https://www.qmtpro.com/~nes/misc/nestest.log)
 * [Test ROMs](https://github.com/christopherpow/nes-test-roms)
-* [minifb (GUI)](https://docs.rs/minifb/0.19.1/minifb/)
+* [winit](https://github.com/rust-windowing/winit)
+* [pixels](https://github.com/parasyte/pixels)

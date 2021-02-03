@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum ControllerInput {
     Right = 0b0000_0001,
     Left = 0b0000_0010,

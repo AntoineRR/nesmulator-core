@@ -340,7 +340,7 @@ impl PPU {
                 .lock()
                 .unwrap()
                 .update_main_buffer(
-                    256*self.scanline as u32 + self.cycles as u32 - 1,
+                    (256*self.scanline as u32 + self.cycles as u32 - 1) as usize,
                     self.get_pixel_color(palette, pattern)
                 );
         }
@@ -674,7 +674,9 @@ impl PPU {
                 tile_high >>= 1;
                 tile_low >>= 1;
                 let c: ARGBColor = self.get_pixel_color(0, color);
-                self.p_gui.lock().unwrap().update_debug_buffer((n_tile_x*8+(7-col) + number*128 + (n_tile_y*8+row)*256) as u32, c);
+                self.p_gui.lock().unwrap().update_debug_buffer(
+                    ((n_tile_x*8+(7-col) + number*128 + (n_tile_y*8+row)*256)) as usize, c
+                );
             }
         }
     }
@@ -697,7 +699,9 @@ impl PPU {
                     self.p_gui
                         .lock()
                         .unwrap()
-                        .update_debug_buffer(index, PALETTE[(self.ppu_bus.read(address as u16) & 0x3F) as usize]);
+                        .update_debug_buffer(
+                            index as usize, PALETTE[(self.ppu_bus.read(address as u16) & 0x3F) as usize]
+                        );
                 }
             }
         }

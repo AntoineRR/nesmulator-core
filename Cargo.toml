@@ -5,8 +5,9 @@ authors = ["romero"]
 edition = "2018"
 
 [dependencies]
-minifb = "0.19.1"
-hex = "0.4.2"
+winit = "0.24.0"
+winit_input_helper = "0.9.0"
+pixels = "0.2.0"
 
 [profile.dev]
 opt-level = 1

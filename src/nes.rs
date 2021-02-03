@@ -2,7 +2,7 @@
 
 // ===== IMPORTS =====
 
-use std::{sync::{Arc, Mutex}, time::Instant};
+use std::sync::{Arc, Mutex};
 
 use cartridge::{cartridge::Cartridge, mapper::Mapper};
 
@@ -30,6 +30,8 @@ pub struct NES {
     pub dma_address: u8,
     pub dma_data: u8
 }
+
+unsafe impl Send for NES {}
 
 impl NES {
     pub fn new(p_bus: Arc<Mutex<Bus>>, p_cpu: Arc<Mutex<CPU>>, p_ppu: Arc<Mutex<PPU>>, p_gui: Arc<Mutex<GUI>>) -> Self {
@@ -64,8 +66,6 @@ impl NES {
         self.total_clock = 0;
         //self.p_cpu.lock().unwrap().pc = 0xC000; // Run nestest in automation mode (Fails at C6BD because of unofficial opcode)
         loop {
-            //let now = Instant::now();
-
             // CPU is clocked every 3 PPU cycles
             if self.total_clock%3 == 0 {
                 // If we initialized a DMA, do not clock CPU for nearly 513 cycles
@@ -88,12 +88,11 @@ impl NES {
 
             // Check if a key is pressed
             if self.p_ppu.lock().unwrap().frame_ready {
-                self.p_gui.lock().unwrap().check_keys(self.p_cpu.clone(),self.p_bus.clone());
+                self.p_gui.lock().unwrap().check_keys(self.p_bus.clone());
                 self.p_ppu.lock().unwrap().frame_ready = false;
             }
 
             self.total_clock += 1;
-            //println!("{}",now.elapsed().as_nanos());
         }
     }
 
