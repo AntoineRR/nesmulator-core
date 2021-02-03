@@ -19,7 +19,7 @@ The CPU is emulated and a cartridge in the iNES format can be loaded into the em
 For now, only cartridges using mapper 0 can be read.
 The PPU background and sprite display is emulated.
 The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels), and displays the game screen.
-The first controller is emulated too (see controls), but there are still work to do on this, as super mario bros is unplayable for now.
+The first controller is emulated too (see controls).
 
 ## How to run
 
@@ -40,13 +40,9 @@ You will need a rust stable installation.
 * START -> X
 * SELECT -> C
 
-* debug -> E
-* reset CPU -> R
-
 ## Tests
 
 The logs of the CPU and the PPU, including the disassembly of the ROM code, can be displayed in a similar manner to [Nintendulator](https://www.qmtpro.com/~nes/nintendulator/). This has been useful to compare the logs of my emulator to the ones from Nintendulator when nestest.nes is run on automation. The logs are exactly the same on both emulators.
-The pattern tables and palettes can be displayed in a separate window when "e" key is pressed.
 
 I used several test ROMs for testing my emulator. Those can be found [here](https://github.com/christopherpow/nes-test-roms). Here are the results :
 
@@ -105,7 +101,10 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 
 ## To do
 
-Next step is to correct the controller behaviour.
+* Correct the sprite display order which is not always right
+* Correct the CPU instructions failing on the nes_instr_test ROMs
+* Add APU emulation for sound
+* Add mappers
 
 ## References
 

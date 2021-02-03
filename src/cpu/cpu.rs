@@ -505,16 +505,11 @@ impl CPU {
     pub fn cmp(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8;
-        if self.a > data {
-            result = self.a - data;
-        }
-        else {
-            result = data - self.a;
-        }
-        self.set_flag(Flag::Zero, result == 0x00);
+        let result: i16;
+        result = self.a as i16 - data as i16;
+        self.set_flag(Flag::Zero, result as u8 == 0x00);
         self.set_flag(Flag::Carry, self.a >= data);
-        self.set_flag(Flag::Negative, (data > self.a) | ((data == 0) & ((self.a & 0x80) == 0x80)));
+        self.set_flag(Flag::Negative, (result as u8 & 0x80) == 0x80);
     }
 
     // Compare x register
@@ -522,16 +517,11 @@ impl CPU {
     pub fn cpx(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8;
-        if self.x > data {
-            result = self.x - data;
-        }
-        else {
-            result = data - self.x;
-        }
-        self.set_flag(Flag::Zero, result == 0x00);
+        let result: i16;
+        result = self.x as i16 - data as i16;
+        self.set_flag(Flag::Zero, result as u8 == 0x00);
         self.set_flag(Flag::Carry, self.x >= data);
-        self.set_flag(Flag::Negative, (data > self.x) | ((data == 0) & ((self.x & 0x80) == 0x80)));
+        self.set_flag(Flag::Negative, (result as u8 & 0x80) == 0x80);
     }
 
     // Compare y register
@@ -539,16 +529,11 @@ impl CPU {
     pub fn cpy(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8;
-        if self.y > data {
-            result = self.y - data;
-        }
-        else {
-            result = data - self.y;
-        }
-        self.set_flag(Flag::Zero, result == 0x00);
+        let result: i16;
+        result = self.y as i16 - data as i16;
+        self.set_flag(Flag::Zero, result as u8 == 0x00);
         self.set_flag(Flag::Carry, self.y >= data);
-        self.set_flag(Flag::Negative, (data > self.y) | ((data == 0) & ((self.y & 0x80) == 0x80)));
+        self.set_flag(Flag::Negative, (result as u8 & 0x80) == 0x80);
     }
 
     // Decrement memory
