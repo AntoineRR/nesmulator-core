@@ -441,8 +441,9 @@ impl CPU {
 
     // Force interrupt
     pub fn brk(&mut self, _: am) {
-        self.interrupt(Interrupt::IRQ);
+        self.pc += 1;
         self.set_flag(Flag::Break, true);
+        self.interrupt(Interrupt::IRQ);
     }
 
     // Branch if overflow clear

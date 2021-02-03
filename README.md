@@ -56,7 +56,7 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 * [X] branch_timing_tests/1.Branch_Basics
 * [X] branch_timing_tests/2.Backward_Branch
 * [X] branch_timing_tests/3.Forward_Branch
-* [ ] cpu_timing_test6/cpu_timing_test
+* [X] cpu_timing_test6/cpu_timing_test
 * [X] nes_instr_test/rom_singles/01-implied
 * [ ] nes_instr_test/rom_singles/02-immediate
 * [ ] nes_instr_test/rom_singles/03-zero_page

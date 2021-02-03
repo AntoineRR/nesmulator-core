@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use pixels::{Pixels, SurfaceTexture};
 use winit::{dpi::LogicalSize, event_loop::EventLoop, window::{Window, WindowBuilder}};
 
-use crate::{bus::Bus, ppu::palette::ARGBColor};
+use crate::ppu::palette::ARGBColor;
 
 // ===== CONSTANTS =====
 
@@ -100,12 +100,5 @@ impl GUI {
     pub fn update(&mut self) {
         self.main_window.request_redraw();
         self.frame_ready = true;
-    }
-
-    // ===== INPUTS =====
-
-    pub fn check_keys(&mut self, p_bus: Arc<Mutex<Bus>>) {
-        p_bus.lock().unwrap().controllers[0].buffer = *self.inputs.lock().unwrap();
-        *self.inputs.lock().unwrap() = 0;
     }
 }

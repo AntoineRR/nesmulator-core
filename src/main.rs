@@ -135,29 +135,30 @@ fn main() {
                 }
             }
             // Controller inputs
-            if input_helper.key_pressed(VirtualKeyCode::Z) {
-                *inputs.lock().unwrap() |= ControllerInput::Up as u8;
+            p_bus.lock().unwrap().controllers[0].buffer = 0;
+            if input_helper.key_held(VirtualKeyCode::Z) {
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Up as u8;
             }
-            if input_helper.key_pressed(VirtualKeyCode::Q) {
-                *inputs.lock().unwrap() |= ControllerInput::Left as u8;
+            if input_helper.key_held(VirtualKeyCode::Q) {
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Left as u8;
             }
-            if input_helper.key_pressed(VirtualKeyCode::S) {
-                *inputs.lock().unwrap() |= ControllerInput::Down as u8;
+            if input_helper.key_held(VirtualKeyCode::S) {
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Down as u8;
             }
-            if input_helper.key_pressed(VirtualKeyCode::D) {
-                *inputs.lock().unwrap() |= ControllerInput::Right as u8;
+            if input_helper.key_held(VirtualKeyCode::D) {
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Right as u8;
             }
-            if input_helper.key_pressed(VirtualKeyCode::X) {
-                *inputs.lock().unwrap() |= ControllerInput::Start as u8;
+            if input_helper.key_held(VirtualKeyCode::X) {
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Start as u8;
             }
-            if input_helper.key_pressed(VirtualKeyCode::C) {
-                *inputs.lock().unwrap() |= ControllerInput::Select as u8;
+            if input_helper.key_held(VirtualKeyCode::C) {
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Select as u8;
             }
-            if input_helper.key_pressed(VirtualKeyCode::I) {
-                *inputs.lock().unwrap() |= ControllerInput::A as u8;
+            if input_helper.key_held(VirtualKeyCode::I) {
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::A as u8;
             }
-            if input_helper.key_pressed(VirtualKeyCode::O) {
-                *inputs.lock().unwrap() |= ControllerInput::B as u8;
+            if input_helper.key_held(VirtualKeyCode::O) {
+                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::B as u8;
             }
         }
     });

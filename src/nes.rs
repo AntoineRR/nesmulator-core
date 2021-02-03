@@ -86,12 +86,6 @@ impl NES {
                 self.p_cpu.lock().unwrap().interrupt(Interrupt::NMI);
             }
 
-            // Check if a key is pressed
-            if self.p_ppu.lock().unwrap().frame_ready {
-                self.p_gui.lock().unwrap().check_keys(self.p_bus.clone());
-                self.p_ppu.lock().unwrap().frame_ready = false;
-            }
-
             self.total_clock += 1;
         }
     }
