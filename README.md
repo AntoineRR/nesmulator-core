@@ -101,7 +101,6 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 
 ## To do
 
-* Correct the sprite display order which is not always right
 * Correct the CPU instructions failing on the nes_instr_test ROMs
 * Add APU emulation for sound
 * Add mappers
