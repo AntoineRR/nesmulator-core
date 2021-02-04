@@ -271,11 +271,11 @@ impl PPU {
             // Calculates foreground (sprite) color
             if self.registers.get_mask_flag(MaskFlag::ShowSprites) {
                 self.is_sprite_0_rendered = false;
-                for i in (0..self.current_sprite_count).rev() {
+                for i in 0..self.current_sprite_count {
                     if self.sprite_x[i as usize] == 0 {
                         fg_palette = (self.sprite_attributes[i as usize] & 0x03) + 0x04;
                         fg_pattern = self.get_sprite_shifters_value(i as usize);
-                        fg_priority = (self.sprite_attributes[i as usize] & (SpriteAttribute::Priority as u8)) == 1;
+                        fg_priority = (self.sprite_attributes[i as usize] & (SpriteAttribute::Priority as u8)) == 0;
 
                         if fg_pattern !=0 {
                             if i ==0 {
@@ -304,17 +304,18 @@ impl PPU {
             }
             else {
                 if fg_priority {
-                    palette = bg_palette;
-                    pattern = bg_pattern;
-                }
-                else {
                     palette = fg_palette;
                     pattern = fg_pattern;
+                }
+                else {
+                    palette = bg_palette;
+                    pattern = bg_pattern;
                 }
 
                 // Detect sprite 0 hit
                 if self.current_contains_sprite_0 && self.is_sprite_0_rendered {
-                    if self.registers.get_mask_flag(MaskFlag::ShowBackground) && self.registers.get_mask_flag(MaskFlag::ShowSprites) {
+                    if self.registers.get_mask_flag(MaskFlag::ShowBackground)
+                        && self.registers.get_mask_flag(MaskFlag::ShowSprites) {
                         if self.cycles != 256 {
                             if !self.registers.get_mask_flag(MaskFlag::ShowLeftScreenBackground)
                                 || !self.registers.get_mask_flag(MaskFlag::ShowLeftScreenSprites) {

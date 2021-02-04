@@ -102,7 +102,6 @@ fn main() {
 
     let mut input_helper = WinitInputHelper::new();
     let main_pixels = p_gui.clone().lock().unwrap().main_pixels.clone();
-    let inputs = p_gui.clone().lock().unwrap().inputs.clone();
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 

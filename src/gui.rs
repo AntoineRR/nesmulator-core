@@ -33,8 +33,7 @@ pub struct GUI {
     pub main_pixels: Arc<Mutex<Pixels<Window>>>,
     pub debug_pixels: Option<Pixels<Window>>,
     // Debug
-    pub debug: bool,
-    pub frame_ready: bool
+    pub debug: bool
 }
 
 impl GUI {
@@ -57,8 +56,7 @@ impl GUI {
             inputs: inputs.clone(),
             main_pixels,
             debug_pixels: None,
-            debug: false,
-            frame_ready: false
+            debug: false
         }
     }
 
@@ -99,6 +97,5 @@ impl GUI {
     // Updates what is displayed on the screen
     pub fn update(&mut self) {
         self.main_window.request_redraw();
-        self.frame_ready = true;
     }
 }
