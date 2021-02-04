@@ -228,11 +228,11 @@ impl CPU {
                 self.pc += 1;
                 let hi: u8 = self.read_bus(self.pc);
                 let address: u16 = lo as u16 + ((hi as u16) << 8);
-                let result: u16 = address + self.x as u16;
-                if (self.require_add_cycle) && ((result & 0xFF00) != (address & 0xFF00)) {
+                let result: u32 = address as u32 + self.x as u32;
+                if (self.require_add_cycle) && ((result as u16 & 0xFF00) != (address & 0xFF00)) {
                     self.cycles += 1;
                 }
-                result
+                result as u16
             },
             am::AbsoluteY => {
                 self.pc += 1;
@@ -304,7 +304,7 @@ impl CPU {
         self.set_flag(Flag::Carry, (result & 0x0100) == 0x0100);
         self.set_flag(Flag::Zero, self.a == 0x00);
         self.set_flag(Flag::Negative, (self.a & 0x80) == 0x80);
-        self.set_flag(Flag::Overflow, !(previous_a ^ data) & (previous_a ^ (result as u8)) == 0x80);
+        self.set_flag(Flag::Overflow, (previous_a ^ data) & 0x80 == 0 && (previous_a ^ result as u8) & 0x80 == 0x80);
     }
 
     // Logical and
@@ -1099,8 +1099,8 @@ impl CPU {
         let result: u16 = ((self.x as u16) & (self.a as u16)) + (data as u16);
         self.x = result as u8;
         self.set_flag(Flag::Carry, (result & 0x0100) == 0x0100);
-        self.set_flag(Flag::Zero, result == 0x00);
-        self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
+        self.set_flag(Flag::Zero, result as u8 == 0x00);
+        self.set_flag(Flag::Negative, (result as u8 & 0x80) == 0x80);
     }
 
     // M = A&X&(h[M]+1)

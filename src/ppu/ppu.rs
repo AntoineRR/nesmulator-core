@@ -59,7 +59,7 @@ pub struct PPU {
     pub scanline: u16,
     pub odd_frame: bool,
 
-    pub total_clock: u32,
+    pub total_clock: u64,
 
     // GUI
     pub p_gui: Arc<Mutex<GUI>>

@@ -30,7 +30,7 @@ fn main() {
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/cpu_timing_test6/cpu_timing_test.nes");
     
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/nes_instr_test/rom_singles/01-implied.nes");
-    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/nes_instr_test/rom_singles/02-immediate.nes");
+    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/nes_instr_test/rom_singles/02-immediate.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/nes_instr_test/rom_singles/03-zero_page.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/nes_instr_test/rom_singles/04-zp_xy.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/nes_instr_test/rom_singles/05-absolute.nes");

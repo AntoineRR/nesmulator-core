@@ -44,7 +44,9 @@ You will need a rust stable installation.
 
 The logs of the CPU and the PPU, including the disassembly of the ROM code, can be displayed in a similar manner to [Nintendulator](https://www.qmtpro.com/~nes/nintendulator/). This has been useful to compare the logs of my emulator to the ones from Nintendulator when nestest.nes is run on automation. The logs are exactly the same on both emulators.
 
-I used several test ROMs for testing my emulator. Those can be found [here](https://github.com/christopherpow/nes-test-roms). Here are the results :
+I used several test ROMs for testing my emulator. Those can be found [here](https://github.com/christopherpow/nes-test-roms). 
+Some nes_instr_test ROMs fail because some undocumented opcodes are not implemented correctly for now.
+Here are the results :
 
 ### CPU
 
@@ -101,7 +103,6 @@ I used several test ROMs for testing my emulator. Those can be found [here](http
 
 ## To do
 
-* Correct the CPU instructions failing on the nes_instr_test ROMs
 * Add APU emulation for sound
 * Add mappers
 
