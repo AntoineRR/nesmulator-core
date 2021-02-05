@@ -14,10 +14,9 @@ pub const STACK_OFFSET: u16 = 0x100;
 
 // ===== BUS STRUCT =====
 
-#[derive(Debug)]
 pub struct Bus {
     pub data: [u8;0x10000],
-    pub o_p_mapper: Option<Arc<Mutex<Mapper>>>,
+    pub o_p_mapper: Option<Box<dyn Mapper>>,
     pub p_ppu: Arc<Mutex<PPU>>,
     
     pub controllers: [Controller;2]
@@ -59,7 +58,7 @@ impl Bus {
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => value = self.data[address as usize],
             // 0x4021 - 0xFFFF / Handled by the mapper
-            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().lock().unwrap().bus_read(address)
+            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().prg_rom_read(address)
         }
         value
     }
@@ -92,7 +91,7 @@ impl Bus {
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => value = self.data[address as usize],
             // 0x4021 - 0xFFFF / Handled by the mapper
-            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().lock().unwrap().bus_read(address)
+            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().prg_rom_read(address)
         }
         value
     }
@@ -129,7 +128,7 @@ impl Bus {
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => self.data[address as usize] = value,
             // 0x4021 - 0xFFFF / Handled by the mapper
-            0x4021..=0xFFFF => self.o_p_mapper.as_ref().unwrap().lock().unwrap().bus_write(address, value)
+            0x4021..=0xFFFF => self.o_p_mapper.as_mut().unwrap().prg_rom_write(address, value)
         }
     }
 }

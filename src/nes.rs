@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use cartridge::{cartridge::Cartridge, mapper::Mapper};
+use cartridge::cartridge::Cartridge;
 
 use crate::{cartridge, cpu::{cpu::CPU, enums::Interrupt}, gui::GUI};
 use crate::bus::Bus;
@@ -12,7 +12,6 @@ use crate::ppu::ppu::PPU;
 
 // ===== NES STRUCT =====
 
-#[derive(Debug)]
 pub struct NES {
     // NES components
     pub p_bus: Arc<Mutex<Bus>>,
@@ -54,9 +53,8 @@ impl NES {
     // Simulates the insertion of a NES cartridge
     // Sets the mapper that is needed to read the data of the cartridge
     pub fn insert_cartdrige(&mut self, cartridge: Cartridge) {
-        let o_p_mapper: Option<Arc<Mutex<Mapper>>> = Some(Arc::new(Mutex::new(Mapper::new(cartridge))));
-        self.p_bus.lock().unwrap().o_p_mapper = o_p_mapper.clone();
-        self.p_ppu.lock().unwrap().ppu_bus.o_p_mapper = o_p_mapper.clone();
+        self.p_bus.lock().unwrap().o_p_mapper = Some(cartridge.mapper.clone());
+        self.p_ppu.lock().unwrap().ppu_bus.o_p_mapper = Some(cartridge.mapper.clone());
     }
 
     // Resets the CPU and launches the game

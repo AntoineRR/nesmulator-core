@@ -44,7 +44,7 @@ fn main() {
     // PPU TEST ROMS
 
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/palette_ram.nes");
-    // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/sprite_ram.nes");
+    //let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/sprite_ram.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/vbl_clear_time.nes");
     // let path: &Path = Path::new("../ROM/Tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/vram_access.nes");
 
@@ -79,7 +79,7 @@ fn main() {
 
     // GAMES
 
-    let path: &Path = Path::new("../ROM/smb.nes");
+    let path: &Path = Path::new("../ROM/zelda.nes");
 
     let cartridge: Cartridge = Cartridge::new(path);
 

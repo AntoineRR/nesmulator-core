@@ -15,7 +15,6 @@ use std::fmt::Write;
 // ===== CPU STRUCT =====
 
 // This struct contains the various registers of the CPU
-#[derive(Debug)]
 pub struct CPU {
     // Registers
     pub a: u8, // accumulator
@@ -1244,7 +1243,7 @@ impl CPU {
                 }
             },
             am::AbsoluteX => {
-                let address: u16 = parameters[0] as u16 + ((parameters[1] as u16) << 8) + self.x as u16;
+                let address: u16 = (parameters[0] as u32 + ((parameters[1] as u32) << 8) + self.x as u32) as u16;
                 let value: u8 = self.read_only_bus(address);
                 dissassembly.push_str(&format!("${:02X}{:02X},X @ {:04X} = {:02X}",parameters[1],parameters[0],address,value));
             },

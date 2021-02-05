@@ -16,7 +16,7 @@ I would also like to pass most of the tests from some tests roms listed in the N
 ## Current progress
 
 The CPU is emulated and a cartridge in the iNES format can be loaded into the emulator.
-For now, only cartridges using mapper 0 can be read.
+For now, only cartridges using mapper 0, 1, 2 and 3 can be read.
 The PPU background and sprite display is emulated.
 The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels), and displays the game screen.
 The first controller is emulated too (see controls).
@@ -91,7 +91,7 @@ Here are the results :
 * [X] sprite_hit_tests_2005.10.05/05.left_clip
 * [X] sprite_hit_tests_2005.10.05/06.right_edge
 * [X] sprite_hit_tests_2005.10.05/07.screen_bottom
-* [ ] sprite_hit_tests_2005.10.05/08.double_height
+* [X] sprite_hit_tests_2005.10.05/08.double_height
 * [X] sprite_hit_tests_2005.10.05/09.timing_basics
 * [X] sprite_hit_tests_2005.10.05/10.timing_order
 * [X] sprite_hit_tests_2005.10.05/11.edge_timing
@@ -103,8 +103,8 @@ Here are the results :
 
 ## To do
 
+* Correct scroll for MMC1
 * Add APU emulation for sound
-* Add mappers
 
 ## References
 

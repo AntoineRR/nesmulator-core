@@ -2,9 +2,7 @@
 
 // ===== IMPORTS =====
 
-use std::sync::{Arc, Mutex};
-
-use crate::cartridge::mapper::Mapper;
+use crate::cartridge::mapper::{Mapper, Mirroring};
 
 use super::enums::VRAMAddressMask;
 
@@ -48,7 +46,6 @@ impl VRAMAddress {
     }
 }
 
-#[derive(Debug)]
 pub struct PPUBus {
     // Pattern tables
     pub pattern_tables: [[u8;0x1000];2],
@@ -64,7 +61,7 @@ pub struct PPUBus {
     pub tmp_vram_address: VRAMAddress,
 
     // Mapper
-    pub o_p_mapper: Option<Arc<Mutex<Mapper>>>
+    pub o_p_mapper: Option<Box<dyn Mapper>>
 }
 
 impl PPUBus {
@@ -86,7 +83,7 @@ impl PPUBus {
     pub fn read(&self, address: u16) -> u8 {
         let value: u8;
         match address {
-            0x0000..=0x1FFF => value = self.o_p_mapper.as_ref().unwrap().lock().unwrap().ppu_read(address),
+            0x0000..=0x1FFF => value = self.o_p_mapper.as_ref().unwrap().chr_rom_read(address),
             0x2000..=0x2FFF => value = self.read_name_tables(address),
             0x3000..=0x3EFF => value = self.read_name_tables(address & 0x2FFF),
             0x3F00..=0x3FFF => value = self.read_palette_table(address & 0x001F),
@@ -98,23 +95,30 @@ impl PPUBus {
     pub fn read_name_tables(&self, address: u16) -> u8 {
         let value: u8;
         // Vertical mirroring
-        if self.o_p_mapper.as_ref().unwrap().lock().unwrap().mirroring {
-            match address {
-                0x2000..=0x23FF => value = self.name_tables[0][(address & 0x03FF) as usize],
-                0x2400..=0x27FF => value = self.name_tables[1][(address & 0x03FF) as usize],
-                0x2800..=0x2BFF => value = self.name_tables[0][(address & 0x03FF) as usize],
-                0x2C00..=0x2FFF => value = self.name_tables[1][(address & 0x03FF) as usize],
-                _ => panic!("Invalid nametable address : {:#X}",address)
-            }
-        }
-        // Horizontal mirroring or controlled by the mapper
-        else {
-            match address {
-                0x2000..=0x23FF => value = self.name_tables[0][(address & 0x03FF) as usize],
-                0x2400..=0x27FF => value = self.name_tables[0][(address & 0x03FF) as usize],
-                0x2800..=0x2BFF => value = self.name_tables[1][(address & 0x03FF) as usize],
-                0x2C00..=0x2FFF => value = self.name_tables[1][(address & 0x03FF) as usize],
-                _ => panic!("Invalid nametable address : {:#X}",address)
+        match self.o_p_mapper.as_ref().unwrap().get_mirroring() {
+            Mirroring::Horizontal => {
+                match address {
+                    0x2000..=0x23FF => value = self.name_tables[0][(address & 0x03FF) as usize],
+                    0x2400..=0x27FF => value = self.name_tables[0][(address & 0x03FF) as usize],
+                    0x2800..=0x2BFF => value = self.name_tables[1][(address & 0x03FF) as usize],
+                    0x2C00..=0x2FFF => value = self.name_tables[1][(address & 0x03FF) as usize],
+                    _ => panic!("Invalid nametable address : {:#X}",address)
+                }
+            },
+            Mirroring::Vertical => {
+                match address {
+                    0x2000..=0x23FF => value = self.name_tables[0][(address & 0x03FF) as usize],
+                    0x2400..=0x27FF => value = self.name_tables[1][(address & 0x03FF) as usize],
+                    0x2800..=0x2BFF => value = self.name_tables[0][(address & 0x03FF) as usize],
+                    0x2C00..=0x2FFF => value = self.name_tables[1][(address & 0x03FF) as usize],
+                    _ => panic!("Invalid nametable address : {:#X}",address)
+                }
+            },
+            Mirroring::OneScreenLower => {
+                value = self.name_tables[0][(address & 0x03FF) as usize];
+            },
+            Mirroring::OneScreenUpper => {
+                value = self.name_tables[1][(address & 0x03FF) as usize];
             }
         }
         value
@@ -134,7 +138,7 @@ impl PPUBus {
 
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
-            0x0000..=0x1FFF => self.o_p_mapper.as_mut().unwrap().lock().unwrap().ppu_write(address, value),
+            0x0000..=0x1FFF => self.o_p_mapper.as_mut().unwrap().chr_rom_write(address, value),
             0x2000..=0x2FFF => self.write_name_tables(address, value),
             0x3000..=0x3EFF => self.write_name_tables(address & 0x2FFF, value),
             0x3F00..=0x3FFF => self.write_palette_table(address & 0x001F, value),
@@ -144,23 +148,30 @@ impl PPUBus {
 
     pub fn write_name_tables(&mut self, address: u16, value: u8) {
         // Vertical mirroring
-        if self.o_p_mapper.as_ref().unwrap().lock().unwrap().mirroring {
-            match address {
-                0x2000..=0x23FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
-                0x2400..=0x27FF => self.name_tables[1][(address & 0x03FF) as usize] = value,
-                0x2800..=0x2BFF => self.name_tables[0][(address & 0x03FF) as usize] = value,
-                0x2C00..=0x2FFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
-                _ => panic!("Invalid nametable address : {:#X}",address)
-            }
-        }
-        // Horizontal mirroring or controlled by the mapper
-        else {
-            match address {
-                0x2000..=0x23FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
-                0x2400..=0x27FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
-                0x2800..=0x2BFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
-                0x2C00..=0x2FFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
-                _ => panic!("Invalid nametable address : {:#X}",address)
+        match self.o_p_mapper.as_ref().unwrap().get_mirroring() {
+            Mirroring::Horizontal => {
+                match address {
+                    0x2000..=0x23FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
+                    0x2400..=0x27FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
+                    0x2800..=0x2BFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
+                    0x2C00..=0x2FFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
+                    _ => panic!("Invalid nametable address : {:#X}",address)
+                }
+            },
+            Mirroring::Vertical => {
+                match address {
+                    0x2000..=0x23FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
+                    0x2400..=0x27FF => self.name_tables[1][(address & 0x03FF) as usize] = value,
+                    0x2800..=0x2BFF => self.name_tables[0][(address & 0x03FF) as usize] = value,
+                    0x2C00..=0x2FFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
+                    _ => panic!("Invalid nametable address : {:#X}",address)
+                }
+            },
+            Mirroring::OneScreenLower => {
+                self.name_tables[0][(address & 0x03FF) as usize] = value;
+            },
+            Mirroring::OneScreenUpper => {
+                self.name_tables[1][(address & 0x03FF) as usize] = value;
             }
         }
     }

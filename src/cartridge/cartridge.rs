@@ -5,6 +5,8 @@
 
 use std::{fs::File, io::Read, path::Path, vec};
 
+use super::{mapper::{Mapper, Mirroring}, mapper_000::Mapper0, mapper_001::Mapper1, mapper_002::Mapper2, mapper_003::Mapper3};
+
 // Header of the iNES format
 #[derive(Debug)]
 pub struct INesHeader {
@@ -33,11 +35,9 @@ impl INesHeader {
     }
 }
 
-#[derive(Debug)]
 pub struct Cartridge {
     pub header: INesHeader,
-    pub prg_rom: Vec<[u8;16*1024]>,
-    pub chr_rom: Vec<[u8;8*1024]>
+    pub mapper: Box<dyn Mapper>,
 }
 
 impl Cartridge {
@@ -58,44 +58,57 @@ impl Cartridge {
             Ok(_) => ()
         }
 
-        let mut _header: INesHeader = INesHeader::new();
-        _header.name = [buffer[0],buffer[1],buffer[2]];
-        _header.identifier = buffer[3];
-        _header.n_prg_rom = buffer[4];
-        _header.n_chr_rom = buffer[5];
-        _header.control_1 = buffer[6];
-        _header.control_2 = buffer[7];
-        _header.n_ram_banks = buffer[8];
+        let mut header: INesHeader = INesHeader::new();
+        header.name = [buffer[0],buffer[1],buffer[2]];
+        header.identifier = buffer[3];
+        header.n_prg_rom = buffer[4];
+        header.n_chr_rom = buffer[5];
+        header.control_1 = buffer[6];
+        header.control_2 = buffer[7];
+        header.n_ram_banks = buffer[8];
 
         // Stores the prg_rom
-        let mut _prg_rom = vec![];
+        let mut prg_rom = vec![];
         let mut buffer: [u8;16*1024] = [0;16*1024];
-        for _i in 0.._header.n_prg_rom {
+        for _i in 0..header.n_prg_rom {
             match file.read(&mut buffer) {
                 Err(why) => panic!("Couldn't read {}: {}", path.display(), why),
                 Ok(_) => ()
             }
-            _prg_rom.push(buffer);
+            prg_rom.push(buffer);
         }
 
         // Stores the chr_rom
-        let mut _chr_rom = vec![];
+        let mut chr_rom = vec![];
         let mut buffer: [u8;8*1024] = [0;8*1024];
-        for _i in 0.._header.n_chr_rom {
+        for _i in 0..header.n_chr_rom {
             match file.read(&mut buffer) {
                 Err(why) => panic!("Couldn't read {}: {}", path.display(), why),
                 Ok(_) => ()
             }
-            _chr_rom.push(buffer);
+            chr_rom.push(buffer);
         }
-        if _chr_rom.len() == 0 {
-            _chr_rom.push(buffer);
+        if chr_rom.len() == 0 {
+            chr_rom.push(buffer);
         }
 
+        let mirroring: Mirroring = match (header.control_1 & 0x01) == 1 {
+            false => Mirroring::Horizontal,
+            true => Mirroring::Vertical
+        };
+        
+        let number: u8 = (header.control_1 >> 4) + ((header.control_2 >> 4) << 4);
+        let mapper: Box<dyn Mapper> = match number {
+            0 => Box::new(Mapper0::new(prg_rom, chr_rom, mirroring)),
+            1 => Box::new(Mapper1::new(prg_rom, chr_rom, mirroring)),
+            2 => Box::new(Mapper2::new(prg_rom, chr_rom, mirroring)),
+            3 => Box::new(Mapper3::new(prg_rom, chr_rom, mirroring)),
+            _ => panic!("Mapper {} is not implemented", number)
+        };
+
         Cartridge {
-            header: _header,
-            prg_rom: _prg_rom,
-            chr_rom: _chr_rom
+            header,
+            mapper
         }
     }
 }

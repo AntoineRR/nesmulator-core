@@ -16,7 +16,6 @@ const MAX_SCANLINES: u16 = 261;
 
 // ===== STRUCT =====
 
-#[derive(Debug)]
 pub struct PPU {
     // PPU registers
     pub registers: Registers,
@@ -394,9 +393,15 @@ impl PPU {
         // 3 cycles are available for each 64 sprites
         if (self.cycles - 65) % 3 == 0 {
             let sprite_index: usize = ((self.cycles - 65) / 3) as usize;
+            let sprite_size: u16;
+            match self.registers.get_control_flag(ControlFlag::SpriteSize) {
+                0 => sprite_size = 8,
+                1 => sprite_size = 16,
+                _ => panic!("Invalid sprite size value")
+            }
             // If the sprite should appear on the next scanline
             if self.scanline % 261 >= (self.oam.primary[sprite_index].y as u16)
-                && self.scanline % 261 < (self.oam.primary[sprite_index].y as u16) + 8 {
+                && self.scanline % 261 < (self.oam.primary[sprite_index].y as u16) + sprite_size {
                 // If more than 8 sprites has been found
                 if self.next_sprite_count >= 8 {
                     if self.registers.get_mask_flag(MaskFlag::ShowSprites) || self.registers.get_mask_flag(MaskFlag::ShowBackground) {
@@ -438,14 +443,14 @@ impl PPU {
                         // Do not flip sprite vertically
                         if !v_flip {
                             lo_address = ((self.registers.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
-                                + ((self.oam.secondary[sprite_index].id as u16) << 4)
-                                + ((self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16))) as u16;
+                                | ((self.oam.secondary[sprite_index].id as u16) << 4)
+                                | ((self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16))) as u16;
                         }
                         // Flip sprite vertically
                         else {
                             lo_address = ((self.registers.get_control_flag(ControlFlag::SpritePatternTableAddress) as u16) << 12)
-                            + ((self.oam.secondary[sprite_index].id as u16) << 4)
-                            + ((7 - (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)))) as u16;
+                                | ((self.oam.secondary[sprite_index].id as u16) << 4)
+                                | ((7 - (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)))) as u16;
                         }
                     }
                     // 8x16 sprites
@@ -453,31 +458,31 @@ impl PPU {
                         // Do not flip sprite vertically
                         if !v_flip {
                             // First half of the sprite
-                            if self.scanline + 1 - (self.oam.secondary[sprite_index].y as u16) < 8 {
+                            if self.scanline - (self.oam.secondary[sprite_index].y as u16) < 8 {
                                 lo_address = (((self.oam.secondary[sprite_index].id & 0x01) as u16) << 12)
-                                    + (((self.oam.secondary[sprite_index].id & 0xFE) as u16) << 4)
-                                    + (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)) as u16;
+                                    | (((self.oam.secondary[sprite_index].id & 0xFE) as u16) << 4)
+                                    | ((self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)) & 0x07) as u16;
                             }
                             // Second half of the sprite
                             else {
                                 lo_address = (((self.oam.secondary[sprite_index].id & 0x01) as u16) << 12)
-                                    + ((((self.oam.secondary[sprite_index].id & 0xFE) as u16) + 1) << 4)
-                                    + ((self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)) & 0x07) as u16;
+                                    | ((((self.oam.secondary[sprite_index].id & 0xFE) as u16) + 1) << 4)
+                                    | ((self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)) & 0x07) as u16;
                             }
                         }
                         // Flip sprite vertically
                         else {
                             // Second half of the sprite
-                            if self.scanline + 1 - (self.oam.secondary[sprite_index].y as u16) < 8 {
+                            if self.scanline - (self.oam.secondary[sprite_index].y as u16) < 8 {
                                 lo_address = (((self.oam.secondary[sprite_index].id & 0x01) as u16) << 12)
-                                    + ((((self.oam.secondary[sprite_index].id & 0xFE) as u16) + 1) << 4)
-                                    + ((7 - (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16))) & 0x07) as u16;
+                                    | ((((self.oam.secondary[sprite_index].id & 0xFE) as u16) + 1) << 4)
+                                    | ((7 - (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16))) & 0x07) as u16;
                             }
                             // First half of the sprite
                             else {
                                 lo_address = (((self.oam.secondary[sprite_index].id & 0x01) as u16) << 12)
-                                    + (((self.oam.secondary[sprite_index].id & 0xFE) as u16) << 4) as u16
-                                    + (7 - (self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16))) as u16;
+                                    | (((self.oam.secondary[sprite_index].id & 0xFE) as u16) << 4) as u16
+                                    | (7 - ((self.scanline as i16 - (self.oam.secondary[sprite_index].y as i16)) & 0x07)) as u16;
                             }
                         }
                     }
