@@ -33,12 +33,15 @@ pub struct CPU {
     // Total clock cycles from the start of the CPU
     pub total_clock: u64,
 
+    // Display the log of the CPU
+    pub display_logs: bool,
+
     // pointer to the data bus where we read from and write to
     pub p_bus: Arc<Mutex<Bus>>
 }
 
 impl CPU {
-    pub fn new(p_bus: Arc<Mutex<Bus>>) -> Self {
+    pub fn new(p_bus: Arc<Mutex<Bus>>, display_logs: bool) -> Self {
         CPU {
             a: 0,
             x: 0,
@@ -52,6 +55,8 @@ impl CPU {
             require_add_cycle: false,
 
             total_clock: 0,
+
+            display_logs,
 
             p_bus
         }
@@ -161,7 +166,11 @@ impl CPU {
         if self.cycles == 0 {
             // Get operation code
             let opcode: u8 = self.read_bus(self.pc);
-            //self.display_cpu_log(opcode); // Uncomment for debugging
+
+            // Logs
+            if self.display_logs {
+                self.display_cpu_log(opcode);
+            }
             
             // Get instruction information for the operation code
             let instruction: &CpuInstruction = &INSTRUCTIONS[opcode as usize];

@@ -5,6 +5,8 @@
 
 use std::{fs::File, io::Read, path::Path, vec};
 
+use log::{debug, info};
+
 use super::{mapper::{Mapper, Mirroring}, mapper_000::Mapper0, mapper_001::Mapper1, mapper_002::Mapper2, mapper_003::Mapper3};
 
 // Header of the iNES format
@@ -42,6 +44,9 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn new(path: &Path) -> Self {
+
+        info!("Loading {}",path.display());
+
         // Opens file in read only mode
         let mut file = match File::open(path) {
             Err(why) => panic!("Couldn't open {}: {}", path.display(), why),
@@ -66,6 +71,8 @@ impl Cartridge {
         header.control_1 = buffer[6];
         header.control_2 = buffer[7];
         header.n_ram_banks = buffer[8];
+
+        debug!("{} PRG ROM | {} CHR ROM",header.n_prg_rom,header.n_chr_rom);
 
         // Stores the prg_rom
         let mut prg_rom = vec![];
@@ -98,6 +105,9 @@ impl Cartridge {
         };
         
         let number: u8 = (header.control_1 >> 4) + ((header.control_2 >> 4) << 4);
+
+        debug!("Using mapper {}",number);
+
         let mapper: Box<dyn Mapper> = match number {
             0 => Box::new(Mapper0::new(prg_rom, chr_rom, mirroring)),
             1 => Box::new(Mapper1::new(prg_rom, chr_rom, mirroring)),

@@ -169,8 +169,10 @@ impl PPUBus {
             },
             Mirroring::OneScreenLower => {
                 self.name_tables[0][(address & 0x03FF) as usize] = value;
+                self.name_tables[1][(address & 0x03FF) as usize] = value;
             },
             Mirroring::OneScreenUpper => {
+                self.name_tables[0][(address & 0x03FF) as usize] = value;
                 self.name_tables[1][(address & 0x03FF) as usize] = value;
             }
         }
