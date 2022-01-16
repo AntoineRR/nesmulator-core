@@ -28,10 +28,10 @@ Here are the results :
 ### PPU
 
 * [X] blargg_ppu_tests_2005.09.15b/palette_ram
-* [ ] blargg_ppu_tests_2005.09.15b/sprite_ram
+* [X] blargg_ppu_tests_2005.09.15b/sprite_ram
 * [ ] blargg_ppu_tests_2005.09.15b/vbl_clear_time
 * [X] blargg_ppu_tests_2005.09.15b/vram_access
-* [ ] ppu_open_bus/ppu_open_bus
+* [X] ppu_open_bus/ppu_open_bus
 * [ ] scanline/scanline
 * [X] vbl_nmi_timing/1.frame_basics
 * [ ] vbl_nmi_timing/2.vbl_timing
@@ -41,7 +41,7 @@ Here are the results :
 * [ ] vbl_nmi_timing/6.nmi_disable
 * [ ] vbl_nmi_timing/7.nmi_timing
 * [X] oam_read/oam_read
-* [ ] oam_stress/oam_stress
+* [X] oam_stress/oam_stress
 * [X] sprite_hit_tests_2005.10.05/01.basics
 * [X] sprite_hit_tests_2005.10.05/02.alignment
 * [X] sprite_hit_tests_2005.10.05/03.corners
@@ -54,7 +54,7 @@ Here are the results :
 * [X] sprite_hit_tests_2005.10.05/10.timing_order
 * [X] sprite_hit_tests_2005.10.05/11.edge_timing
 * [X] sprite_overflow_tests/1.Basics
-* [ ] sprite_overflow_tests/2.Details
+* [X] sprite_overflow_tests/2.Details
 * [ ] sprite_overflow_tests/3.Timing
 * [ ] sprite_overflow_tests/4.Obscure
-* [ ] sprite_overflow_tests/5.Emulator
+* [X] sprite_overflow_tests/5.Emulator

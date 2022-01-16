@@ -2,7 +2,7 @@
 
 // ===== IMPORTS =====
 
-use std::sync::{Arc, Mutex};
+use std::{cell::RefCell, rc::Rc};
 
 use cartridge::mapper::Mapper;
 
@@ -15,21 +15,21 @@ pub const STACK_OFFSET: u16 = 0x100;
 // ===== BUS STRUCT =====
 
 pub struct Bus {
-    pub data: [u8;0x10000],
+    pub data: [u8; 0x10000],
     pub o_p_mapper: Option<Box<dyn Mapper>>,
-    pub p_ppu: Arc<Mutex<PPU>>,
-    
-    pub controllers: [Controller;2]
+    pub p_ppu: Rc<RefCell<PPU>>,
+
+    pub controllers: [Controller; 2],
 }
 
 impl Bus {
-    pub fn new(p_ppu: Arc<Mutex<PPU>>) -> Self {
+    pub fn new(p_ppu: Rc<RefCell<PPU>>) -> Self {
         Bus {
-            data: [0;0x10000], // 64KB of ram
-            o_p_mapper:None,
+            data: [0; 0x10000], // 64KB of ram
+            o_p_mapper: None,
             p_ppu,
-            
-            controllers: [Controller::new();2]
+
+            controllers: [Controller::new(); 2],
         }
     }
 
@@ -42,13 +42,13 @@ impl Bus {
             // 0x0800 - 0x1FFF / CPU RAM Mirrors
             0x0800..=0x1FFF => value = self.data[(address & 0x07FF) as usize],
             // 0x2000 - 0x2007 / NES PPU Registers
-            0x2000..=0x2007 => value = self.p_ppu.lock().unwrap().read_register(address),
+            0x2000..=0x2007 => value = self.p_ppu.borrow_mut().read_register(address),
             // 0x2008 - 0x3FFF / NES PPU Registers Mirrors
-            0x2008..=0x3FFF => value = self.p_ppu.lock().unwrap().read_register(address & 0x2007),
+            0x2008..=0x3FFF => value = self.p_ppu.borrow_mut().read_register(address & 0x2007),
             // 0x4000 - 0x4013 / NES APU I/O Registers
             0x4000..=0x4013 => value = self.data[address as usize],
             // 0x4014 / NES PPU Register
-            0x4014 => value = self.p_ppu.lock().unwrap().read_register(address),
+            0x4014 => value = self.p_ppu.borrow_mut().read_register(address),
             // 0x4015 / NES APU Register
             0x4015 => value = self.data[address as usize],
             // 0x4016 / First controller
@@ -58,7 +58,7 @@ impl Bus {
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => value = self.data[address as usize],
             // 0x4021 - 0xFFFF / Handled by the mapper
-            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().prg_rom_read(address)
+            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().prg_rom_read(address),
         }
         value
     }
@@ -75,13 +75,31 @@ impl Bus {
             // 0x0800 - 0x1FFF / CPU RAM Mirrors
             0x0800..=0x1FFF => value = self.data[(address & 0x07FF) as usize],
             // 0x2000 - 0x2007 / NES PPU Registers
-            0x2000..=0x2007 => value = self.p_ppu.lock().unwrap().registers.read_register_without_modification(address),
+            0x2000..=0x2007 => {
+                value = self
+                    .p_ppu
+                    .borrow_mut()
+                    .registers
+                    .read_register_without_modification(address)
+            }
             // 0x2008 - 0x3FFF / NES PPU Registers Mirrors
-            0x2008..=0x3FFF => value = self.p_ppu.lock().unwrap().registers.read_register_without_modification(address & 0x2007),
+            0x2008..=0x3FFF => {
+                value = self
+                    .p_ppu
+                    .borrow_mut()
+                    .registers
+                    .read_register_without_modification(address & 0x2007)
+            }
             // 0x4000 - 0x4013 / NES APU I/O Registers
             0x4000..=0x4013 => value = self.data[address as usize],
             // 0x4014 / NES PPU Register
-            0x4014 => value = self.p_ppu.lock().unwrap().registers.read_register_without_modification(address),
+            0x4014 => {
+                value = self
+                    .p_ppu
+                    .borrow_mut()
+                    .registers
+                    .read_register_without_modification(address)
+            }
             // 0x4015 / NES APU Register
             0x4015 => value = self.data[address as usize],
             // 0x4016 / First controller
@@ -91,7 +109,7 @@ impl Bus {
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => value = self.data[address as usize],
             // 0x4021 - 0xFFFF / Handled by the mapper
-            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().prg_rom_read(address)
+            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().prg_rom_read(address),
         }
         value
     }
@@ -104,13 +122,16 @@ impl Bus {
             // 0x0800 - 0x1FFF / CPU RAM Mirrors
             0x0800..=0x1FFF => self.data[(address & 0x07FF) as usize] = value,
             // 0x2000 - 0x2007 / NES PPU Registers
-            0x2000..=0x2007 => self.p_ppu.lock().unwrap().write_register(address, value),
+            0x2000..=0x2007 => self.p_ppu.borrow_mut().write_register(address, value),
             // 0x2008 - 0x3FFF / NES PPU Registers Mirrors
-            0x2008..=0x3FFF => self.p_ppu.lock().unwrap().write_register(address & 0x2007, value),
+            0x2008..=0x3FFF => self
+                .p_ppu
+                .borrow_mut()
+                .write_register(address & 0x2007, value),
             // 0x4000 - 0x4013 / NES APU I/O Registers
             0x4000..=0x4013 => self.data[address as usize] = value,
             // 0x4014 / NES PPU Register
-            0x4014 => self.p_ppu.lock().unwrap().write_register(address, value),
+            0x4014 => self.p_ppu.borrow_mut().write_register(address, value),
             // 0x4015 / NES APU Register
             0x4015 => self.data[address as usize] = value,
             // 0x4016 / First controller
@@ -128,7 +149,11 @@ impl Bus {
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => self.data[address as usize] = value,
             // 0x4021 - 0xFFFF / Handled by the mapper
-            0x4021..=0xFFFF => self.o_p_mapper.as_mut().unwrap().prg_rom_write(address, value)
+            0x4021..=0xFFFF => self
+                .o_p_mapper
+                .as_mut()
+                .unwrap()
+                .prg_rom_write(address, value),
         }
     }
 }

@@ -1,12 +1,18 @@
-mod cpu;
 mod bus;
 mod cartridge;
-mod ppu;
-mod nes;
-mod gui;
 mod controllers;
+mod cpu;
+mod gui;
+mod nes;
+mod ppu;
 
-use std::{path::Path, sync::{Arc, Mutex}, thread};
+use std::{
+    cell::RefCell,
+    path::Path,
+    rc::Rc,
+    sync::{Arc, Mutex},
+    thread,
+};
 
 use bus::Bus;
 use cartridge::cartridge::Cartridge;
@@ -14,15 +20,17 @@ use clap::{App, Arg};
 use controllers::ControllerInput;
 use cpu::cpu::CPU;
 use env_logger::Env;
+use gui::GUI;
 use log::{error, warn};
 use nes::NES;
 use ppu::ppu::PPU;
-use gui::GUI;
-use winit::{event::{Event, VirtualKeyCode}, event_loop::{ControlFlow, EventLoop}};
+use winit::{
+    event::{Event, VirtualKeyCode},
+    event_loop::{ControlFlow, EventLoop},
+};
 use winit_input_helper::WinitInputHelper;
 
 fn main() {
-
     // ===== APP CREATION AND ARGUMENT PARSING =====
 
     let matches = App::new("Nesmulator")
@@ -43,18 +51,18 @@ fn main() {
                 .long("debug")
                 .value_name("LEVEL")
                 .takes_value(true)
-                .about("Turn debugging information on")
+                .about("Turn debugging information on"),
         )
         .arg(
             Arg::new("log")
                 .short('l')
                 .long("log")
-                .about("Display the CPU logs to the console")
+                .about("Display the CPU logs to the console"),
         )
         .get_matches();
 
     // Debug level
-    
+
     let mut debug_level: &str = "warn";
     let mut is_debug_level_valid: bool = true;
     if let Some(value) = matches.value_of("debug") {
@@ -64,20 +72,23 @@ fn main() {
             "2" => debug_level = "info",
             "3" => debug_level = "warn",
             "4" => debug_level = "error",
-            _ => is_debug_level_valid = false
+            _ => is_debug_level_valid = false,
         }
     }
-    
+
     // Setup logger
     // Logs level from winit and pixels crates are set to warn
-    env_logger::Builder::from_env(
-        Env::default().default_filter_or(
-            debug_level.to_owned() + ",gfx_memory=warn,gfx_backend_vulkan=warn,gfx_descriptor=warn,winit=warn,mio=warn"
-        )
-    ).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or(
+        debug_level.to_owned()
+            + ",gfx_memory=warn,gfx_backend_vulkan=warn,gfx_descriptor=warn,winit=warn,mio=warn",
+    ))
+    .init();
 
     if !is_debug_level_valid {
-        warn!("Invalid debug level : {:?}, value must be in [0;4]",matches.value_of("debug"));
+        warn!(
+            "Invalid debug level : {:?}, value must be in [0;4]",
+            matches.value_of("debug")
+        );
     }
 
     // Display logs from cpu
@@ -97,12 +108,12 @@ fn main() {
     // Create the Eventloop for interacting with the window
     let event_loop = EventLoop::new();
     // Create the GUI for displaying the graphics
-    let p_gui: Arc<Mutex<GUI>> = Arc::new(Mutex::new(GUI::new(&event_loop)));
+    let p_gui = Arc::new(Mutex::new(GUI::new(&event_loop)));
 
     // Creates the NES architecture
-    let p_ppu: Arc<Mutex<PPU>> = Arc::new(Mutex::new(PPU::new(p_gui.clone())));
-    let p_bus: Arc<Mutex<Bus>> = Arc::new(Mutex::new(Bus::new(p_ppu.clone())));
-    let p_cpu: Arc<Mutex<CPU>> = Arc::new(Mutex::new(CPU::new(p_bus.clone(), display_cpu_logs)));
+    let p_ppu = Rc::new(RefCell::new(PPU::new(p_gui.clone())));
+    let p_bus = Arc::new(Mutex::new(Bus::new(p_ppu.clone())));
+    let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
     let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone(), p_gui.clone());
 
     // Runs the game on the cartridge
@@ -117,7 +128,9 @@ fn main() {
         *control_flow = ControlFlow::Wait;
 
         if let Event::RedrawRequested(_) = event {
-            if main_pixels.lock().unwrap()
+            if main_pixels
+                .lock()
+                .unwrap()
                 .render()
                 .map_err(|e| error!("pixels.render() failed: {}", e))
                 .is_err()

@@ -4,15 +4,15 @@ use super::sprite::Sprite;
 
 #[derive(Debug)]
 pub struct OAM {
-    pub primary: [Sprite;64],
-    pub secondary: [Sprite;8]
+    pub primary: [Sprite; 64],
+    pub secondary: [Sprite; 8],
 }
 
 impl OAM {
     pub fn new() -> Self {
         OAM {
-            primary: [Sprite::default();64],
-            secondary: [Sprite::default();8]
+            primary: [Sprite::default(); 64],
+            secondary: [Sprite::default(); 8],
         }
     }
 
@@ -27,7 +27,7 @@ impl OAM {
             2 => self.primary[sprite_index].attribute = data & 0xE3,
             // X
             3 => self.primary[sprite_index].x = data,
-            _ => panic!("Impossible to reach pattern")
+            _ => panic!("Impossible to reach pattern"),
         }
     }
 
@@ -42,7 +42,7 @@ impl OAM {
             2 => self.primary[sprite_index].attribute & 0xE3,
             // X
             3 => self.primary[sprite_index].x,
-            _ => panic!("Impossible to reach pattern")
+            _ => panic!("Impossible to reach pattern"),
         }
     }
 
@@ -57,7 +57,7 @@ impl OAM {
             2 => self.secondary[sprite_index].attribute = data,
             // X
             3 => self.secondary[sprite_index].x = data,
-            _ => panic!("Unreachable pattern")
+            _ => panic!("Unreachable pattern"),
         }
     }
 }

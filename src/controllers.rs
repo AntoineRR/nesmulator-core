@@ -7,20 +7,20 @@ pub enum ControllerInput {
     Start = 0b0001_0000,
     Select = 0b0010_0000,
     B = 0b0100_0000,
-    A = 0b1000_0000
+    A = 0b1000_0000,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Controller {
     pub buffer: u8,
-    pub shifter: u8
+    pub shifter: u8,
 }
 
 impl Controller {
     pub fn new() -> Self {
         Controller {
             buffer: 0,
-            shifter: 0
+            shifter: 0,
         }
     }
 

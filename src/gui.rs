@@ -8,7 +8,11 @@
 use std::sync::{Arc, Mutex};
 
 use pixels::{Pixels, SurfaceTexture};
-use winit::{dpi::LogicalSize, event_loop::EventLoop, window::{Window, WindowBuilder}};
+use winit::{
+    dpi::LogicalSize,
+    event_loop::EventLoop,
+    window::{Window, WindowBuilder},
+};
 
 use crate::ppu::palette::ARGBColor;
 
@@ -33,7 +37,7 @@ pub struct GUI {
     pub main_pixels: Arc<Mutex<Pixels<Window>>>,
     pub debug_pixels: Option<Pixels<Window>>,
     // Debug
-    pub debug: bool
+    pub debug: bool,
 }
 
 impl GUI {
@@ -44,19 +48,21 @@ impl GUI {
             .build(main_event_loop)
             .expect("Cannot create main window");
 
-        let surface_texture = SurfaceTexture::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT, &main_window);
+        let surface_texture =
+            SurfaceTexture::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT, &main_window);
         let main_pixels = Arc::new(Mutex::new(
-            Pixels::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT, surface_texture).unwrap()));
+            Pixels::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT, surface_texture).unwrap(),
+        ));
 
         let inputs = Arc::new(Mutex::new(0));
-        
+
         GUI {
             main_window,
             debugging_window: Arc::new(Mutex::new(None)),
             inputs: inputs.clone(),
             main_pixels,
             debug_pixels: None,
-            debug: false
+            debug: false,
         }
     }
 
@@ -67,18 +73,19 @@ impl GUI {
             .with_inner_size(LogicalSize::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT))
             .build(debug_event_loop)
             .expect("Cannot create debug window");
-        
-        let surface_texture 
-            = SurfaceTexture::new(DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, &debugging_window);
-        self.debug_pixels = Some(Pixels::new(DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, surface_texture).unwrap());
-        
+
+        let surface_texture =
+            SurfaceTexture::new(DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, &debugging_window);
+        self.debug_pixels =
+            Some(Pixels::new(DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, surface_texture).unwrap());
+
         self.debugging_window = Arc::new(Mutex::new(Some(debugging_window)));
     }
 
     // Updates the main screen buffer
     pub fn update_main_buffer(&mut self, index: usize, color: ARGBColor) {
         let mut main_pixels = self.main_pixels.lock().unwrap();
-        let pixel = &mut main_pixels.get_frame()[index*4..index*4+4];
+        let pixel = &mut main_pixels.get_frame()[index * 4..index * 4 + 4];
         pixel[0] = color.red;
         pixel[1] = color.green;
         pixel[2] = color.blue;
@@ -86,8 +93,8 @@ impl GUI {
     }
 
     // Updates the debug screen buffer
-    pub fn update_debug_buffer(&mut self, index: usize, color:ARGBColor) {
-        let pixel = &mut self.debug_pixels.as_mut().unwrap().get_frame()[index*4..index*4+4];
+    pub fn update_debug_buffer(&mut self, index: usize, color: ARGBColor) {
+        let pixel = &mut self.debug_pixels.as_mut().unwrap().get_frame()[index * 4..index * 4 + 4];
         pixel[0] = color.red;
         pixel[1] = color.green;
         pixel[2] = color.blue;

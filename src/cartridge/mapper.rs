@@ -1,10 +1,9 @@
-
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Mirroring {
     Horizontal = 0,
     Vertical = 1,
     OneScreenLower = 2,
-    OneScreenUpper = 3
+    OneScreenUpper = 3,
 }
 
 pub trait Mapper {

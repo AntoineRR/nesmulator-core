@@ -18,7 +18,7 @@ pub enum AdressingMode {
     Indirect,
     IndirectX,
     IndirectY,
-    NoMode
+    NoMode,
 }
 
 // Flags for the status register
@@ -30,7 +30,7 @@ pub enum Flag {
     Break = 1 << 4,
     Unused = 1 << 5,
     Overflow = 1 << 6,
-    Negative = 1 << 7
+    Negative = 1 << 7,
 }
 
 // Interrupts type
@@ -38,5 +38,5 @@ pub enum Flag {
 pub enum Interrupt {
     IRQ,
     NMI,
-    Reset
+    Reset,
 }

@@ -1,4 +1,8 @@
-use super::{bus::PPUBus, enums::{ControlFlag, MaskFlag, StatusFlag, VRAMAddressMask}, oam::OAM};
+use super::{
+    bus::PPUBus,
+    enums::{ControlFlag, MaskFlag, StatusFlag, VRAMAddressMask},
+    oam::OAM,
+};
 
 // Reprensents the PPU registers
 
@@ -65,7 +69,9 @@ impl Registers {
                 if self.get_status_flag(StatusFlag::VBlank) && (value & 0x80) == 0x80 {
                     self.emit_nmi = true;
                 }
-                ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::NametableSelect, (value & 0x03) as u16);
+                ppu_bus
+                    .tmp_vram_address
+                    .set_address_part(VRAMAddressMask::NametableSelect, (value & 0x03) as u16);
             }
             0x2001 => self.mask = value,
             0x2002 => (),
@@ -75,20 +81,26 @@ impl Registers {
                 oam.write_primary(self.oam_addr, self.oam_data);
                 if self.oam_addr != 255 {
                     self.oam_addr += 1;
-                }
-                else {
+                } else {
                     self.oam_addr = 0;
                 }
             }
             0x2005 => {
                 self.scroll = value;
                 if self.w {
-                    ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::FineY, (value & 0x07) as u16);
-                    ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::CoarseYScroll, ((value & 0xF8) as u16) >> 3);
+                    ppu_bus
+                        .tmp_vram_address
+                        .set_address_part(VRAMAddressMask::FineY, (value & 0x07) as u16);
+                    ppu_bus.tmp_vram_address.set_address_part(
+                        VRAMAddressMask::CoarseYScroll,
+                        ((value & 0xF8) as u16) >> 3,
+                    );
                     self.w = false;
-                }
-                else {
-                    ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::CoarseXScroll, ((value & 0xF8) as u16) >> 3);
+                } else {
+                    ppu_bus.tmp_vram_address.set_address_part(
+                        VRAMAddressMask::CoarseXScroll,
+                        ((value & 0xF8) as u16) >> 3,
+                    );
                     self.fine_x = value & 0x07;
                     self.w = true;
                 }
@@ -96,12 +108,15 @@ impl Registers {
             0x2006 => {
                 self.addr = value;
                 if self.w {
-                    ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::SW2006, value as u16);
+                    ppu_bus
+                        .tmp_vram_address
+                        .set_address_part(VRAMAddressMask::SW2006, value as u16);
                     ppu_bus.vram_address.address = ppu_bus.tmp_vram_address.address;
                     self.w = false;
-                }
-                else {
-                    ppu_bus.tmp_vram_address.set_address_part(VRAMAddressMask::FW2006, (value & 0x3F) as u16);
+                } else {
+                    ppu_bus
+                        .tmp_vram_address
+                        .set_address_part(VRAMAddressMask::FW2006, (value & 0x3F) as u16);
                     ppu_bus.tmp_vram_address.address &= 0x3FFF; // Sets the 2 higher bits to 0
                     self.w = true;
                 }
@@ -111,8 +126,7 @@ impl Registers {
                 ppu_bus.write(ppu_bus.vram_address.address & 0x3FFF, value);
                 if self.get_control_flag(ControlFlag::VRAMAddressIncrement) == 0 {
                     ppu_bus.vram_address.address += 1; // Horizontal scrolling
-                }
-                else {
+                } else {
                     ppu_bus.vram_address.address += 32; // Vertical scrolling
                 }
             }
@@ -120,7 +134,7 @@ impl Registers {
                 self.oam_dma = value;
                 self.perform_dma = true;
             }
-            _ => panic!("Wrong address given to PPU : {:#x}",address)
+            _ => panic!("Wrong address given to PPU : {:#x}", address),
         }
         self.decay = value;
         self.decay_timer = 0;
@@ -137,10 +151,10 @@ impl Registers {
                 self.decay = value;
                 self.set_status_flag(StatusFlag::VBlank, false);
                 self.w = false;
-            },
+            }
             0x2003 => value = self.decay,
             0x2004 => {
-                value = oam.read_primary(address as u8);
+                value = oam.read_primary(self.oam_addr);
                 self.decay = value;
             }
             0x2005 => value = self.decay,
@@ -158,13 +172,12 @@ impl Registers {
                 // Increment VRAM Address
                 if self.get_control_flag(ControlFlag::VRAMAddressIncrement) == 0 {
                     ppu_bus.vram_address.address += 1; // Horizontal scrolling
-                }
-                else {
+                } else {
                     ppu_bus.vram_address.address += 32; // Vertical scrolling
                 }
             }
             0x4014 => panic!("4014 is not readable !"),
-            _ => panic!("Wrong address given to PPU : {:#x}",address)
+            _ => panic!("Wrong address given to PPU : {:#x}", address),
         }
         value
     }
@@ -173,8 +186,7 @@ impl Registers {
     pub fn set_status_flag(&mut self, flag: StatusFlag, value: bool) {
         if value {
             self.status |= flag as u8;
-        }
-        else {
+        } else {
             self.status &= !(flag as u8);
         }
     }
@@ -187,8 +199,7 @@ impl Registers {
     pub fn get_control_flag(&mut self, flag: ControlFlag) -> u8 {
         if flag != ControlFlag::NametableAddress {
             ((self.ctrl & (flag as u8)) == (flag as u8)) as u8
-        }
-        else {
+        } else {
             (self.ctrl & 0x03) as u8 // Last two bits
         }
     }
@@ -212,7 +223,7 @@ impl Registers {
             0x2006 => value = self.addr,
             0x2007 => value = self.data_buffer,
             0x4014 => value = self.oam_dma,
-            _ => panic!("Wrong address given to PPU : {:#x}",address)
+            _ => panic!("Wrong address given to PPU : {:#x}", address),
         }
         value
     }
