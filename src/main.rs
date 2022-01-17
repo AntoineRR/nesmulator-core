@@ -114,7 +114,7 @@ fn main() {
     let p_ppu = Rc::new(RefCell::new(PPU::new(p_gui.clone())));
     let p_bus = Arc::new(Mutex::new(Bus::new(p_ppu.clone())));
     let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
-    let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone(), p_gui.clone());
+    let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone());
 
     // Runs the game on the cartridge
     nes.insert_cartdrige(cartridge);

@@ -18,14 +18,14 @@ use super::{
 // Header of the iNES format
 #[derive(Debug)]
 pub struct INesHeader {
-    pub name: [u8; 3],
-    pub identifier: u8,
-    pub n_prg_rom: u8,
-    pub n_chr_rom: u8,
-    pub control_1: u8,
-    pub control_2: u8,
-    pub n_ram_banks: u8,
-    pub unused: [u8; 7],
+    name: [u8; 3],
+    identifier: u8,
+    n_prg_rom: u8,
+    n_chr_rom: u8,
+    control_1: u8,
+    control_2: u8,
+    n_ram_banks: u8,
+    unused: [u8; 7],
 }
 
 impl INesHeader {
@@ -44,7 +44,6 @@ impl INesHeader {
 }
 
 pub struct Cartridge {
-    pub header: INesHeader,
     pub mapper: Box<dyn Mapper>,
 }
 
@@ -124,6 +123,6 @@ impl Cartridge {
             _ => panic!("Mapper {} is not implemented", number),
         };
 
-        Cartridge { header, mapper }
+        Cartridge { mapper }
     }
 }

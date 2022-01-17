@@ -1,13 +1,15 @@
 // Mapper 3 : CNROM
 
+use log::warn;
+
 use super::mapper::{Mapper, Mirroring};
 
 #[derive(Clone)]
 pub struct Mapper3 {
-    pub mirroring: Mirroring,
-    pub selected_chr_rom: usize,
-    pub prg_rom: Vec<[u8; 16 * 1024]>,
-    pub chr_rom: Vec<[u8; 8 * 1024]>,
+    mirroring: Mirroring,
+    selected_chr_rom: usize,
+    prg_rom: Vec<[u8; 16 * 1024]>,
+    chr_rom: Vec<[u8; 8 * 1024]>,
 }
 
 impl Mapper3 {
@@ -31,7 +33,7 @@ impl Mapper for Mapper3 {
         match address {
             0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}", address),
             0x4020..=0x5FFF => panic!("Mapper 3 doesn't use this address : {:#X}", address),
-            0x6000..=0x7FFF => panic!("Mapper 3 doesn't use this address : {:#X}", address),
+            0x6000..=0x7FFF => value = 0,
             0x8000..=0xBFFF => value = self.prg_rom[0][(address & 0x3FFF) as usize],
             0xC000..=0xFFFF => {
                 value = self.prg_rom[(self.prg_rom.len() - 1) as usize][(address & 0x3FFF) as usize]
@@ -43,8 +45,8 @@ impl Mapper for Mapper3 {
     fn prg_rom_write(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}", address),
-            0x4020..=0x5FFF => panic!("Mapper 3 doesn't use this address : {:#X}", address),
-            0x6000..=0x7FFF => panic!("Mapper 3 doesn't use this address : {:#X}", address),
+            0x4020..=0x5FFF => warn!("Mapper 3 doesn't use this address : {:#X}", address),
+            0x6000..=0x7FFF => warn!("Mapper 3 doesn't use this address : {:#X}", address),
             0x8000..=0xFFFF => self.selected_chr_rom = (value & 0x03) as usize,
         }
     }

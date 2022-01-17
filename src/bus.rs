@@ -15,7 +15,7 @@ pub const STACK_OFFSET: u16 = 0x100;
 // ===== BUS STRUCT =====
 
 pub struct Bus {
-    pub data: [u8; 0x10000],
+    data: [u8; 0x10000],
     pub o_p_mapper: Option<Box<dyn Mapper>>,
     pub p_ppu: Rc<RefCell<PPU>>,
 
@@ -78,7 +78,7 @@ impl Bus {
             0x2000..=0x2007 => {
                 value = self
                     .p_ppu
-                    .borrow_mut()
+                    .borrow()
                     .registers
                     .read_register_without_modification(address)
             }
@@ -86,7 +86,7 @@ impl Bus {
             0x2008..=0x3FFF => {
                 value = self
                     .p_ppu
-                    .borrow_mut()
+                    .borrow()
                     .registers
                     .read_register_without_modification(address & 0x2007)
             }
@@ -96,7 +96,7 @@ impl Bus {
             0x4014 => {
                 value = self
                     .p_ppu
-                    .borrow_mut()
+                    .borrow()
                     .registers
                     .read_register_without_modification(address)
             }

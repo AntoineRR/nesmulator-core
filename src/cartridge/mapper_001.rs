@@ -2,7 +2,7 @@
 
 use std::convert::TryInto;
 
-use log::debug;
+use log::{debug, warn};
 
 use super::mapper::{Mapper, Mirroring};
 
@@ -10,7 +10,7 @@ use super::mapper::{Mapper, Mirroring};
 enum PrgRomBankMode {
     Switch32,
     Switch16FirstFixed,
-    Sxitch16LastFixed,
+    Switch16LastFixed,
 }
 
 #[derive(Debug)]
@@ -21,35 +21,31 @@ enum ChrRomBankMode {
 
 #[derive(Clone)]
 pub struct Mapper1 {
-    pub mirroring: Mirroring,
-    pub lo_prg_rom: usize,
-    pub hi_prg_rom: usize,
-    pub lo_chr_rom: usize,
-    pub hi_chr_rom: usize,
-    pub prg_rom: Vec<[u8; 16 * 1024]>,
-    pub chr_rom: Vec<[u8; 4 * 1024]>,
-    pub ram: [u8; 0x2000],
-    pub ram_disabled: bool,
-    pub shift_register: u8,
-    pub n_bit_loaded: u8,
-    pub control_register: u8,
+    mirroring: Mirroring,
+    lo_prg_rom: usize,
+    hi_prg_rom: usize,
+    lo_chr_rom: usize,
+    hi_chr_rom: usize,
+    prg_rom: Vec<[u8; 0x4000]>,
+    chr_rom: Vec<[u8; 0x1000]>,
+    ram: [u8; 0x2000],
+    ram_disabled: bool,
+    shift_register: u8,
+    n_bit_loaded: u8,
+    control_register: u8,
 }
 
 impl Mapper1 {
     pub fn new(
-        prg_rom: Vec<[u8; 16 * 1024]>,
-        chr_rom: Vec<[u8; 8 * 1024]>,
+        prg_rom: Vec<[u8; 0x4000]>,
+        chr_rom: Vec<[u8; 0x2000]>,
         mirroring: Mirroring,
     ) -> Self {
-        let mut converted: Vec<[u8; 4 * 1024]> = vec![];
+        let mut converted: Vec<[u8; 0x1000]> = vec![];
         for elt in chr_rom.iter() {
+            converted.push(elt[0..0x1000].try_into().expect("Failed to convert array"));
             converted.push(
-                elt[0..4 * 1024]
-                    .try_into()
-                    .expect("Failed to convert array"),
-            );
-            converted.push(
-                elt[4 * 1024..8 * 1024]
+                elt[0x1000..0x2000]
                     .try_into()
                     .expect("Failed to convert array"),
             );
@@ -75,7 +71,7 @@ impl Mapper1 {
         match (self.control_register & 0x0C) >> 2 {
             0 | 1 => PrgRomBankMode::Switch32,
             2 => PrgRomBankMode::Switch16FirstFixed,
-            3 => PrgRomBankMode::Sxitch16LastFixed,
+            3 => PrgRomBankMode::Switch16LastFixed,
             _ => panic!("Unreachable pattern"),
         }
     }
@@ -94,7 +90,7 @@ impl Mapper for Mapper1 {
         let value: u8;
         match address {
             0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}", address),
-            0x4020..=0x5FFF => panic!("Mapper 1 doesn't use this address : {:#X}", address),
+            0x4020..=0x5FFF => value = 0, // panic!("Mapper 1 doesn't use this address : {:#X}", address),
             0x6000..=0x7FFF => value = self.ram[(address & 0x1FFF) as usize],
             0x8000..=0xBFFF => match self.get_prg_rom_bank_mode() {
                 PrgRomBankMode::Switch32 => {
@@ -103,7 +99,7 @@ impl Mapper for Mapper1 {
                 PrgRomBankMode::Switch16FirstFixed => {
                     value = self.prg_rom[0][(address & 0x3FFF) as usize]
                 }
-                PrgRomBankMode::Sxitch16LastFixed => {
+                PrgRomBankMode::Switch16LastFixed => {
                     value = self.prg_rom[self.lo_prg_rom][(address & 0x3FFF) as usize]
                 }
             },
@@ -114,7 +110,7 @@ impl Mapper for Mapper1 {
                 PrgRomBankMode::Switch16FirstFixed => {
                     value = self.prg_rom[self.hi_prg_rom][(address & 0x3FFF) as usize]
                 }
-                PrgRomBankMode::Sxitch16LastFixed => {
+                PrgRomBankMode::Switch16LastFixed => {
                     value = self.prg_rom[self.prg_rom.len() - 1][(address & 0x3FFF) as usize]
                 }
             },
@@ -125,7 +121,7 @@ impl Mapper for Mapper1 {
     fn prg_rom_write(&mut self, address: u16, value: u8) {
         match address {
             0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}", address),
-            0x4020..=0x5FFF => panic!("Mapper 1 doesn't use this address : {:#X}", address),
+            0x4020..=0x5FFF => warn!("Mapper 1 doesn't use this address : {:#X}", address),
             0x6000..=0x7FFF => self.ram[(address & 0x1FFF) as usize] = value,
             0x8000..=0xFFFF => {
                 if value & 0x80 > 0 {
@@ -137,14 +133,15 @@ impl Mapper for Mapper1 {
                     self.shift_register |= (value & 0x01) << 4;
                     self.n_bit_loaded += 1;
                     if self.n_bit_loaded == 5 {
-                        match address {
-                            0x8000..=0x9FFF => {
+                        let action = (address & 0x6000) >> 13;
+                        match action {
+                            0 => {
                                 self.control_register = self.shift_register & 0x1F;
                                 debug!("CHR bank mode : {:?}", self.get_chr_rom_bank_mode());
                                 debug!("PRG bank mode : {:?}", self.get_prg_rom_bank_mode());
                                 debug!("Mirroring mode : {:?}", self.get_mirroring());
                             }
-                            0xA000..=0xBFFF => match self.get_chr_rom_bank_mode() {
+                            1 => match self.get_chr_rom_bank_mode() {
                                 ChrRomBankMode::Switch8 => {
                                     self.lo_chr_rom = (self.shift_register & 0x1E) as usize
                                 }
@@ -152,10 +149,8 @@ impl Mapper for Mapper1 {
                                     self.lo_chr_rom = (self.shift_register & 0x1F) as usize
                                 }
                             },
-                            0xC000..=0xDFFF => {
-                                self.hi_chr_rom = (self.shift_register & 0x1F) as usize
-                            }
-                            0xE000..=0xFFFF => {
+                            2 => self.hi_chr_rom = (self.shift_register & 0x1F) as usize,
+                            3 => {
                                 self.ram_disabled = (self.shift_register & 0x10) > 0;
                                 match self.get_prg_rom_bank_mode() {
                                     PrgRomBankMode::Switch32 => {
@@ -164,7 +159,7 @@ impl Mapper for Mapper1 {
                                     PrgRomBankMode::Switch16FirstFixed => {
                                         self.hi_prg_rom = (self.shift_register & 0x0F) as usize
                                     }
-                                    PrgRomBankMode::Sxitch16LastFixed => {
+                                    PrgRomBankMode::Switch16LastFixed => {
                                         self.lo_prg_rom = (self.shift_register & 0x0F) as usize
                                     }
                                 }

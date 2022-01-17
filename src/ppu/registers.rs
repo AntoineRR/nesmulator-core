@@ -9,23 +9,23 @@ use super::{
 #[derive(Debug)]
 pub struct Registers {
     // PPU registers
-    pub ctrl: u8,
-    pub mask: u8,
-    pub status: u8,
+    ctrl: u8,
+    mask: u8,
+    status: u8,
     pub oam_addr: u8,
-    pub oam_data: u8,
-    pub scroll: u8,
-    pub addr: u8,
-    pub data: u8,
+    oam_data: u8,
+    scroll: u8,
+    addr: u8,
+    data: u8,
     pub oam_dma: u8,
 
     // Temporary registers
     pub decay: u8,
     pub decay_timer: u64,
-    pub data_buffer: u8,
+    data_buffer: u8,
 
     // Required to check if it is the first or second write to 2006/2007
-    pub w: bool,
+    w: bool,
     pub fine_x: u8,
 
     // Emit an NMI interrupt
@@ -191,7 +191,7 @@ impl Registers {
         }
     }
 
-    pub fn get_status_flag(&self, flag: StatusFlag) -> bool {
+    fn get_status_flag(&self, flag: StatusFlag) -> bool {
         (self.status & (flag as u8)) == (flag as u8)
     }
 

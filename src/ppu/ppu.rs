@@ -27,34 +27,28 @@ pub struct PPU {
     pub registers: Registers,
 
     // Background shifters ([0] => low bits, [1] => high bits)
-    pub pattern_table_shifters: [u16; 2],
-    pub palette_shifters: [u16; 2],
+    pattern_table_shifters: [u16; 2],
+    palette_shifters: [u16; 2],
 
     // OAM
-    pub oam: OAM,
+    oam: OAM,
 
-    pub next_sprite_count: u8,
-    pub current_sprite_count: u8,
-    pub next_contains_sprite_0: bool,
-    pub current_contains_sprite_0: bool,
+    next_sprite_count: u8,
+    current_sprite_count: u8,
+    next_contains_sprite_0: bool,
+    current_contains_sprite_0: bool,
 
     // Variables for displaying sprites
-    pub sprite_shifters: [[u8; 2]; 8],
-    pub sprite_x: [u8; 8],
-    pub sprite_attributes: [u8; 8],
-
-    // Sprite evaluation variables
-    pub eval_index: u8,
-    pub eval_data: u8,
-    pub eval_secondary_index: u8,
-    pub copy_sprite: bool,
+    sprite_shifters: [[u8; 2]; 8],
+    sprite_x: [u8; 8],
+    sprite_attributes: [u8; 8],
 
     // Data for the next 8 pixels
-    pub next_name_table_byte: u8,
-    pub next_attribute_table_byte: u8,
-    pub next_low_background_byte: u8,
-    pub next_high_background_byte: u8,
-    pub is_sprite_0_rendered: bool,
+    next_name_table_byte: u8,
+    next_attribute_table_byte: u8,
+    next_low_background_byte: u8,
+    next_high_background_byte: u8,
+    is_sprite_0_rendered: bool,
 
     // Addressing variables
     pub ppu_bus: PPUBus,
@@ -62,12 +56,12 @@ pub struct PPU {
     // Variables required for display
     pub cycles: u16,
     pub scanline: u16,
-    pub odd_frame: bool,
+    odd_frame: bool,
 
-    pub total_clock: u64,
+    total_clock: u64,
 
     // GUI
-    pub p_gui: Arc<Mutex<GUI>>,
+    p_gui: Arc<Mutex<GUI>>,
 }
 
 impl PPU {
@@ -89,11 +83,6 @@ impl PPU {
             sprite_shifters: [[0; 2]; 8],
             sprite_x: [0; 8],
             sprite_attributes: [0; 8],
-
-            eval_index: 0,
-            eval_data: 0,
-            eval_secondary_index: 0,
-            copy_sprite: false,
 
             next_name_table_byte: 0,
             next_attribute_table_byte: 0,
@@ -413,7 +402,7 @@ impl PPU {
 
     // ===== GET COLOR METHOD =====
 
-    pub fn get_pixel_color(&self, palette: u8, color: u8) -> ARGBColor {
+    fn get_pixel_color(&self, palette: u8, color: u8) -> ARGBColor {
         let address: u16 = ((palette as u16) << 2) + (color as u16) + 0x3F00;
         PALETTE[(self.ppu_bus.read(address) & 0x3F) as usize]
     }
@@ -434,7 +423,7 @@ impl PPU {
 
     // Performs the sprite evaluation for the next scanline
     // This is not cycle accurate with a real NES
-    pub fn evaluate_sprites(&mut self) {
+    fn evaluate_sprites(&mut self) {
         // 3 cycles are available for each 64 sprites
         if (self.cycles - 65) % 3 == 0 {
             let sprite_index: usize = ((self.cycles - 65) / 3) as usize;
@@ -480,7 +469,7 @@ impl PPU {
 
     // Populates the sprite shifters with the data required for next scanline
     // This doesn't work exactly as in a real NES
-    pub fn fetch_sprite_data(&mut self) {
+    fn fetch_sprite_data(&mut self) {
         let sprite_index: usize = ((self.cycles - 257) / 8) as usize;
         if (sprite_index as u8) < self.next_sprite_count {
             match (self.cycles - 257) % 8 {
@@ -608,7 +597,7 @@ impl PPU {
         }
     }
 
-    pub fn get_sprite_shifters_value(&self, sprite_index: usize) -> u8 {
+    fn get_sprite_shifters_value(&self, sprite_index: usize) -> u8 {
         let offset_mask: u8 = 0x80;
         let low: u8 = ((self.sprite_shifters[sprite_index][0] & offset_mask) > 0) as u8;
         let high: u8 = ((self.sprite_shifters[sprite_index][1] & offset_mask) > 0) as u8;
@@ -618,7 +607,7 @@ impl PPU {
     // ===== BACKGROUND SHIFTERS METHODS =====
 
     // Loads the next 8 bits inside the background shifters
-    pub fn load_next_background(&mut self) {
+    fn load_next_background(&mut self) {
         self.pattern_table_shifters[0] =
             (self.pattern_table_shifters[0] & 0xFF00) | (self.next_low_background_byte as u16);
         self.pattern_table_shifters[1] =
@@ -639,7 +628,7 @@ impl PPU {
     }
 
     // Shifts the background shifters one bit left
-    pub fn update_shifters(&mut self) {
+    fn update_shifters(&mut self) {
         if self.registers.get_mask_flag(MaskFlag::ShowBackground) {
             self.pattern_table_shifters[0] <<= 1;
             self.pattern_table_shifters[1] <<= 1;
@@ -662,7 +651,7 @@ impl PPU {
     }
 
     // Get the right value from the shifters
-    pub fn get_shifter_value(&self, shifter: [u16; 2]) -> u8 {
+    fn get_shifter_value(&self, shifter: [u16; 2]) -> u8 {
         let offset_mask: u16 = 0x8000 >> self.registers.fine_x;
         let low: u8 = ((shifter[0] & offset_mask) > 0) as u8;
         let high: u8 = ((shifter[1] & offset_mask) > 0) as u8;
@@ -672,7 +661,7 @@ impl PPU {
     // ===== VRAM ADDRESS MODIFICATION METHODS =====
 
     // Increments the VRAM address to point to the next 8 bits to render
-    pub fn increment_x(&mut self) {
+    fn increment_x(&mut self) {
         if self.registers.get_mask_flag(MaskFlag::ShowSprites)
             || self.registers.get_mask_flag(MaskFlag::ShowBackground)
         {
@@ -699,7 +688,7 @@ impl PPU {
         }
     }
 
-    pub fn increment_y(&mut self) {
+    fn increment_y(&mut self) {
         if self.registers.get_mask_flag(MaskFlag::ShowSprites)
             || self.registers.get_mask_flag(MaskFlag::ShowBackground)
         {
@@ -743,7 +732,7 @@ impl PPU {
         }
     }
 
-    pub fn copy_tmp_x_to_vram_address(&mut self) {
+    fn copy_tmp_x_to_vram_address(&mut self) {
         if self.registers.get_mask_flag(MaskFlag::ShowSprites)
             || self.registers.get_mask_flag(MaskFlag::ShowBackground)
         {
@@ -766,7 +755,7 @@ impl PPU {
         }
     }
 
-    pub fn copy_tmp_y_to_vram_address(&mut self) {
+    fn copy_tmp_y_to_vram_address(&mut self) {
         if self.registers.get_mask_flag(MaskFlag::ShowSprites)
             || self.registers.get_mask_flag(MaskFlag::ShowBackground)
         {
@@ -799,14 +788,14 @@ impl PPU {
 
     // ===== DEBUGGING =====
 
-    pub fn debug(&self) {
+    fn debug(&self) {
         self.display_pattern_table(0);
         self.display_pattern_table(1);
         self.display_separation();
         self.display_palette();
     }
 
-    pub fn display_pattern_table(&self, number: u16) {
+    fn display_pattern_table(&self, number: u16) {
         for n_tile_y in 0..16 {
             for n_tile_x in 0..16 {
                 self.display_tile(n_tile_y, n_tile_x, number);
@@ -814,7 +803,7 @@ impl PPU {
         }
     }
 
-    pub fn display_tile(&self, n_tile_y: u16, n_tile_x: u16, number: u16) {
+    fn display_tile(&self, n_tile_y: u16, n_tile_x: u16, number: u16) {
         let n_offset = n_tile_y * 256 + n_tile_x * 16;
         for row in 0..8 {
             let mut tile_low: u8 = self.ppu_bus.read(number * 0x1000 + n_offset + row);
@@ -832,7 +821,7 @@ impl PPU {
         }
     }
 
-    pub fn display_separation(&self) {
+    fn display_separation(&self) {
         for i in 0..512 {
             self.p_gui
                 .lock()
@@ -841,7 +830,7 @@ impl PPU {
         }
     }
 
-    pub fn display_palette(&self) {
+    fn display_palette(&self) {
         for address in 0x3F00..0x3F20 {
             let offset = address & 0x00FF;
             for i in 0..6 {

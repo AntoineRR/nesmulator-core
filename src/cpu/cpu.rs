@@ -17,27 +17,27 @@ use std::fmt::Write;
 // This struct contains the various registers of the CPU
 pub struct CPU {
     // Registers
-    pub a: u8,   // accumulator
-    pub x: u8,   // x index
-    pub y: u8,   // y index
-    pub pc: u16, // program counter
-    pub sp: u8,  // stack pointer
-    pub p: u8,   // status flags
+    a: u8,   // accumulator
+    x: u8,   // x index
+    y: u8,   // y index
+    pc: u16, // program counter
+    sp: u8,  // stack pointer
+    p: u8,   // status flags
 
     // Cycles required by the instruction to complete
-    pub cycles: u8,
+    cycles: u8,
 
     // Does the current instruction require an eventual additional cycle ?
-    pub require_add_cycle: bool,
+    require_add_cycle: bool,
 
     // Total clock cycles from the start of the CPU
-    pub total_clock: u64,
+    total_clock: u64,
 
     // Display the log of the CPU
-    pub display_logs: bool,
+    display_logs: bool,
 
     // pointer to the data bus where we read from and write to
-    pub p_bus: Arc<Mutex<Bus>>,
+    p_bus: Arc<Mutex<Bus>>,
 }
 
 impl CPU {
@@ -65,44 +65,36 @@ impl CPU {
     // ===== BUS ACCESS =====
 
     // Reads data from the bus at the given address
-    pub fn read_bus(&self, address: u16) -> u8 {
+    fn read_bus(&self, address: u16) -> u8 {
         self.p_bus.lock().unwrap().read(address)
     }
 
     // Writes data to the bus at the given address
-    pub fn write_bus(&mut self, address: u16, data: u8) {
+    fn write_bus(&mut self, address: u16, data: u8) {
         self.p_bus.lock().unwrap().write(address, data);
     }
 
     // Pushes data to stack
-    pub fn push_to_stack(&mut self, data: u8) {
+    fn push_to_stack(&mut self, data: u8) {
         self.write_bus(STACK_OFFSET + self.sp as u16, data);
-        if self.sp != 0 {
-            self.sp -= 1;
-        } else {
-            self.sp = 255;
-        }
+        self.sp = self.sp.wrapping_sub(1);
     }
 
     // Returns data from the stack
-    pub fn pop_from_stack(&mut self) -> u8 {
-        if self.sp != 255 {
-            self.sp += 1;
-        } else {
-            self.sp = 0;
-        }
+    fn pop_from_stack(&mut self) -> u8 {
+        self.sp = self.sp.wrapping_add(1);
         self.read_bus(STACK_OFFSET + self.sp as u16)
     }
 
     // ===== FLAG SETTER AND GETTER =====
 
     // Returns the required flag from the status register
-    pub fn get_flag(&self, flag: Flag) -> bool {
+    fn get_flag(&self, flag: Flag) -> bool {
         self.p & flag as u8 != 0
     }
 
     // Toggles the required flag in the status register
-    pub fn set_flag(&mut self, flag: Flag, value: bool) {
+    fn set_flag(&mut self, flag: Flag, value: bool) {
         if value {
             self.p |= flag as u8;
         } else {
@@ -189,7 +181,7 @@ impl CPU {
     // ===== ADDRESSING MODES =====
 
     // Returns the parameters for the instruction as an address
-    pub fn fetch_address(&mut self, mode: am) -> u16 {
+    fn fetch_address(&mut self, mode: am) -> u16 {
         match mode {
             am::Implicit => 0,
             am::Accumulator => self.a as u16,
@@ -544,12 +536,7 @@ impl CPU {
     pub fn dec(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8;
-        if data != 0 {
-            result = data - 1;
-        } else {
-            result = 255;
-        }
+        let result = data.wrapping_sub(1);
         self.write_bus(address, result);
         self.set_flag(Flag::Zero, result == 0);
         self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
@@ -558,11 +545,7 @@ impl CPU {
     // Decrement x register
     // X,Z,N = X-1
     pub fn dex(&mut self, _: am) {
-        if self.x != 0 {
-            self.x -= 1;
-        } else {
-            self.x = 255;
-        }
+        self.x = self.x.wrapping_sub(1);
         self.set_flag(Flag::Zero, self.x == 0);
         self.set_flag(Flag::Negative, (self.x & 0x80) == 0x80);
     }
@@ -570,11 +553,7 @@ impl CPU {
     // Decrement y register
     // Y,Z,N = Y-1
     pub fn dey(&mut self, _: am) {
-        if self.y != 0 {
-            self.y -= 1;
-        } else {
-            self.y = 255;
-        }
+        self.y = self.y.wrapping_sub(1);
         self.set_flag(Flag::Zero, self.y == 0);
         self.set_flag(Flag::Negative, (self.y & 0x80) == 0x80);
     }
@@ -594,12 +573,7 @@ impl CPU {
     pub fn inc(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: u8;
-        if data != 255 {
-            result = data + 1;
-        } else {
-            result = 0;
-        }
+        let result = data.wrapping_add(1);
         self.write_bus(address, result);
         self.set_flag(Flag::Zero, result == 0);
         self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
@@ -608,11 +582,7 @@ impl CPU {
     // Increment x register
     // X,Z,N = X+1
     pub fn inx(&mut self, _: am) {
-        if self.x != 255 {
-            self.x += 1;
-        } else {
-            self.x = 0;
-        }
+        self.x = self.x.wrapping_add(1);
         self.set_flag(Flag::Zero, self.x == 0);
         self.set_flag(Flag::Negative, (self.x & 0x80) == 0x80);
     }
@@ -620,11 +590,7 @@ impl CPU {
     // Increment y register
     // Y,Z,N = Y+1
     pub fn iny(&mut self, _: am) {
-        if self.y != 255 {
-            self.y += 1;
-        } else {
-            self.y = 0;
-        }
+        self.y = self.y.wrapping_add(1);
         self.set_flag(Flag::Zero, self.y == 0);
         self.set_flag(Flag::Negative, (self.y & 0x80) == 0x80);
     }
@@ -1005,19 +971,9 @@ impl CPU {
     // M,C,Z,N = M-1
     pub fn dcp(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
-        let mut data: u8 = self.read_bus(address);
-        if data != 0 {
-            data -= 1;
-        } else {
-            data = 255;
-        }
+        let data: u8 = self.read_bus(address).wrapping_sub(1);
         self.write_bus(address, data);
-        let result: u8;
-        if self.a > data {
-            result = self.a - data;
-        } else {
-            result = data - self.a;
-        }
+        let result = self.a.wrapping_sub(data);
         self.set_flag(Flag::Zero, result == 0x00);
         self.set_flag(Flag::Carry, self.a >= data);
         self.set_flag(
@@ -1031,13 +987,7 @@ impl CPU {
     // A,Z,C,N,V = A-M-(1-C)
     pub fn isb(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
-        let original_data: u8 = self.read_bus(address);
-        let inc_data: u8;
-        if original_data != 255 {
-            inc_data = original_data + 1;
-        } else {
-            inc_data = 0;
-        }
+        let inc_data: u8 = self.read_bus(address).wrapping_add(1);
         self.write_bus(address, inc_data);
         let data: u8 = inc_data ^ 0xFF; // Converts data into a negative value + 1
         let result: u16 = self.a as u16 + data as u16 + self.get_flag(Flag::Carry) as u16;
@@ -1128,12 +1078,7 @@ impl CPU {
     // X = (A&X)-M
     pub fn sbx(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
-        let mut data: u8 = (self.read_bus(address)) ^ 0xFF;
-        if data < 255 {
-            data += 1;
-        } else {
-            data = 0;
-        }
+        let data: u8 = ((self.read_bus(address)) ^ 0xFF).wrapping_add(1);
         let result: u16 = ((self.x as u16) & (self.a as u16)) + (data as u16);
         self.x = result as u8;
         self.set_flag(Flag::Carry, (result & 0x0100) == 0x0100);
@@ -1204,7 +1149,7 @@ impl CPU {
     // ===== DEBUGGING =====
 
     #[allow(dead_code)]
-    pub fn display_cpu_log(&self, opcode: u8) {
+    fn display_cpu_log(&self, opcode: u8) {
         let mut instruction_and_parameters_str: String = String::from(format!("{:02X} ", opcode));
         let mut instruction_parameters: Vec<u8> = vec![];
         for i in 0..INSTRUCTIONS[opcode as usize].bytes - 1 {

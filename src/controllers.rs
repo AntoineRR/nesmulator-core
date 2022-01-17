@@ -13,7 +13,7 @@ pub enum ControllerInput {
 #[derive(Debug, Clone, Copy)]
 pub struct Controller {
     pub buffer: u8,
-    pub shifter: u8,
+    shifter: u8,
 }
 
 impl Controller {

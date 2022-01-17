@@ -15,27 +15,25 @@ use crate::ppu::ppu::PPU;
 use crate::{
     cartridge,
     cpu::{cpu::CPU, enums::Interrupt},
-    gui::GUI,
 };
 
 // ===== NES STRUCT =====
 
 pub struct NES {
     // NES components
-    pub p_bus: Arc<Mutex<Bus>>,
-    pub p_cpu: Rc<RefCell<CPU>>,
-    pub p_ppu: Rc<RefCell<PPU>>,
-    pub p_gui: Arc<Mutex<GUI>>,
+    p_bus: Arc<Mutex<Bus>>,
+    p_cpu: Rc<RefCell<CPU>>,
+    p_ppu: Rc<RefCell<PPU>>,
 
     // NES clock counter
-    pub total_clock: u64,
+    total_clock: u64,
 
     // DMA variables
-    pub dma_started: bool,
-    pub dma_hi_address: u8,
-    pub dma_base_address: u8,
-    pub dma_address_offset: u8,
-    pub dma_data: u8,
+    dma_started: bool,
+    dma_hi_address: u8,
+    dma_base_address: u8,
+    dma_address_offset: u8,
+    dma_data: u8,
 }
 
 unsafe impl Send for NES {}
@@ -45,13 +43,11 @@ impl NES {
         p_bus: Arc<Mutex<Bus>>,
         p_cpu: Rc<RefCell<CPU>>,
         p_ppu: Rc<RefCell<PPU>>,
-        p_gui: Arc<Mutex<GUI>>,
     ) -> Self {
         NES {
             p_bus,
             p_cpu,
             p_ppu,
-            p_gui,
 
             total_clock: 0,
 
@@ -100,7 +96,7 @@ impl NES {
     }
 
     // Performs a DMA (transfer of 256 bytes of sprite data to PPU)
-    pub fn perform_dma(&mut self) {
+    fn perform_dma(&mut self) {
         if !self.dma_started {
             // Wait for an even cycle to start
             if self.total_clock % 2 == 1 {

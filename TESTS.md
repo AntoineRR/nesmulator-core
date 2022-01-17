@@ -2,7 +2,7 @@
 
 The logs of the CPU and the PPU, including the disassembly of the ROM code, can be displayed in a similar manner to [Nintendulator](https://www.qmtpro.com/~nes/nintendulator/). This has been useful to compare the logs of my emulator to the ones from Nintendulator when nestest.nes is run on automation. The logs are the same on both emulators. They can be displayed using the `-l` flag.
 
-I used several test ROMs for testing my emulator. Those can be found [here](https://github.com/christopherpow/nes-test-roms). 
+I used several test ROMs for testing my emulator. The CPU and PPU ones can be found [here](https://github.com/christopherpow/nes-test-roms), and the test ROMS for the mappers are [here](https://pineight.com/nes/holydiverbatman-bin-0.01.7z).
 Some nes_instr_test ROMs fail because some undocumented opcodes are not implemented correctly for now.
 Here are the results :
 
@@ -58,3 +58,18 @@ Here are the results :
 * [ ] sprite_overflow_tests/3.Timing
 * [ ] sprite_overflow_tests/4.Obscure
 * [X] sprite_overflow_tests/5.Emulator
+
+## Mappers
+
+* [X] M0_P32K_C8K_V
+* [ ] M1_P128K
+* [ ] M1_P128K_C32K
+* [ ] M1_P128K_C32K_S8K
+* [ ] M1_P128K_C32K_W8K
+* [ ] M1_P128K_C128K
+* [ ] M1_P128K_C128K_S8K
+* [ ] M1_P128K_C128K_W8K
+* [ ] M1_P512K_S8K
+* [ ] M1_P512K_S32K
+* [X] M2_P128K_V
+* [X] M3_P32K_C32K_H

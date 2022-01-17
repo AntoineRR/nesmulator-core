@@ -59,14 +59,11 @@ impl VRAMAddress {
 }
 
 pub struct PPUBus {
-    // Pattern tables
-    pub pattern_tables: [[u8; 0x1000]; 2],
-
     // Name tables loaded in VRAM
-    pub name_tables: [[u8; 0x0400]; 2],
+    name_tables: [[u8; 0x0400]; 2],
 
     // Palette table
-    pub palette_table: [u8; 0x20],
+    palette_table: [u8; 0x20],
 
     // Registers
     pub vram_address: VRAMAddress,
@@ -79,8 +76,6 @@ pub struct PPUBus {
 impl PPUBus {
     pub fn new() -> Self {
         PPUBus {
-            pattern_tables: [[0; 0x1000]; 2],
-
             name_tables: [[0; 0x0400]; 2],
 
             palette_table: [0; 0x20],
@@ -104,7 +99,7 @@ impl PPUBus {
         value
     }
 
-    pub fn read_name_tables(&self, address: u16) -> u8 {
+    fn read_name_tables(&self, address: u16) -> u8 {
         let value: u8;
         // Vertical mirroring
         match self.o_p_mapper.as_ref().unwrap().get_mirroring() {
@@ -132,7 +127,7 @@ impl PPUBus {
         value
     }
 
-    pub fn read_palette_table(&self, address: u16) -> u8 {
+    fn read_palette_table(&self, address: u16) -> u8 {
         let mut index: u16 = address;
         match index {
             0x0010 => index = 0x0000,
@@ -158,7 +153,7 @@ impl PPUBus {
         }
     }
 
-    pub fn write_name_tables(&mut self, address: u16, value: u8) {
+    fn write_name_tables(&mut self, address: u16, value: u8) {
         // Vertical mirroring
         match self.o_p_mapper.as_ref().unwrap().get_mirroring() {
             Mirroring::Horizontal => match address {
@@ -186,7 +181,7 @@ impl PPUBus {
         }
     }
 
-    pub fn write_palette_table(&mut self, address: u16, value: u8) {
+    fn write_palette_table(&mut self, address: u16, value: u8) {
         let mut index: u16 = address;
         match index {
             0x0010 => index = 0x0000,
