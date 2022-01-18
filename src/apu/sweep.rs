@@ -1,0 +1,52 @@
+pub struct SweepUnit {
+    enabled: bool,
+    period: u8,
+    divider: u8,
+    negate: bool,
+    shift: u8,
+    reload: bool,
+    pub mute: bool,
+}
+
+impl SweepUnit {
+    pub fn new() -> Self {
+        SweepUnit {
+            enabled: false,
+            period: 0,
+            divider: 0,
+            negate: false,
+            shift: 0,
+            reload: false,
+            mute: false,
+        }
+    }
+
+    pub fn set(&mut self, value: u8) {
+        self.enabled = value & 0x80 > 0;
+        self.period = (value & 0x70) >> 4;
+        self.negate = value & 0x08 > 0;
+        self.shift = value & 0x07;
+        self.reload = true;
+    }
+
+    pub fn clock(&mut self, timer: &mut u16) {
+        let change = *timer >> self.shift;
+        let change: i16 = if self.negate {
+            -(change as i16)
+        } else {
+            change as i16
+        };
+        let target_period = (*timer as i16 + change) as u16;
+        self.mute = target_period < 8 || target_period > 0x7FF;
+
+        if self.divider == 0 && self.enabled && !self.mute {
+            *timer = target_period;
+        }
+        if self.divider == 0 || self.reload {
+            self.divider = self.period;
+            self.reload = false;
+        } else {
+            self.divider -= 1;
+        }
+    }
+}

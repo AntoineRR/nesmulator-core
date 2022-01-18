@@ -6,7 +6,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use cartridge::mapper::Mapper;
 
-use crate::{cartridge, controllers::Controller, ppu::ppu::PPU};
+use crate::{apu::apu::APU, cartridge, controllers::Controller, ppu::ppu::PPU};
 
 // ===== CONSTANTS =====
 
@@ -18,16 +18,18 @@ pub struct Bus {
     data: [u8; 0x10000],
     pub o_p_mapper: Option<Box<dyn Mapper>>,
     pub p_ppu: Rc<RefCell<PPU>>,
+    p_apu: Rc<RefCell<APU>>,
 
     pub controllers: [Controller; 2],
 }
 
 impl Bus {
-    pub fn new(p_ppu: Rc<RefCell<PPU>>) -> Self {
+    pub fn new(p_ppu: Rc<RefCell<PPU>>, p_apu: Rc<RefCell<APU>>) -> Self {
         Bus {
             data: [0; 0x10000], // 64KB of ram
             o_p_mapper: None,
             p_ppu,
+            p_apu,
 
             controllers: [Controller::new(); 2],
         }
@@ -46,11 +48,11 @@ impl Bus {
             // 0x2008 - 0x3FFF / NES PPU Registers Mirrors
             0x2008..=0x3FFF => value = self.p_ppu.borrow_mut().read_register(address & 0x2007),
             // 0x4000 - 0x4013 / NES APU I/O Registers
-            0x4000..=0x4013 => value = self.data[address as usize],
+            0x4000..=0x4013 => value = self.p_apu.borrow().read_register(address),
             // 0x4014 / NES PPU Register
             0x4014 => value = self.p_ppu.borrow_mut().read_register(address),
             // 0x4015 / NES APU Register
-            0x4015 => value = self.data[address as usize],
+            0x4015 => value = self.p_apu.borrow().read_register(address),
             // 0x4016 / First controller
             0x4016 => value = self.controllers[0].check_shifter(),
             // 0x4017 / Second controller
@@ -91,7 +93,7 @@ impl Bus {
                     .read_register_without_modification(address & 0x2007)
             }
             // 0x4000 - 0x4013 / NES APU I/O Registers
-            0x4000..=0x4013 => value = self.data[address as usize],
+            0x4000..=0x4013 => value = self.p_apu.borrow().read_register(address),
             // 0x4014 / NES PPU Register
             0x4014 => {
                 value = self
@@ -101,7 +103,7 @@ impl Bus {
                     .read_register_without_modification(address)
             }
             // 0x4015 / NES APU Register
-            0x4015 => value = self.data[address as usize],
+            0x4015 => value = self.p_apu.borrow().read_register(address),
             // 0x4016 / First controller
             0x4016 => value = self.data[address as usize],
             // 0x4017 / Second controller
@@ -129,11 +131,11 @@ impl Bus {
                 .borrow_mut()
                 .write_register(address & 0x2007, value),
             // 0x4000 - 0x4013 / NES APU I/O Registers
-            0x4000..=0x4013 => self.data[address as usize] = value,
+            0x4000..=0x4013 => self.p_apu.borrow_mut().write_register(address, value),
             // 0x4014 / NES PPU Register
             0x4014 => self.p_ppu.borrow_mut().write_register(address, value),
             // 0x4015 / NES APU Register
-            0x4015 => self.data[address as usize] = value,
+            0x4015 => self.p_apu.borrow_mut().write_register(address, value),
             // 0x4016 / First controller
             0x4016 => {
                 if (value & 0x01) > 0 {

@@ -10,8 +10,8 @@ use std::{
 
 use cartridge::cartridge::Cartridge;
 
-use crate::bus::Bus;
 use crate::ppu::ppu::PPU;
+use crate::{apu::apu::APU, bus::Bus};
 use crate::{
     cartridge,
     cpu::{cpu::CPU, enums::Interrupt},
@@ -24,6 +24,7 @@ pub struct NES {
     p_bus: Arc<Mutex<Bus>>,
     p_cpu: Rc<RefCell<CPU>>,
     p_ppu: Rc<RefCell<PPU>>,
+    p_apu: Rc<RefCell<APU>>,
 
     // NES clock counter
     total_clock: u64,
@@ -43,11 +44,13 @@ impl NES {
         p_bus: Arc<Mutex<Bus>>,
         p_cpu: Rc<RefCell<CPU>>,
         p_ppu: Rc<RefCell<PPU>>,
+        p_apu: Rc<RefCell<APU>>,
     ) -> Self {
         NES {
             p_bus,
             p_cpu,
             p_ppu,
+            p_apu,
 
             total_clock: 0,
 
@@ -85,13 +88,19 @@ impl NES {
             // Clock PPU
             self.p_ppu.borrow_mut().clock();
 
+            // Clock APU
+            if self.total_clock % 6 == 0 {
+                // APU is clocked every two CPU cycles
+                self.p_apu.borrow_mut().clock();
+            }
+
             // Check if an NMI interrupt should be thrown
             if self.p_ppu.borrow().registers.emit_nmi {
                 self.p_ppu.borrow_mut().registers.emit_nmi = false;
                 self.p_cpu.borrow_mut().interrupt(Interrupt::NMI);
             }
 
-            self.total_clock += 1;
+            self.total_clock = self.total_clock.wrapping_add(1);
         }
     }
 

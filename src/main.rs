@@ -1,3 +1,4 @@
+mod apu;
 mod bus;
 mod cartridge;
 mod controllers;
@@ -14,6 +15,7 @@ use std::{
     thread,
 };
 
+use apu::apu::APU;
 use bus::Bus;
 use cartridge::cartridge::Cartridge;
 use clap::{App, Arg};
@@ -112,9 +114,10 @@ fn main() {
 
     // Creates the NES architecture
     let p_ppu = Rc::new(RefCell::new(PPU::new(p_gui.clone())));
-    let p_bus = Arc::new(Mutex::new(Bus::new(p_ppu.clone())));
+    let p_apu = Rc::new(RefCell::new(APU::new()));
+    let p_bus = Arc::new(Mutex::new(Bus::new(p_ppu.clone(), p_apu.clone())));
     let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
-    let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone());
+    let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone(), p_apu.clone());
 
     // Runs the game on the cartridge
     nes.insert_cartdrige(cartridge);

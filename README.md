@@ -47,7 +47,6 @@ See [TESTS.md](TESTS.md) for details about tests.
 
 ## To do
 
-* Add more debugging information using log crate
 * Correct MMC1 mapper
 * Add APU emulation for sound
 

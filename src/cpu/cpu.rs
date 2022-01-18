@@ -175,7 +175,7 @@ impl CPU {
         } else {
             self.cycles -= 1;
         }
-        self.total_clock += 1;
+        self.total_clock = self.total_clock.wrapping_add(1);
     }
 
     // ===== ADDRESSING MODES =====
