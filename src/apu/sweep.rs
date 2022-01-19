@@ -29,18 +29,18 @@ impl SweepUnit {
         self.reload = true;
     }
 
-    pub fn clock(&mut self, timer: &mut u16) {
-        let change = *timer >> self.shift;
+    pub fn clock(&mut self, period: &mut u16) {
+        let change = *period >> self.shift;
         let change: i16 = if self.negate {
             -(change as i16)
         } else {
             change as i16
         };
-        let target_period = (*timer as i16 + change) as u16;
+        let target_period = (*period as i16 + change) as u16;
         self.mute = target_period < 8 || target_period > 0x7FF;
 
         if self.divider == 0 && self.enabled && !self.mute {
-            *timer = target_period;
+            *period = target_period;
         }
         if self.divider == 0 || self.reload {
             self.divider = self.period;

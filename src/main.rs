@@ -12,10 +12,10 @@ use std::{
     path::Path,
     rc::Rc,
     sync::{Arc, Mutex},
-    thread,
+    thread, time::{Instant, Duration},
 };
 
-use apu::apu::APU;
+use apu::{apu::APU, audio::Audio};
 use bus::Bus;
 use cartridge::cartridge::Cartridge;
 use clap::{App, Arg};
@@ -26,6 +26,7 @@ use gui::GUI;
 use log::{error, warn};
 use nes::NES;
 use ppu::ppu::PPU;
+use sdl2::audio::AudioSpecDesired;
 use winit::{
     event::{Event, VirtualKeyCode},
     event_loop::{ControlFlow, EventLoop},
@@ -114,7 +115,7 @@ fn main() {
 
     // Creates the NES architecture
     let p_ppu = Rc::new(RefCell::new(PPU::new(p_gui.clone())));
-    let p_apu = Rc::new(RefCell::new(APU::new()));
+    let p_apu = Arc::new(Mutex::new(APU::new()));
     let p_bus = Arc::new(Mutex::new(Bus::new(p_ppu.clone(), p_apu.clone())));
     let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
     let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone(), p_apu.clone());
@@ -123,11 +124,26 @@ fn main() {
     nes.insert_cartdrige(cartridge);
     thread::spawn(move || nes.launch_game());
 
+    // Sound
+    let sdl_context = sdl2::init().unwrap();
+    let audio_subsystem = sdl_context.audio().unwrap();
+
+    let desired_audio_specs = AudioSpecDesired {
+        freq: Some(44100),
+        channels: Some(1),
+        samples: None,
+    };
+
+    let audio = Audio::new(p_apu.clone(), 44100.0);
+    let device = audio_subsystem.open_playback(None, &desired_audio_specs, |_| audio).unwrap();
+    device.resume();
+
     // Event loop for the window
 
     let mut input_helper = WinitInputHelper::new();
     let main_pixels = p_gui.clone().lock().unwrap().main_pixels.clone();
     event_loop.run(move |event, _, control_flow| {
+
         *control_flow = ControlFlow::Wait;
 
         if let Event::RedrawRequested(_) = event {

@@ -67,18 +67,18 @@ impl Pulse {
     }
 
     fn clock_sequencer(&mut self) {
-        self.sequence = self.sequence >> 1;
+        self.sequence = (self.sequence & 0xFE) >> 1 | (self.sequence & 0x01) << 7;
     }
 
     pub fn clock_sweep(&mut self) {
-        self.sweep.clock(&mut self.timer);
+        self.sweep.clock(&mut self.period);
     }
 
     pub fn clock(&mut self) {
         if self.timer != 0 {
             self.timer -= 1;
         } else {
-            self.timer = self.period;
+            self.timer = self.period + 1;
             self.clock_sequencer();
         }
     }
@@ -87,7 +87,8 @@ impl Pulse {
         if self.sequence & 0x01 > 0
             && !self.sweep.mute
             && !self.waveform.is_channel_silenced()
-            && self.timer >= 8
+            && self.period >= 8
+            && self.period < 0x7FF
         {
             self.envelope.get_output()
         } else {

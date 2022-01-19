@@ -24,7 +24,7 @@ pub struct NES {
     p_bus: Arc<Mutex<Bus>>,
     p_cpu: Rc<RefCell<CPU>>,
     p_ppu: Rc<RefCell<PPU>>,
-    p_apu: Rc<RefCell<APU>>,
+    p_apu: Arc<Mutex<APU>>,
 
     // NES clock counter
     total_clock: u64,
@@ -44,7 +44,7 @@ impl NES {
         p_bus: Arc<Mutex<Bus>>,
         p_cpu: Rc<RefCell<CPU>>,
         p_ppu: Rc<RefCell<PPU>>,
-        p_apu: Rc<RefCell<APU>>,
+        p_apu: Arc<Mutex<APU>>,
     ) -> Self {
         NES {
             p_bus,
@@ -91,7 +91,7 @@ impl NES {
             // Clock APU
             if self.total_clock % 6 == 0 {
                 // APU is clocked every two CPU cycles
-                self.p_apu.borrow_mut().clock();
+                self.p_apu.lock().unwrap().clock();
             }
 
             // Check if an NMI interrupt should be thrown

@@ -20,6 +20,7 @@ For now, only cartridges using mapper 0, 1, 2 and 3 can be read.
 The PPU background and sprite display is emulated.
 The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels), and displays the game screen.
 The first controller is emulated too (see controls).
+The APU is partially emulated (two pulse channels).
 
 ## How to run
 
@@ -48,7 +49,8 @@ See [TESTS.md](TESTS.md) for details about tests.
 ## To do
 
 * Correct MMC1 mapper
-* Add APU emulation for sound
+* Add other channels to the APU emulation (noise, triangle and DMC)
+* Find a better synchronisation architecture for sound
 
 ## License
 

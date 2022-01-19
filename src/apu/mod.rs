@@ -6,3 +6,5 @@ pub mod pulse;
 pub mod sweep;
 pub mod triangle;
 pub mod waveform;
+pub mod audio;
+pub mod filters;

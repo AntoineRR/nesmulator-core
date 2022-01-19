@@ -14,20 +14,23 @@ pub struct APU {
     status: u8,
     frame_clock: u64,
 
-    pulse_table: [f64; 31],
-    tnd_table: [f64; 203],
+    pulse_table: [f32; 31],
+    tnd_table: [f32; 203],
+
+    pub buffer: Vec<f32>,
+    amplitude: f32,
 }
 
 impl APU {
     pub fn new() -> Self {
         let mut pulse_table = [0.0; 31];
         for i in 0..31 {
-            pulse_table[i] = 95.52 / (8128.0 / i as f64 + 100.0);
+            pulse_table[i] = 95.52 / (8128.0 / i as f32 + 100.0);
         }
 
         let mut tnd_table = [0.0; 203];
         for i in 0..203 {
-            tnd_table[i] = 163.67 / (24329.0 / i as f64 + 100.0);
+            tnd_table[i] = 163.67 / (24329.0 / i as f32 + 100.0);
         }
 
         APU {
@@ -41,6 +44,9 @@ impl APU {
 
             pulse_table,
             tnd_table,
+
+            buffer: vec![],
+            amplitude: 0.0,
         }
     }
 
@@ -102,10 +108,24 @@ impl APU {
 
         self.pulse1.clock();
         self.pulse2.clock();
+
+        // For now, take the mean value of several sample output from the APU, and push it to the sample buffer
+        // at a rate that is close to the 44100Hz required by sdl2
+        self.amplitude += self.get_amplitude();
+        if self.frame_clock % (700000 / 44100) == 0 {
+            self.buffer.push(self.amplitude / (700000.0 / 44100.0));
+            self.amplitude = 0.0;
+        }
     }
 
-    pub fn get_current_amplitude(&self) -> f64 {
+    fn get_amplitude(&self) -> f32 {
         let pulse_out = (self.pulse1.get_output() + self.pulse2.get_output()) as usize;
         self.pulse_table[pulse_out]
+    }
+
+    pub fn get_buffer(&mut self) -> Vec<f32> {
+        let result = self.buffer.clone();
+        self.buffer.clear();
+        result
     }
 }
