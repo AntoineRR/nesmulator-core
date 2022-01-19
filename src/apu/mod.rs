@@ -5,6 +5,6 @@ pub mod noise;
 pub mod pulse;
 pub mod sweep;
 pub mod triangle;
-pub mod waveform;
+pub mod length_counter;
 pub mod audio;
 pub mod filters;

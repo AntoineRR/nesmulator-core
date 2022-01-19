@@ -59,6 +59,29 @@ Here are the results :
 * [ ] sprite_overflow_tests/4.Obscure
 * [X] sprite_overflow_tests/5.Emulator
 
+## APU
+
+* [ ] apu_test/apu_test
+* [X] apu_test/rom_singles/1-len_ctr
+* [ ] apu_test/rom_singles/2-len_table
+* [ ] apu_test/rom_singles/3-irq_flag
+* [ ] apu_test/rom_singles/4-jitter
+* [ ] apu_test/rom_singles/5-len_timing
+* [ ] apu_test/rom_singles/6-irq_flag_timing
+* [ ] apu_test/rom_singles/7-dmc_basics
+* [ ] apu_test/rom_singles/8-dmc_rates
+* [X] blargg_apu_2005.07.30/01.len_ctr
+* [X] blargg_apu_2005.07.30/02.len_table
+* [ ] blargg_apu_2005.07.30/03.irq_flag
+* [ ] blargg_apu_2005.07.30/04.clock_jitter
+* [ ] blargg_apu_2005.07.30/05.len_timing_mode0
+* [ ] blargg_apu_2005.07.30/06.len_timing_mode1
+* [ ] blargg_apu_2005.07.30/07.irq_flag_timing
+* [ ] blargg_apu_2005.07.30/08.irq_timing
+* [ ] blargg_apu_2005.07.30/09.reset_timing
+* [ ] blargg_apu_2005.07.30/10.len_halt_timing
+* [ ] blargg_apu_2005.07.30/11.len_reload_timing
+
 ## Mappers
 
 * [X] M0_P32K_C8K_V

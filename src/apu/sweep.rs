@@ -1,4 +1,5 @@
 pub struct SweepUnit {
+    second: bool,
     enabled: bool,
     period: u8,
     divider: u8,
@@ -9,8 +10,9 @@ pub struct SweepUnit {
 }
 
 impl SweepUnit {
-    pub fn new() -> Self {
+    pub fn new(second: bool) -> Self {
         SweepUnit {
+            second,
             enabled: false,
             period: 0,
             divider: 0,
@@ -32,7 +34,11 @@ impl SweepUnit {
     pub fn clock(&mut self, period: &mut u16) {
         let change = *period >> self.shift;
         let change: i16 = if self.negate {
-            -(change as i16)
+            if self.second {
+                -(change as i16)
+            } else {
+                -(change as i16) - 1
+            }
         } else {
             change as i16
         };

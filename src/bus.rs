@@ -142,8 +142,9 @@ impl Bus {
                     self.controllers[0].update_shifter();
                 }
             }
-            // 0x4017 / Second controller
+            // 0x4017 / Second controller + NES APU Register
             0x4017 => {
+                self.p_apu.lock().unwrap().write_register(address, value);
                 if (value & 0x01) > 0 {
                     self.controllers[1].update_shifter();
                 }

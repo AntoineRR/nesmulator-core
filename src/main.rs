@@ -12,7 +12,7 @@ use std::{
     path::Path,
     rc::Rc,
     sync::{Arc, Mutex},
-    thread, time::{Instant, Duration},
+    thread,
 };
 
 use apu::{apu::APU, audio::Audio};

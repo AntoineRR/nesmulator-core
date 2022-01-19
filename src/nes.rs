@@ -75,7 +75,7 @@ impl NES {
         self.total_clock = 0;
         //self.p_cpu.lock().unwrap().pc = 0xC000; // Run nestest in automation mode (Fails at C6BD because of unofficial opcode)
         loop {
-            // CPU is clocked every 3 PPU cycles
+            // CPU and APU is clocked every 3 PPU cycles
             if self.total_clock % 3 == 0 {
                 // If we initialized a DMA, do not clock CPU for nearly 513 cycles
                 if self.p_ppu.borrow().registers.perform_dma {
@@ -83,16 +83,11 @@ impl NES {
                 } else {
                     self.p_cpu.borrow_mut().clock();
                 }
+                self.p_apu.lock().unwrap().clock();
             }
 
             // Clock PPU
             self.p_ppu.borrow_mut().clock();
-
-            // Clock APU
-            if self.total_clock % 6 == 0 {
-                // APU is clocked every two CPU cycles
-                self.p_apu.lock().unwrap().clock();
-            }
 
             // Check if an NMI interrupt should be thrown
             if self.p_ppu.borrow().registers.emit_nmi {
