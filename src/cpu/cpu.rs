@@ -4,7 +4,8 @@
 // ====== IMPORTS =====
 
 use core::panic;
-use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use super::enums::{AdressingMode as am, Flag, Interrupt};
 use super::instructions::{CpuInstruction, INSTRUCTIONS};
@@ -37,11 +38,11 @@ pub struct CPU {
     display_logs: bool,
 
     // pointer to the data bus where we read from and write to
-    p_bus: Arc<Mutex<Bus>>,
+    p_bus: Rc<RefCell<Bus>>,
 }
 
 impl CPU {
-    pub fn new(p_bus: Arc<Mutex<Bus>>, display_logs: bool) -> Self {
+    pub fn new(p_bus: Rc<RefCell<Bus>>, display_logs: bool) -> Self {
         CPU {
             a: 0,
             x: 0,
@@ -66,12 +67,12 @@ impl CPU {
 
     // Reads data from the bus at the given address
     fn read_bus(&self, address: u16) -> u8 {
-        self.p_bus.lock().unwrap().read(address)
+        self.p_bus.borrow_mut().read(address)
     }
 
     // Writes data to the bus at the given address
     fn write_bus(&mut self, address: u16, data: u8) {
-        self.p_bus.lock().unwrap().write(address, data);
+        self.p_bus.borrow_mut().write(address, data);
     }
 
     // Pushes data to stack
@@ -1178,12 +1179,12 @@ impl CPU {
             self.sp
         ));
 
-        let scanline: u16 = self.p_bus.lock().unwrap().p_ppu.borrow().scanline;
+        let scanline: u16 = self.p_bus.borrow().p_ppu.borrow().scanline;
         let mut scanline_str: String = scanline.to_string();
         while scanline_str.len() < 3 {
             scanline_str = String::from(format!(" {}", scanline_str));
         }
-        let cycle: u16 = self.p_bus.lock().unwrap().p_ppu.borrow().cycles;
+        let cycle: u16 = self.p_bus.borrow().p_ppu.borrow().cycles;
         let mut cycle_str: String = cycle.to_string();
         while cycle_str.len() < 3 {
             cycle_str = String::from(format!(" {}", cycle_str));
@@ -1195,7 +1196,7 @@ impl CPU {
 
     #[allow(dead_code)]
     pub fn read_only_bus(&self, address: u16) -> u8 {
-        self.p_bus.lock().unwrap().read_only(address)
+        self.p_bus.borrow().read_only(address)
     }
 
     #[allow(dead_code)]

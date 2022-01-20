@@ -31,8 +31,6 @@ pub struct GUI {
     // Windows
     main_window: Window,
     debugging_window: Arc<Mutex<Option<Window>>>,
-    // Keys pressed
-    pub inputs: Arc<Mutex<u8>>,
     // Screen buffers
     pub main_pixels: Arc<Mutex<Pixels<Window>>>,
     pub debug_pixels: Option<Pixels<Window>>,
@@ -54,12 +52,9 @@ impl GUI {
             Pixels::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT, surface_texture).unwrap(),
         ));
 
-        let inputs = Arc::new(Mutex::new(0));
-
         GUI {
             main_window,
             debugging_window: Arc::new(Mutex::new(None)),
-            inputs: inputs.clone(),
             main_pixels,
             debug_pixels: None,
             debug: false,

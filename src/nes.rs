@@ -5,7 +5,7 @@
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, mpsc::Receiver}
 };
 
 use cartridge::cartridge::Cartridge;
@@ -17,11 +17,19 @@ use crate::{
     cpu::{cpu::CPU, enums::Interrupt},
 };
 
+// ===== MESSAGES =====
+
+#[derive(PartialEq)]
+pub enum Message {
+    Input((usize, u8)),
+    ToggleDebugWindow,
+}
+
 // ===== NES STRUCT =====
 
 pub struct NES {
     // NES components
-    p_bus: Arc<Mutex<Bus>>,
+    p_bus: Rc<RefCell<Bus>>,
     p_cpu: Rc<RefCell<CPU>>,
     p_ppu: Rc<RefCell<PPU>>,
     p_apu: Arc<Mutex<APU>>,
@@ -41,7 +49,7 @@ unsafe impl Send for NES {}
 
 impl NES {
     pub fn new(
-        p_bus: Arc<Mutex<Bus>>,
+        p_bus: Rc<RefCell<Bus>>,
         p_cpu: Rc<RefCell<CPU>>,
         p_ppu: Rc<RefCell<PPU>>,
         p_apu: Arc<Mutex<APU>>,
@@ -65,12 +73,12 @@ impl NES {
     // Simulates the insertion of a NES cartridge
     // Sets the mapper that is needed to read the data of the cartridge
     pub fn insert_cartdrige(&mut self, cartridge: Cartridge) {
-        self.p_bus.lock().unwrap().o_p_mapper = Some(cartridge.mapper.clone());
+        self.p_bus.borrow_mut().o_p_mapper = Some(cartridge.mapper.clone());
         self.p_ppu.borrow_mut().ppu_bus.o_p_mapper = Some(cartridge.mapper.clone());
     }
 
     // Resets the CPU and launches the game
-    pub fn launch_game(&mut self) {
+    pub fn launch_game(&mut self, rx: Receiver<Message>) {
         self.p_cpu.borrow_mut().reset();
         self.total_clock = 0;
         //self.p_cpu.lock().unwrap().pc = 0xC000; // Run nestest in automation mode (Fails at C6BD because of unofficial opcode)
@@ -95,6 +103,18 @@ impl NES {
                 self.p_cpu.borrow_mut().interrupt(Interrupt::NMI);
             }
 
+            // Check inputs
+            if let Ok(message) = rx.try_recv() {
+                if let Message::Input((id, input)) = message {
+                    self.p_bus.borrow_mut().controllers[id].buffer = 0;
+                    self.p_bus.borrow_mut().controllers[id].buffer |= input;
+                } else if message == Message::ToggleDebugWindow {
+                    if !self.p_ppu.borrow().gui.debug {
+                        self.p_ppu.borrow_mut().gui.debug = true;
+                    }
+                }
+            }
+
             self.total_clock = self.total_clock.wrapping_add(1);
         }
     }
@@ -114,7 +134,7 @@ impl NES {
             if self.total_clock % 2 == 0 {
                 let address: u16 =
                     self.dma_address_offset as u16 + ((self.dma_hi_address as u16) << 8);
-                self.dma_data = self.p_bus.lock().unwrap().read(address);
+                self.dma_data = self.p_bus.borrow_mut().read(address);
             }
             // On odd cycles, write data to the PPU OAM
             else {

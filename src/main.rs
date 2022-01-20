@@ -11,7 +11,7 @@ use std::{
     cell::RefCell,
     path::Path,
     rc::Rc,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, mpsc::{self, Sender, Receiver}},
     thread,
 };
 
@@ -24,7 +24,7 @@ use cpu::cpu::CPU;
 use env_logger::Env;
 use gui::GUI;
 use log::{error, warn};
-use nes::NES;
+use nes::{NES, Message};
 use ppu::ppu::PPU;
 use sdl2::audio::AudioSpecDesired;
 use winit::{
@@ -111,18 +111,20 @@ fn main() {
     // Create the Eventloop for interacting with the window
     let event_loop = EventLoop::new();
     // Create the GUI for displaying the graphics
-    let p_gui = Arc::new(Mutex::new(GUI::new(&event_loop)));
+    let gui = GUI::new(&event_loop);
+    let main_pixels = gui.main_pixels.clone();
 
     // Creates the NES architecture
-    let p_ppu = Rc::new(RefCell::new(PPU::new(p_gui.clone())));
+    let p_ppu = Rc::new(RefCell::new(PPU::new(gui)));
     let p_apu = Arc::new(Mutex::new(APU::new()));
-    let p_bus = Arc::new(Mutex::new(Bus::new(p_ppu.clone(), p_apu.clone())));
+    let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
     let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
     let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone(), p_apu.clone());
 
     // Runs the game on the cartridge
     nes.insert_cartdrige(cartridge);
-    thread::spawn(move || nes.launch_game());
+    let (tx, rx): (Sender<Message>, Receiver<Message>) = mpsc::channel();
+    thread::spawn(move || nes.launch_game(rx));
 
     // Sound
     let sdl_context = sdl2::init().unwrap();
@@ -141,7 +143,7 @@ fn main() {
     // Event loop for the window
 
     let mut input_helper = WinitInputHelper::new();
-    let main_pixels = p_gui.clone().lock().unwrap().main_pixels.clone();
+    
     event_loop.run(move |event, _, control_flow| {
 
         *control_flow = ControlFlow::Wait;
@@ -171,37 +173,35 @@ fn main() {
             }
             // Debug window
             if input_helper.key_pressed(VirtualKeyCode::E) {
-                if !p_gui.lock().unwrap().debug {
-                    //p_gui.lock().unwrap().create_debugging_window(&event_loop);
-                    p_gui.lock().unwrap().debug = true;
-                }
+                tx.send(Message::ToggleDebugWindow).unwrap();
             }
             // Controller inputs
-            p_bus.lock().unwrap().controllers[0].buffer = 0;
+            let mut input = 0;
             if input_helper.key_held(VirtualKeyCode::Z) {
-                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Up as u8;
+                input |= ControllerInput::Up as u8;
             }
             if input_helper.key_held(VirtualKeyCode::Q) {
-                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Left as u8;
+                input |= ControllerInput::Left as u8;
             }
             if input_helper.key_held(VirtualKeyCode::S) {
-                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Down as u8;
+                input |= ControllerInput::Down as u8;
             }
             if input_helper.key_held(VirtualKeyCode::D) {
-                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Right as u8;
+                input |= ControllerInput::Right as u8;
             }
             if input_helper.key_held(VirtualKeyCode::X) {
-                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Start as u8;
+                input |= ControllerInput::Start as u8;
             }
             if input_helper.key_held(VirtualKeyCode::C) {
-                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::Select as u8;
+                input |= ControllerInput::Select as u8;
             }
             if input_helper.key_held(VirtualKeyCode::I) {
-                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::A as u8;
+                input |= ControllerInput::A as u8;
             }
             if input_helper.key_held(VirtualKeyCode::O) {
-                p_bus.lock().unwrap().controllers[0].buffer |= ControllerInput::B as u8;
+                input |= ControllerInput::B as u8;
             }
+            tx.send(Message::Input((0, input))).unwrap();
         }
     });
 }

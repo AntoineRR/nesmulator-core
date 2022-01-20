@@ -3,8 +3,6 @@
 
 // ===== IMPORTS =====
 
-use std::sync::{Arc, Mutex};
-
 use crate::gui::GUI;
 
 use super::{
@@ -61,11 +59,11 @@ pub struct PPU {
     total_clock: u64,
 
     // GUI
-    p_gui: Arc<Mutex<GUI>>,
+    pub gui: GUI,
 }
 
 impl PPU {
-    pub fn new(p_gui: Arc<Mutex<GUI>>) -> Self {
+    pub fn new(gui: GUI) -> Self {
         PPU {
             registers: Registers::new(),
 
@@ -97,7 +95,7 @@ impl PPU {
 
             total_clock: 0,
 
-            p_gui,
+            gui,
         }
     }
 
@@ -366,7 +364,7 @@ impl PPU {
             }
 
             // Renders pixel
-            self.p_gui.lock().unwrap().update_main_buffer(
+            self.gui.update_main_buffer(
                 (256 * self.scanline as u32 + self.cycles as u32 - 1) as usize,
                 self.get_pixel_color(palette, pattern),
             );
@@ -383,11 +381,11 @@ impl PPU {
                 self.scanline = 0;
                 self.odd_frame = !self.odd_frame;
                 // Debugging
-                if self.p_gui.lock().unwrap().debug {
+                if self.gui.debug {
                     self.debug(); // Updates debug buffer to display pattern tables
                 }
                 // A frame is ready to be displayed
-                self.p_gui.lock().unwrap().update();
+                self.gui.update();
             }
         }
 
@@ -788,14 +786,14 @@ impl PPU {
 
     // ===== DEBUGGING =====
 
-    fn debug(&self) {
+    fn debug(&mut self) {
         self.display_pattern_table(0);
         self.display_pattern_table(1);
         self.display_separation();
         self.display_palette();
     }
 
-    fn display_pattern_table(&self, number: u16) {
+    fn display_pattern_table(&mut self, number: u16) {
         for n_tile_y in 0..16 {
             for n_tile_x in 0..16 {
                 self.display_tile(n_tile_y, n_tile_x, number);
@@ -803,7 +801,7 @@ impl PPU {
         }
     }
 
-    fn display_tile(&self, n_tile_y: u16, n_tile_x: u16, number: u16) {
+    fn display_tile(&mut self, n_tile_y: u16, n_tile_x: u16, number: u16) {
         let n_offset = n_tile_y * 256 + n_tile_x * 16;
         for row in 0..8 {
             let mut tile_low: u8 = self.ppu_bus.read(number * 0x1000 + n_offset + row);
@@ -813,7 +811,7 @@ impl PPU {
                 tile_high >>= 1;
                 tile_low >>= 1;
                 let c: ARGBColor = self.get_pixel_color(0, color);
-                self.p_gui.lock().unwrap().update_debug_buffer(
+                self.gui.update_debug_buffer(
                     (n_tile_x * 8 + (7 - col) + number * 128 + (n_tile_y * 8 + row) * 256) as usize,
                     c,
                 );
@@ -821,23 +819,21 @@ impl PPU {
         }
     }
 
-    fn display_separation(&self) {
+    fn display_separation(&mut self) {
         for i in 0..512 {
-            self.p_gui
-                .lock()
-                .unwrap()
+            self.gui
                 .update_debug_buffer(256 * 128 + i, ARGBColor::new(255, 50, 50, 50));
         }
     }
 
-    fn display_palette(&self) {
+    fn display_palette(&mut self) {
         for address in 0x3F00..0x3F20 {
             let offset = address & 0x00FF;
             for i in 0..6 {
                 for j in 0..6 {
                     let index =
                         258 * 128 + (offset * 6) + (((offset % 4) == 0) as u32) * 2 + i + j * 256;
-                    self.p_gui.lock().unwrap().update_debug_buffer(
+                    self.gui.update_debug_buffer(
                         index as usize,
                         PALETTE[(self.ppu_bus.read(address as u16) & 0x3F) as usize],
                     );
