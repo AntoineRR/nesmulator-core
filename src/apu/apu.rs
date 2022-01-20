@@ -19,6 +19,7 @@ pub struct APU {
     noise: Noise,
     dmc: DMC,
 
+    clock_frequency: u64,
     frame_clock: u64,
     mode: Mode,
     instant_clock: bool,
@@ -31,7 +32,9 @@ pub struct APU {
 }
 
 impl APU {
-    pub fn new() -> Self {
+    pub fn new(ppu_clock_frequency: u64) -> Self {
+        let clock_frequency = ppu_clock_frequency / 3;
+
         let mut pulse_table = [0.0; 31];
         for i in 0..31 {
             pulse_table[i] = 95.52 / (8128.0 / i as f32 + 100.0);
@@ -49,6 +52,7 @@ impl APU {
             noise: Noise::new(),
             dmc: DMC::new(),
 
+            clock_frequency,
             frame_clock: 0,
             mode: Mode::Step4,
             instant_clock: false,
@@ -168,8 +172,8 @@ impl APU {
         // For now, take the mean value of several sample output from the APU, and push it to the sample buffer
         // at a rate that is close to the 44100Hz required by sdl2
         self.amplitude += self.get_amplitude();
-        if self.frame_clock % (1_789_773 / 44100) == 0 {
-            self.buffer.push(self.amplitude / (1_789_773.0 / 44100.0));
+        if self.frame_clock % (self.clock_frequency / 44100) == 0 {
+            self.buffer.push(self.amplitude / (self.clock_frequency as f32 / 44100.0));
             self.amplitude = 0.0;
         }
 

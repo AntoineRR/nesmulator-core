@@ -113,12 +113,15 @@ fn main() {
     // Create the GUI for displaying the graphics
     let gui = GUI::new(&event_loop);
 
+    // Clock frequency
+    let ppu_clock_frequency = 5_369_318;
+
     // Creates the NES architecture
     let p_ppu = Rc::new(RefCell::new(PPU::new(gui)));
-    let p_apu = Arc::new(Mutex::new(APU::new()));
+    let p_apu = Arc::new(Mutex::new(APU::new(ppu_clock_frequency)));
     let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
     let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
-    let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone(), p_apu.clone());
+    let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone(), p_apu.clone(), ppu_clock_frequency);
 
     // Runs the game on the cartridge
     nes.insert_cartdrige(cartridge);

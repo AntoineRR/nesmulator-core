@@ -5,7 +5,7 @@
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::{Arc, Mutex, mpsc::Receiver}
+    sync::{Arc, Mutex, mpsc::Receiver}, time::{Instant, Duration}
 };
 
 use cartridge::cartridge::Cartridge;
@@ -37,6 +37,10 @@ pub struct NES {
     p_ppu: Rc<RefCell<PPU>>,
     p_apu: Arc<Mutex<APU>>,
 
+    // Synchronization
+    clock_duration_1000: Duration,
+    elapsed: Duration,
+
     // NES clock counter
     total_clock: u64,
 
@@ -56,12 +60,17 @@ impl NES {
         p_cpu: Rc<RefCell<CPU>>,
         p_ppu: Rc<RefCell<PPU>>,
         p_apu: Arc<Mutex<APU>>,
+        ppu_clock_frequency: u64,
     ) -> Self {
+        let clock_duration_1000 = Duration::from_micros(1_000_000_000 / ppu_clock_frequency);
         NES {
             p_bus,
             p_cpu,
             p_ppu,
             p_apu,
+
+            clock_duration_1000,
+            elapsed: Duration::new(0, 0),
 
             total_clock: 0,
 
@@ -86,6 +95,8 @@ impl NES {
         self.total_clock = 0;
         
         loop {
+            let time = Instant::now();
+
             // CPU and APU is clocked every 3 PPU cycles
             if self.total_clock % 3 == 0 {
                 // If we initialized a DMA, do not clock CPU for nearly 513 cycles
@@ -112,6 +123,14 @@ impl NES {
             }
 
             self.total_clock = self.total_clock.wrapping_add(1);
+
+            self.elapsed += time.elapsed();
+            if self.total_clock % 1000 == 0 {
+                if self.elapsed < self.clock_duration_1000 {
+                    spin_sleep::sleep(self.clock_duration_1000 - self.elapsed);
+                }
+                self.elapsed = Duration::new(0, 0);
+            }
         }
     }
 
