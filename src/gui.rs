@@ -5,8 +5,6 @@
 
 // ===== IMPORTS =====
 
-use std::sync::{Arc, Mutex};
-
 use pixels::{Pixels, SurfaceTexture};
 use winit::{
     dpi::LogicalSize,
@@ -30,57 +28,52 @@ pub const DEBUG_WINDOW_HEIGHT: u32 = 128 + 2 + 6; // 2 rows to separate pattern 
 pub struct GUI {
     // Windows
     main_window: Window,
-    debugging_window: Arc<Mutex<Option<Window>>>,
     // Screen buffers
-    pub main_pixels: Arc<Mutex<Pixels<Window>>>,
-    pub debug_pixels: Option<Pixels<Window>>,
+    pub main_pixels: Pixels,
     // Debug
     pub debug: bool,
 }
 
 impl GUI {
     pub fn new(main_event_loop: &EventLoop<()>) -> Self {
+        let window_size = LogicalSize::new(MAIN_WINDOW_WIDTH * 2, MAIN_WINDOW_HEIGHT * 2);
+        let buffer_size = LogicalSize::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT);
         let main_window = WindowBuilder::new()
             .with_title("Nesmulator")
-            .with_inner_size(LogicalSize::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT))
+            .with_inner_size(window_size)
+            .with_min_inner_size(buffer_size)
             .build(main_event_loop)
             .expect("Cannot create main window");
 
         let surface_texture =
-            SurfaceTexture::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT, &main_window);
-        let main_pixels = Arc::new(Mutex::new(
-            Pixels::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT, surface_texture).unwrap(),
-        ));
+            SurfaceTexture::new(window_size.width, window_size.height, &main_window);
+        let main_pixels = Pixels::new(buffer_size.width, buffer_size.height, surface_texture).unwrap();
 
         GUI {
             main_window,
-            debugging_window: Arc::new(Mutex::new(None)),
             main_pixels,
-            debug_pixels: None,
             debug: false,
         }
     }
 
     // Debugging window creation method
-    pub fn create_debugging_window(&mut self, debug_event_loop: &EventLoop<()>) {
-        let debugging_window = WindowBuilder::new()
-            .with_title("Nesmulator")
-            .with_inner_size(LogicalSize::new(MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT))
-            .build(debug_event_loop)
-            .expect("Cannot create debug window");
-
-        let surface_texture =
-            SurfaceTexture::new(DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, &debugging_window);
-        self.debug_pixels =
-            Some(Pixels::new(DEBUG_WINDOW_WIDTH, DEBUG_WINDOW_HEIGHT, surface_texture).unwrap());
-
-        self.debugging_window = Arc::new(Mutex::new(Some(debugging_window)));
+    pub fn toggle_debugging(&mut self) {
+        if self.debug {
+            let width = MAIN_WINDOW_WIDTH;
+            let height = MAIN_WINDOW_HEIGHT;
+            self.main_pixels.resize_buffer(width, height);
+            self.debug = false;
+        } else {
+            let width = MAIN_WINDOW_WIDTH.max(DEBUG_WINDOW_WIDTH);
+            let height = MAIN_WINDOW_HEIGHT + DEBUG_WINDOW_HEIGHT;
+            self.main_pixels.resize_buffer(width, height);
+            self.debug = true;
+        }
     }
 
     // Updates the main screen buffer
     pub fn update_main_buffer(&mut self, index: usize, color: ARGBColor) {
-        let mut main_pixels = self.main_pixels.lock().unwrap();
-        let pixel = &mut main_pixels.get_frame()[index * 4..index * 4 + 4];
+        let pixel = &mut self.main_pixels.get_frame()[index * 4..index * 4 + 4];
         pixel[0] = color.red;
         pixel[1] = color.green;
         pixel[2] = color.blue;
@@ -89,7 +82,8 @@ impl GUI {
 
     // Updates the debug screen buffer
     pub fn update_debug_buffer(&mut self, index: usize, color: ARGBColor) {
-        let pixel = &mut self.debug_pixels.as_mut().unwrap().get_frame()[index * 4..index * 4 + 4];
+        let offset = index + (MAIN_WINDOW_WIDTH * MAIN_WINDOW_HEIGHT) as usize;
+        let pixel = &mut self.main_pixels.get_frame()[offset * 4..offset * 4 + 4];
         pixel[0] = color.red;
         pixel[1] = color.green;
         pixel[2] = color.blue;

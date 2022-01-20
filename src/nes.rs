@@ -9,6 +9,7 @@ use std::{
 };
 
 use cartridge::cartridge::Cartridge;
+use log::error;
 
 use crate::ppu::ppu::PPU;
 use crate::{apu::apu::APU, bus::Bus};
@@ -22,6 +23,8 @@ use crate::{
 #[derive(PartialEq)]
 pub enum Message {
     Input((usize, u8)),
+    DrawFrame,
+    ResizeWindow(u32, u32),
     ToggleDebugWindow,
 }
 
@@ -81,7 +84,7 @@ impl NES {
     pub fn launch_game(&mut self, rx: Receiver<Message>) {
         self.p_cpu.borrow_mut().reset();
         self.total_clock = 0;
-        //self.p_cpu.lock().unwrap().pc = 0xC000; // Run nestest in automation mode (Fails at C6BD because of unofficial opcode)
+        
         loop {
             // CPU and APU is clocked every 3 PPU cycles
             if self.total_clock % 3 == 0 {
@@ -105,14 +108,7 @@ impl NES {
 
             // Check inputs
             if let Ok(message) = rx.try_recv() {
-                if let Message::Input((id, input)) = message {
-                    self.p_bus.borrow_mut().controllers[id].buffer = 0;
-                    self.p_bus.borrow_mut().controllers[id].buffer |= input;
-                } else if message == Message::ToggleDebugWindow {
-                    if !self.p_ppu.borrow().gui.debug {
-                        self.p_ppu.borrow_mut().gui.debug = true;
-                    }
-                }
+                self.handle_message(message);
             }
 
             self.total_clock = self.total_clock.wrapping_add(1);
@@ -154,6 +150,19 @@ impl NES {
                     self.p_ppu.borrow_mut().registers.perform_dma = false;
                 }
             }
+        }
+    }
+
+    fn handle_message(&mut self, message: Message) {
+        if let Message::Input((id, input)) = message {
+            self.p_bus.borrow_mut().controllers[id].buffer = 0;
+            self.p_bus.borrow_mut().controllers[id].buffer |= input;
+        } else if let Message::ResizeWindow(width, height) = message {
+            self.p_ppu.borrow_mut().gui.main_pixels.resize_surface(width, height);
+        } else if message == Message::DrawFrame {
+            self.p_ppu.borrow_mut().gui.main_pixels.render().map_err(|e| error!("pixels.render() failed: {}", e)).unwrap();
+        } else if message == Message::ToggleDebugWindow {
+            self.p_ppu.borrow_mut().gui.toggle_debugging();
         }
     }
 }

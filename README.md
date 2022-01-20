@@ -21,6 +21,7 @@ The PPU background and sprite display is emulated.
 The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels), and displays the game screen.
 The first controller is emulated too (see controls).
 The APU is partially emulated (two pulses, noise, and triangle channels).
+A debugging view (display of pattern tables and palette) can be toggled.
 
 ## How to run
 
@@ -41,6 +42,8 @@ More options can be displayed with the `-h` or `--help` flag.
 * B -> O
 * START -> X
 * SELECT -> C
+
+* Pattern tables and palette display (debugging mode) -> E
 
 ## Tests
 

@@ -23,7 +23,7 @@ use controllers::ControllerInput;
 use cpu::cpu::CPU;
 use env_logger::Env;
 use gui::GUI;
-use log::{error, warn};
+use log::warn;
 use nes::{NES, Message};
 use ppu::ppu::PPU;
 use sdl2::audio::AudioSpecDesired;
@@ -112,7 +112,6 @@ fn main() {
     let event_loop = EventLoop::new();
     // Create the GUI for displaying the graphics
     let gui = GUI::new(&event_loop);
-    let main_pixels = gui.main_pixels.clone();
 
     // Creates the NES architecture
     let p_ppu = Rc::new(RefCell::new(PPU::new(gui)));
@@ -149,16 +148,7 @@ fn main() {
         *control_flow = ControlFlow::Wait;
 
         if let Event::RedrawRequested(_) = event {
-            if main_pixels
-                .lock()
-                .unwrap()
-                .render()
-                .map_err(|e| error!("pixels.render() failed: {}", e))
-                .is_err()
-            {
-                *control_flow = ControlFlow::Exit;
-                return;
-            }
+            tx.send(Message::DrawFrame).unwrap();
         }
 
         if input_helper.update(&event) {
@@ -169,7 +159,7 @@ fn main() {
             }
             // Resize event
             if let Some(size) = input_helper.window_resized() {
-                main_pixels.lock().unwrap().resize(size.width, size.height);
+                tx.send(Message::ResizeWindow(size.width, size.height)).unwrap();
             }
             // Debug window
             if input_helper.key_pressed(VirtualKeyCode::E) {
