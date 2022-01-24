@@ -1,6 +1,8 @@
-use super::{length_counter::LengthCounter, envelope::Envelope};
+use super::{envelope::Envelope, length_counter::LengthCounter};
 
-const NOISE_PERIOD: [u16; 16] = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068];
+const NOISE_PERIOD: [u16; 16] = [
+    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
+];
 
 pub struct Noise {
     pub length_counter: LengthCounter,
@@ -26,7 +28,8 @@ impl Noise {
     }
 
     pub fn set_control(&mut self, value: u8) {
-        self.length_counter.set_lenght_counter_halt(value & 0x20 > 0);
+        self.length_counter
+            .set_lenght_counter_halt(value & 0x20 > 0);
         self.envelope.loop_flag = value & 0x20 > 0;
         self.envelope.set_volume(value & 0x10 > 0, value & 0x0F);
     }
@@ -42,8 +45,8 @@ impl Noise {
     }
 
     fn clock_shift(&mut self) {
-        let feedback = (self.shift & 0x0001) ^
-            if self.mode {
+        let feedback = (self.shift & 0x0001)
+            ^ if self.mode {
                 (self.shift & 0x0020) >> 5
             } else {
                 (self.shift & 0x0002) >> 1

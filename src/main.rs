@@ -11,11 +11,11 @@ use std::{
     cell::RefCell,
     path::Path,
     rc::Rc,
-    sync::{Arc, Mutex, mpsc::{self, Sender, Receiver}},
+    sync::mpsc::{self, Receiver, Sender},
     thread,
 };
 
-use apu::{apu::APU, audio::Audio};
+use apu::apu::APU;
 use bus::Bus;
 use cartridge::cartridge::Cartridge;
 use clap::{App, Arg};
@@ -24,9 +24,8 @@ use cpu::cpu::CPU;
 use env_logger::Env;
 use gui::GUI;
 use log::warn;
-use nes::{NES, Message};
+use nes::{Message, NES};
 use ppu::ppu::PPU;
-use sdl2::audio::AudioSpecDesired;
 use winit::{
     event::{Event, VirtualKeyCode},
     event_loop::{ControlFlow, EventLoop},
@@ -118,36 +117,27 @@ fn main() {
 
     // Creates the NES architecture
     let p_ppu = Rc::new(RefCell::new(PPU::new(gui)));
-    let p_apu = Arc::new(Mutex::new(APU::new(ppu_clock_frequency)));
+    let p_apu = Rc::new(RefCell::new(APU::new(ppu_clock_frequency)));
     let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
     let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
-    let mut nes: NES = NES::new(p_bus.clone(), p_cpu.clone(), p_ppu.clone(), p_apu.clone(), ppu_clock_frequency);
+    let mut nes: NES = NES::new(
+        p_bus.clone(),
+        p_cpu.clone(),
+        p_ppu.clone(),
+        p_apu.clone(),
+        ppu_clock_frequency,
+    );
 
     // Runs the game on the cartridge
     nes.insert_cartdrige(cartridge);
     let (tx, rx): (Sender<Message>, Receiver<Message>) = mpsc::channel();
     thread::spawn(move || nes.launch_game(rx));
 
-    // Sound
-    let sdl_context = sdl2::init().unwrap();
-    let audio_subsystem = sdl_context.audio().unwrap();
-
-    let desired_audio_specs = AudioSpecDesired {
-        freq: Some(44100),
-        channels: Some(1),
-        samples: None,
-    };
-
-    let audio = Audio::new(p_apu.clone(), 44100.0);
-    let device = audio_subsystem.open_playback(None, &desired_audio_specs, |_| audio).unwrap();
-    device.resume();
-
     // Event loop for the window
 
     let mut input_helper = WinitInputHelper::new();
-    
-    event_loop.run(move |event, _, control_flow| {
 
+    event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
         if let Event::RedrawRequested(_) = event {
@@ -162,7 +152,8 @@ fn main() {
             }
             // Resize event
             if let Some(size) = input_helper.window_resized() {
-                tx.send(Message::ResizeWindow(size.width, size.height)).unwrap();
+                tx.send(Message::ResizeWindow(size.width, size.height))
+                    .unwrap();
             }
             // Debug window
             if input_helper.key_pressed(VirtualKeyCode::E) {

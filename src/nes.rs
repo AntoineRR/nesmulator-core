@@ -5,11 +5,13 @@
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::{Arc, Mutex, mpsc::Receiver}, time::{Instant, Duration}
+    sync::mpsc::Receiver,
+    time::{Duration, Instant},
 };
 
 use cartridge::cartridge::Cartridge;
 use log::error;
+use sdl2::audio::AudioSpecDesired;
 
 use crate::ppu::ppu::PPU;
 use crate::{apu::apu::APU, bus::Bus};
@@ -28,6 +30,8 @@ pub enum Message {
     ToggleDebugWindow,
 }
 
+const MIN_AUDIO_QUEUE_SIZE: u32 = 4 * 4410;
+
 // ===== NES STRUCT =====
 
 pub struct NES {
@@ -35,7 +39,7 @@ pub struct NES {
     p_bus: Rc<RefCell<Bus>>,
     p_cpu: Rc<RefCell<CPU>>,
     p_ppu: Rc<RefCell<PPU>>,
-    p_apu: Arc<Mutex<APU>>,
+    p_apu: Rc<RefCell<APU>>,
 
     // Synchronization
     clock_duration_1000: Duration,
@@ -50,6 +54,10 @@ pub struct NES {
     dma_base_address: u8,
     dma_address_offset: u8,
     dma_data: u8,
+
+    // Audio
+    add_samples: bool,
+    samples: Vec<f32>,
 }
 
 unsafe impl Send for NES {}
@@ -59,7 +67,7 @@ impl NES {
         p_bus: Rc<RefCell<Bus>>,
         p_cpu: Rc<RefCell<CPU>>,
         p_ppu: Rc<RefCell<PPU>>,
-        p_apu: Arc<Mutex<APU>>,
+        p_apu: Rc<RefCell<APU>>,
         ppu_clock_frequency: u64,
     ) -> Self {
         let clock_duration_1000 = Duration::from_micros(1_000_000_000 / ppu_clock_frequency);
@@ -79,6 +87,9 @@ impl NES {
             dma_base_address: 0,
             dma_address_offset: 0,
             dma_data: 0,
+
+            add_samples: true,
+            samples: vec![],
         }
     }
 
@@ -93,7 +104,22 @@ impl NES {
     pub fn launch_game(&mut self, rx: Receiver<Message>) {
         self.p_cpu.borrow_mut().reset();
         self.total_clock = 0;
-        
+
+        // Sound
+        let sdl_context = sdl2::init().unwrap();
+        let audio_subsystem = sdl_context.audio().unwrap();
+
+        let desired_audio_specs = AudioSpecDesired {
+            freq: Some(44100),
+            channels: Some(1),
+            samples: Some(1024),
+        };
+
+        let queue = audio_subsystem
+            .open_queue(None, &desired_audio_specs)
+            .unwrap();
+        queue.resume();
+
         loop {
             let time = Instant::now();
 
@@ -105,7 +131,12 @@ impl NES {
                 } else {
                     self.p_cpu.borrow_mut().clock();
                 }
-                self.p_apu.lock().unwrap().clock();
+
+                if let Some(s) = self.p_apu.borrow_mut().clock() {
+                    if self.add_samples {
+                        self.samples.push(s);
+                    }
+                }
             }
 
             // Clock PPU
@@ -120,6 +151,19 @@ impl NES {
             // Check inputs
             if let Ok(message) = rx.try_recv() {
                 self.handle_message(message);
+            }
+
+            // Sound
+            if !self.add_samples && queue.size() < MIN_AUDIO_QUEUE_SIZE {
+                self.add_samples = true;
+            } else if self.add_samples && queue.size() > MIN_AUDIO_QUEUE_SIZE {
+                self.add_samples = false;
+            }
+
+            if self.total_clock % 89_489 == 0 {
+                queue.queue(&self.samples[0..self.samples.len()]);
+                self.samples.clear();
+                self.add_samples = true;
             }
 
             self.total_clock = self.total_clock.wrapping_add(1);
@@ -177,9 +221,19 @@ impl NES {
             self.p_bus.borrow_mut().controllers[id].buffer = 0;
             self.p_bus.borrow_mut().controllers[id].buffer |= input;
         } else if let Message::ResizeWindow(width, height) = message {
-            self.p_ppu.borrow_mut().gui.main_pixels.resize_surface(width, height);
+            self.p_ppu
+                .borrow_mut()
+                .gui
+                .main_pixels
+                .resize_surface(width, height);
         } else if message == Message::DrawFrame {
-            self.p_ppu.borrow_mut().gui.main_pixels.render().map_err(|e| error!("pixels.render() failed: {}", e)).unwrap();
+            self.p_ppu
+                .borrow_mut()
+                .gui
+                .main_pixels
+                .render()
+                .map_err(|e| error!("pixels.render() failed: {}", e))
+                .unwrap();
         } else if message == Message::ToggleDebugWindow {
             self.p_ppu.borrow_mut().gui.toggle_debugging();
         }

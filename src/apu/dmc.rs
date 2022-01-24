@@ -1,4 +1,6 @@
-const DMC_RATE: [u16; 16] = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54];
+const DMC_RATE: [u16; 16] = [
+    428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54,
+];
 
 pub struct DMC {
     timer: u16,
@@ -21,9 +23,7 @@ impl DMC {
         self.output_level = value & 0x7F;
     }
 
-    fn clock_sequencer(&mut self) {
-
-    }
+    fn clock_sequencer(&mut self) {}
 
     pub fn clock(&mut self) {
         if self.timer != 0 {

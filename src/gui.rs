@@ -47,7 +47,8 @@ impl GUI {
 
         let surface_texture =
             SurfaceTexture::new(window_size.width, window_size.height, &main_window);
-        let main_pixels = Pixels::new(buffer_size.width, buffer_size.height, surface_texture).unwrap();
+        let main_pixels =
+            Pixels::new(buffer_size.width, buffer_size.height, surface_texture).unwrap();
 
         GUI {
             main_window,

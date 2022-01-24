@@ -53,7 +53,6 @@ See [TESTS.md](TESTS.md) for details about tests.
 
 * Correct MMC1 mapper
 * Add the DMC channel to the APU emulation
-* Find a better synchronisation architecture for sound
 
 ## License
 

@@ -1,4 +1,4 @@
-use super::{envelope::Envelope, sweep::SweepUnit, length_counter::LengthCounter};
+use super::{envelope::Envelope, length_counter::LengthCounter, sweep::SweepUnit};
 
 const DUTIES: [u8; 4] = [0b0100_0000, 0b0110_0000, 0b0111_1000, 0b1001_1111];
 
@@ -47,7 +47,8 @@ impl Pulse {
             _ => panic!("Unreachable pattern"),
         }
         self.sequence = DUTIES[self.duty as usize];
-        self.length_counter.set_lenght_counter_halt(value & 0x20 > 0);
+        self.length_counter
+            .set_lenght_counter_halt(value & 0x20 > 0);
         self.envelope.loop_flag = value & 0x20 > 0;
         self.envelope.set_volume(value & 0x10 > 0, value & 0x0F);
     }

@@ -1,4 +1,10 @@
-use super::{dmc::DMC, noise::Noise, pulse::Pulse, triangle::Triangle};
+use super::{
+    dmc::DMC,
+    filters::{Filter, HighPassFilter, LowPassFilter},
+    noise::Noise,
+    pulse::Pulse,
+    triangle::Triangle,
+};
 
 const STEP_1: u64 = 7457;
 const STEP_2: u64 = 14913;
@@ -19,7 +25,7 @@ pub struct APU {
     noise: Noise,
     dmc: DMC,
 
-    clock_frequency: u64,
+    sample_rate: u64,
     frame_clock: u64,
     mode: Mode,
     instant_clock: bool,
@@ -27,13 +33,13 @@ pub struct APU {
     pulse_table: [f32; 31],
     tnd_table: [f32; 203],
 
-    pub buffer: Vec<f32>,
-    amplitude: f32,
+    filters: [Box<dyn Filter>; 3],
 }
 
 impl APU {
     pub fn new(ppu_clock_frequency: u64) -> Self {
         let clock_frequency = ppu_clock_frequency / 3;
+        let sample_rate = clock_frequency as f32 / 52_000.0;
 
         let mut pulse_table = [0.0; 31];
         for i in 0..31 {
@@ -52,7 +58,7 @@ impl APU {
             noise: Noise::new(),
             dmc: DMC::new(),
 
-            clock_frequency,
+            sample_rate: sample_rate as u64,
             frame_clock: 0,
             mode: Mode::Step4,
             instant_clock: false,
@@ -60,8 +66,11 @@ impl APU {
             pulse_table,
             tnd_table,
 
-            buffer: vec![],
-            amplitude: 0.0,
+            filters: [
+                Box::new(HighPassFilter::new(90, sample_rate)),
+                Box::new(HighPassFilter::new(440, sample_rate)),
+                Box::new(LowPassFilter::new(14000, sample_rate)),
+            ],
         }
     }
 
@@ -74,7 +83,7 @@ impl APU {
                 status |= (!self.triangle.length_counter.is_channel_silenced() as u8) << 2;
                 status |= (!self.noise.length_counter.is_channel_silenced() as u8) << 3;
                 status
-            },
+            }
             _ => panic!("Invalid read on APU"),
         }
     }
@@ -106,7 +115,7 @@ impl APU {
                 self.pulse2.length_counter.set_enabled(value & 0x02 > 0);
                 self.triangle.length_counter.set_enabled(value & 0x04 > 0);
                 self.noise.length_counter.set_enabled(value & 0x08 > 0);
-            },
+            }
             0x4017 => {
                 self.mode = match (value & 0x80) >> 7 {
                     0 => Mode::Step4,
@@ -114,7 +123,7 @@ impl APU {
                         self.instant_clock = true;
                         Mode::Step5
                     }
-                    _ => panic!("unreachable pattern")
+                    _ => panic!("unreachable pattern"),
                 };
             }
             _ => panic!("Invalid address given to APU: {:#X}", address),
@@ -140,11 +149,11 @@ impl APU {
         self.pulse2.clock_sweep();
     }
 
-    pub fn clock(&mut self) {
+    pub fn clock(&mut self) -> Option<f32> {
         if self.instant_clock {
             self.instant_clock = false;
             self.clock_half_frame();
-            return;
+            return None;
         }
 
         if self.frame_clock == STEP_1 || self.frame_clock == STEP_3 {
@@ -169,26 +178,31 @@ impl APU {
         }
         self.triangle.clock();
 
-        // For now, take the mean value of several sample output from the APU, and push it to the sample buffer
-        // at a rate that is close to the 44100Hz required by sdl2
-        self.amplitude += self.get_amplitude();
-        if self.frame_clock % (self.clock_frequency / 44100) == 0 {
-            self.buffer.push(self.amplitude / (self.clock_frequency as f32 / 44100.0));
-            self.amplitude = 0.0;
+        self.frame_clock = self.frame_clock.wrapping_add(1);
+
+        // Push the current amplitude to the sample buffer at a rate that is close to the 44100Hz required by sdl2
+        // We use 52000 instead of 44100 because it produces slightly more samples than required by sdl2.
+        // If we produce less samples, the sound will pop and it is horrible to the ear. Instead, producing
+        // a bit to much samples may result in a lower tune, but it is better than poping sounds.
+        // The sound is synchronized in the NES class even if we produce to many samples here.
+        if self.frame_clock % self.sample_rate as u64 == 0 {
+            return Some(self.apply_filters(self.get_amplitude()));
         }
 
-        self.frame_clock = self.frame_clock.wrapping_add(1);
+        None
     }
 
     fn get_amplitude(&self) -> f32 {
         let pulse_out = (self.pulse1.get_output() + self.pulse2.get_output()) as usize;
-        let tnd_out = (3 * self.triangle.get_output() + 2 * self.noise.get_output() + self.dmc.get_output()) as usize;
+        let tnd_out = (3 * self.triangle.get_output()
+            + 2 * self.noise.get_output()
+            + self.dmc.get_output()) as usize;
         self.pulse_table[pulse_out] + self.tnd_table[tnd_out]
     }
 
-    pub fn get_buffer(&mut self) -> Vec<f32> {
-        let result = self.buffer.clone();
-        self.buffer.clear();
-        result
+    fn apply_filters(&mut self, amplitude: f32) -> f32 {
+        self.filters
+            .iter_mut()
+            .fold(amplitude, |acc, filter| filter.process(acc))
     }
 }
