@@ -1,3 +1,10 @@
+use std::{cell::RefCell, rc::Rc};
+
+use crate::{
+    bus::Bus,
+    cpu::{cpu::CPU, enums::Interrupt},
+};
+
 use super::{
     dmc::DMC,
     filters::{Filter, HighPassFilter, LowPassFilter},
@@ -19,11 +26,16 @@ enum Mode {
 }
 
 pub struct APU {
+    p_cpu: Option<Rc<RefCell<CPU>>>,
+
     pulse1: Pulse,
     pulse2: Pulse,
     triangle: Triangle,
     noise: Noise,
     dmc: DMC,
+
+    interrupt_inhibit: bool,
+    frame_interrupt: bool,
 
     sample_rate: u64,
     frame_clock: u64,
@@ -52,11 +64,16 @@ impl APU {
         }
 
         APU {
+            p_cpu: None,
+
             pulse1: Pulse::new(false),
             pulse2: Pulse::new(true),
             triangle: Triangle::new(),
             noise: Noise::new(),
             dmc: DMC::new(),
+
+            interrupt_inhibit: false,
+            frame_interrupt: false,
 
             sample_rate: sample_rate as u64,
             frame_clock: 0,
@@ -74,7 +91,12 @@ impl APU {
         }
     }
 
-    pub fn read_register(&self, address: u16) -> u8 {
+    pub fn attach_bus_and_cpu(&mut self, p_bus: Rc<RefCell<Bus>>, p_cpu: Rc<RefCell<CPU>>) {
+        self.p_cpu = Some(p_cpu.clone());
+        self.dmc.attach_bus_and_cpu(p_bus, p_cpu);
+    }
+
+    pub fn read_register(&mut self, address: u16) -> u8 {
         match address {
             0x4015 => {
                 let mut status: u8 = 0;
@@ -82,6 +104,10 @@ impl APU {
                 status |= (!self.pulse2.length_counter.is_channel_silenced() as u8) << 1;
                 status |= (!self.triangle.length_counter.is_channel_silenced() as u8) << 2;
                 status |= (!self.noise.length_counter.is_channel_silenced() as u8) << 3;
+                status |= (self.dmc.is_active() as u8) << 4;
+                status |= (self.frame_interrupt as u8) << 6;
+                status |= (self.dmc.interrupt_flag as u8) << 7;
+                self.frame_interrupt = false;
                 status
             }
             _ => panic!("Invalid read on APU"),
@@ -106,15 +132,16 @@ impl APU {
             0x400D => (),
             0x400E => self.noise.set_period(value),
             0x400F => self.noise.set_length_counter(value),
-            0x4010 => (),
+            0x4010 => self.dmc.set_rate(value),
             0x4011 => self.dmc.set_output_level(value),
-            0x4012 => (),
-            0x4013 => (),
+            0x4012 => self.dmc.set_sample_address(value),
+            0x4013 => self.dmc.set_sample_length(value),
             0x4015 => {
                 self.pulse1.length_counter.set_enabled(value & 0x01 > 0);
                 self.pulse2.length_counter.set_enabled(value & 0x02 > 0);
                 self.triangle.length_counter.set_enabled(value & 0x04 > 0);
                 self.noise.length_counter.set_enabled(value & 0x08 > 0);
+                self.dmc.set_enabled(value & 0x10 > 0);
             }
             0x4017 => {
                 self.mode = match (value & 0x80) >> 7 {
@@ -125,6 +152,10 @@ impl APU {
                     }
                     _ => panic!("unreachable pattern"),
                 };
+                self.interrupt_inhibit = value & 0x40 > 0;
+                if self.interrupt_inhibit {
+                    self.frame_interrupt = false;
+                }
             }
             _ => panic!("Invalid address given to APU: {:#X}", address),
         }
@@ -165,6 +196,14 @@ impl APU {
 
         if self.frame_clock == STEP_4 && self.mode == Mode::Step4 {
             self.clock_half_frame();
+            if !self.interrupt_inhibit {
+                self.frame_interrupt = true;
+                if let Some(cpu) = &self.p_cpu {
+                    cpu.borrow_mut().interrupt(Interrupt::IRQ);
+                } else {
+                    panic!("No CPU attached to the APU");
+                }
+            }
             self.frame_clock = 0;
         } else if self.frame_clock == STEP_5 && self.mode == Mode::Step5 {
             self.clock_half_frame();
@@ -175,6 +214,7 @@ impl APU {
             self.pulse1.clock();
             self.pulse2.clock();
             self.noise.clock();
+            self.dmc.clock();
         }
         self.triangle.clock();
 

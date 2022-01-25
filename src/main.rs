@@ -120,6 +120,9 @@ fn main() {
     let p_apu = Rc::new(RefCell::new(APU::new(ppu_clock_frequency)));
     let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
     let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
+    p_apu
+        .borrow_mut()
+        .attach_bus_and_cpu(p_bus.clone(), p_cpu.clone());
     let mut nes: NES = NES::new(
         p_bus.clone(),
         p_cpu.clone(),

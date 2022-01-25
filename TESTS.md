@@ -64,7 +64,7 @@ Here are the results :
 * [ ] apu_test/apu_test
 * [X] apu_test/rom_singles/1-len_ctr
 * [ ] apu_test/rom_singles/2-len_table
-* [ ] apu_test/rom_singles/3-irq_flag
+* [X] apu_test/rom_singles/3-irq_flag
 * [ ] apu_test/rom_singles/4-jitter
 * [ ] apu_test/rom_singles/5-len_timing
 * [ ] apu_test/rom_singles/6-irq_flag_timing
@@ -72,7 +72,7 @@ Here are the results :
 * [ ] apu_test/rom_singles/8-dmc_rates
 * [X] blargg_apu_2005.07.30/01.len_ctr
 * [X] blargg_apu_2005.07.30/02.len_table
-* [ ] blargg_apu_2005.07.30/03.irq_flag
+* [X] blargg_apu_2005.07.30/03.irq_flag
 * [ ] blargg_apu_2005.07.30/04.clock_jitter
 * [ ] blargg_apu_2005.07.30/05.len_timing_mode0
 * [ ] blargg_apu_2005.07.30/06.len_timing_mode1
