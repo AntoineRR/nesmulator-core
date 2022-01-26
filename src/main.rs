@@ -82,7 +82,7 @@ fn main() {
     // Logs level from winit and pixels crates are set to warn
     env_logger::Builder::from_env(Env::default().default_filter_or(
         debug_level.to_owned()
-            + ",gfx_memory=warn,gfx_backend_vulkan=warn,gfx_descriptor=warn,winit=warn,mio=warn",
+            + ",gfx_memory=warn,gfx_backend_vulkan=warn,gfx_descriptor=warn,winit=warn,mio=warn,wgpu_core=warn,wgpu_hal=warn,naga=warn",
     ))
     .init();
 
