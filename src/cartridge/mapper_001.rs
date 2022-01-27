@@ -56,7 +56,7 @@ impl Mapper1 {
             lo_prg_rom: 0,
             hi_prg_rom: prg_rom.len() - 1,
             lo_chr_rom: 0,
-            hi_chr_rom: 0,
+            hi_chr_rom: 1,
             prg_rom,
             chr_rom: converted,
             ram: [0; 0x2000],
@@ -128,6 +128,9 @@ impl Mapper for Mapper1 {
                     self.shift_register = 0;
                     self.n_bit_loaded = 0;
                     self.control_register |= 0x0C;
+                    debug!("CHR bank mode : {:?}", self.get_chr_rom_bank_mode());
+                    debug!("PRG bank mode : {:?}", self.get_prg_rom_bank_mode());
+                    debug!("Mirroring mode : {:?}", self.get_mirroring());
                 } else {
                     self.shift_register >>= 1;
                     self.shift_register |= (value & 0x01) << 4;
@@ -201,7 +204,7 @@ impl Mapper for Mapper1 {
             ChrRomBankMode::Switch4 => match address {
                 0x0000..=0x0FFF => self.chr_rom[self.lo_chr_rom][address as usize] = value,
                 0x1000..=0x1FFF => {
-                    self.chr_rom[self.lo_chr_rom][(address & 0x0FFF) as usize] = value
+                    self.chr_rom[self.hi_chr_rom][(address & 0x0FFF) as usize] = value
                 }
                 _ => panic!("Invalid address given to PPU bus : {:#X}", address),
             },

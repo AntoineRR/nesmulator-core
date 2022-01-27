@@ -101,7 +101,6 @@ impl PPUBus {
 
     fn read_name_tables(&self, address: u16) -> u8 {
         let value: u8;
-        // Vertical mirroring
         match self.o_p_mapper.as_ref().unwrap().get_mirroring() {
             Mirroring::Horizontal => match address {
                 0x2000..=0x23FF => value = self.name_tables[0][(address & 0x03FF) as usize],
@@ -154,7 +153,6 @@ impl PPUBus {
     }
 
     fn write_name_tables(&mut self, address: u16, value: u8) {
-        // Vertical mirroring
         match self.o_p_mapper.as_ref().unwrap().get_mirroring() {
             Mirroring::Horizontal => match address {
                 0x2000..=0x23FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
