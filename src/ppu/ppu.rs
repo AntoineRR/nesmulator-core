@@ -263,12 +263,26 @@ impl PPU {
             }
         }
 
-        // Set the v blank flag at the beginning of the v blank period
-        if self.scanline == 241 && self.cycles == 1 {
-            self.registers.set_status_flag(StatusFlag::VBlank, true);
-            if self.registers.get_control_flag(ControlFlag::VBlank) != 0 {
+        // The emiting of NMI is retarded by one clock
+        if self.registers.clocks_before_emiting != 0 {
+            self.registers.clocks_before_emiting -= 1;
+            if self.registers.clocks_before_emiting == 0 && !self.registers.clear_vbl {
                 self.registers.emit_nmi = true;
             }
+        }
+        // Set the v blank flag at the beginning of the v blank period
+        if self.scanline == 241 && self.cycles == 1 {
+            if !self.registers.clear_vbl {
+                self.registers.set_status_flag(StatusFlag::VBlank, true);
+                if self.registers.get_control_flag(ControlFlag::VBlank) != 0 {
+                    self.registers.clocks_before_emiting = 1;
+                }
+            }
+        }
+        // Clears VBL if required
+        if self.registers.clear_vbl {
+            self.registers.set_status_flag(StatusFlag::VBlank, false);
+            self.registers.clear_vbl = false;
         }
 
         // Clear the v blank flag at the end of the v blank period

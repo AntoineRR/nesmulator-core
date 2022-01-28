@@ -34,10 +34,10 @@ Here are the results :
 * [X] ppu_open_bus/ppu_open_bus
 * [ ] scanline/scanline
 * [X] vbl_nmi_timing/1.frame_basics
-* [ ] vbl_nmi_timing/2.vbl_timing
-* [ ] vbl_nmi_timing/3.even_odd_frames
+* [X] vbl_nmi_timing/2.vbl_timing
+* [X] vbl_nmi_timing/3.even_odd_frames
 * [X] vbl_nmi_timing/4.vbl_clear_timing
-* [ ] vbl_nmi_timing/5.nmi_suppression
+* [X] vbl_nmi_timing/5.nmi_suppression
 * [ ] vbl_nmi_timing/6.nmi_disable
 * [ ] vbl_nmi_timing/7.nmi_timing
 * [X] oam_read/oam_read

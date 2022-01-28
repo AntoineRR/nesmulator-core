@@ -53,6 +53,7 @@ See [TESTS.md](TESTS.md) for details about tests.
 
 * Correct MMC1 mapper
 * Fix APU emulation, especially DMC
+* Pass more tests
 
 ## License
 

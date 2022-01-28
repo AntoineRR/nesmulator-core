@@ -139,14 +139,14 @@ impl NES {
                 }
             }
 
-            // Clock PPU
-            self.p_ppu.borrow_mut().clock();
-
             // Check if an NMI interrupt should be thrown
             if self.p_ppu.borrow().registers.emit_nmi {
                 self.p_ppu.borrow_mut().registers.emit_nmi = false;
                 self.p_cpu.borrow_mut().interrupt(Interrupt::NMI);
             }
+
+            // Clock PPU
+            self.p_ppu.borrow_mut().clock();
 
             // Check inputs
             if let Ok(message) = rx.try_recv() {

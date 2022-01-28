@@ -30,6 +30,11 @@ pub struct Registers {
 
     // Emit an NMI interrupt
     pub emit_nmi: bool,
+    pub clocks_before_emiting: u8,
+
+    // Required to handle a special case: reading VBL flag
+    // as it would be set causes it to not be set for that frame.
+    pub clear_vbl: bool,
 
     // Perform a DMA
     pub perform_dma: bool,
@@ -56,6 +61,9 @@ impl Registers {
             fine_x: 0,
 
             emit_nmi: false,
+            clocks_before_emiting: 0,
+
+            clear_vbl: false,
 
             perform_dma: false,
         }
@@ -149,7 +157,8 @@ impl Registers {
             0x2002 => {
                 value = (self.status & 0xE0) | (self.decay & 0x1F);
                 self.decay = value;
-                self.set_status_flag(StatusFlag::VBlank, false);
+                self.clear_vbl = true;
+                self.emit_nmi = false;
                 self.w = false;
             }
             0x2003 => value = self.decay,
