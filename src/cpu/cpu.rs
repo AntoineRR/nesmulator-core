@@ -31,6 +31,8 @@ pub struct CPU {
     // Does the current instruction require an eventual additional cycle ?
     require_add_cycle: bool,
 
+    interrupt_queue: Vec<Interrupt>,
+
     // Total clock cycles from the start of the CPU
     total_clock: u64,
 
@@ -54,6 +56,8 @@ impl CPU {
             cycles: 0,
 
             require_add_cycle: false,
+
+            interrupt_queue: vec![],
 
             total_clock: 0,
 
@@ -108,6 +112,12 @@ impl CPU {
     // Called when an interrupt occurs
     // The interrupt disable flag from the status register needs to be 0
     pub fn interrupt(&mut self, interrupt_type: Interrupt) {
+        // This delays interrupt to be executed at the end of the current instruction
+        // Commented because it breaks some tests of the PPU NMI :(
+        // if self.cycles != 0 {
+        //     self.interrupt_queue.push(interrupt_type);
+        //     return;
+        // }
         if !self.get_flag(Flag::InterruptDisable) || interrupt_type == Interrupt::NMI {
             if interrupt_type != Interrupt::Reset {
                 // Push program counter and status register on the stack
@@ -153,6 +163,12 @@ impl CPU {
         // Basic cycle emulation :
         // cycle 0 does the operation and the others do nothing
         if self.cycles == 0 {
+            if self.interrupt_queue.len() > 0 {
+                let interrupt = self.interrupt_queue.pop();
+                self.interrupt(interrupt.unwrap());
+                return;
+            }
+
             // Get operation code
             let opcode: u8 = self.read_bus(self.pc);
 

@@ -73,13 +73,16 @@ impl Registers {
     pub fn write_register(&mut self, ppu_bus: &mut PPUBus, oam: &mut OAM, address: u16, value: u8) {
         match address {
             0x2000 => {
+                let is_previous_nmi_flag_set = self.ctrl & 0x80 > 0;
                 self.ctrl = value;
                 if !(value & 0x80 > 0) {
                     self.clocks_before_emiting = 0;
                     self.emit_nmi = false;
                 }
-                if self.get_status_flag(StatusFlag::VBlank) && (value & 0x80) == 0x80 {
-                    self.emit_nmi = true;
+                if self.get_status_flag(StatusFlag::VBlank) && (value & 0x80) == 0x80 && !is_previous_nmi_flag_set {
+                    if self.clocks_before_emiting == 0 {
+                        self.emit_nmi = true;
+                    }
                 }
                 ppu_bus
                     .tmp_vram_address
