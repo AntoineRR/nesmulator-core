@@ -266,7 +266,10 @@ impl PPU {
         // The emiting of NMI is retarded by one clock
         if self.registers.clocks_before_emiting != 0 {
             self.registers.clocks_before_emiting -= 1;
-            if self.registers.clocks_before_emiting == 0 && !self.registers.clear_vbl {
+            if self.registers.clocks_before_emiting == 0
+                && !self.registers.clear_vbl
+                && self.registers.get_control_flag(ControlFlag::VBlank) != 0
+            {
                 self.registers.emit_nmi = true;
             }
         }
