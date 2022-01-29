@@ -1,6 +1,6 @@
 # nesmulator
 
-## Desccription
+## Description
 
 A simple Nintendo Entertainment System (NES) emulator written in Rust language.
 
@@ -11,17 +11,17 @@ It is my first real project in Rust.
 
 I do not plan to make this emulator compatible with every NES game.
 My goal is to be able to emulate games like Zelda, Dragon Warrior, and Castlevania.
-I would also like to pass most of the tests from some tests roms listed in the NES dev wiki.
+I would also like to pass most of the tests from some tests roms listed in the NES dev wiki (see [TESTS.md](./TESTS.md)).
 
 ## Current progress
 
 The CPU is emulated and a cartridge in the iNES format can be loaded into the emulator.
-For now, only cartridges using mapper 0, 1, 2 and 3 can be read.
-The PPU background and sprite display is emulated.
+For now, only cartridges using mapper 0, 1, 2 and 3 can be read (mapper 1 is still a WIP).
+The PPU is fully emulated.
 The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels), and displays the game screen.
-The first controller is emulated too (see controls).
-The APU is partially emulated but not very accurate.
-A debugging view (display of pattern tables and palette) can be toggled.
+A debugging view (display of pattern tables and palette) can be toggled (see controls below).
+The first controller is emulated (see controls below).
+The APU is partially emulated but not very accurate for now.
 
 ## How to run
 
@@ -47,7 +47,7 @@ More options can be displayed with the `-h` or `--help` flag.
 
 ## Tests
 
-See [TESTS.md](TESTS.md) for details about tests.
+See [TESTS.md](./TESTS.md) for details about tests.
 
 ## To do
 
