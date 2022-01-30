@@ -1,40 +1,20 @@
-mod apu;
-mod bus;
-mod cartridge;
-mod controllers;
-mod cpu;
-mod gui;
-mod nes;
-mod ppu;
+use std::process::exit;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
 
-use std::{
-    cell::RefCell,
-    path::Path,
-    rc::Rc,
-    sync::mpsc::{self, Receiver, Sender},
-    thread,
-};
-
-use apu::apu::APU;
-use bus::Bus;
-use cartridge::cartridge::Cartridge;
 use clap::{App, Arg};
-use controllers::ControllerInput;
-use cpu::cpu::CPU;
-use env_logger::Env;
-use gui::GUI;
-use log::warn;
-use nes::{Message, NES};
-use ppu::ppu::PPU;
-use winit::{
-    event::{Event, VirtualKeyCode},
-    event_loop::{ControlFlow, EventLoop},
-};
+use log::error;
+use winit::event::{Event, VirtualKeyCode};
+use winit::event_loop::{ControlFlow, EventLoop};
 use winit_input_helper::WinitInputHelper;
 
-fn main() {
-    // ===== APP CREATION AND ARGUMENT PARSING =====
+use nes_emulator::controllers::ControllerInput;
+use nes_emulator::gui::GUI;
+use nes_emulator::nes::{Message, NES};
+use nes_emulator::Config;
 
+fn main() {
+    // CLI creation
     let matches = App::new("Nesmulator")
         .version("0.1.0")
         .author("AntoineRR <ant.romero2@orange.fr>")
@@ -71,87 +51,32 @@ fn main() {
         )
         .get_matches();
 
-    // Debug level
-
-    let mut debug_level: &str = "warn";
-    let mut is_debug_level_valid: bool = true;
-    if let Some(value) = matches.value_of("debug") {
-        match value {
-            "0" => debug_level = "trace",
-            "1" => debug_level = "debug",
-            "2" => debug_level = "info",
-            "3" => debug_level = "warn",
-            "4" => debug_level = "error",
-            _ => is_debug_level_valid = false,
-        }
-    }
-
-    // Setup logger
-    // Logs level from winit and pixels crates are set to warn
-    env_logger::Builder::from_env(Env::default().default_filter_or(
-        debug_level.to_owned()
-            + ",gfx_memory=warn,gfx_backend_vulkan=warn,gfx_descriptor=warn,winit=warn,mio=warn,wgpu_core=warn,wgpu_hal=warn,naga=warn",
-    ))
-    .init();
-
-    if !is_debug_level_valid {
-        warn!(
-            "Invalid debug level : {:?}, value must be in [0;4]",
-            matches.value_of("debug")
-        );
-    }
-
-    // Display logs from cpu
-
-    let display_cpu_logs: bool = matches.is_present("log");
-
-    // Path to the palette to use
-
+    // Get all configuration informations
     let palette_path = matches.value_of("palette");
+    let display_cpu_logs = matches.is_present("log");
+    let debug_level = matches.value_of("debug");
+    let config = Config::new(palette_path, display_cpu_logs, debug_level);
 
     // Path to the game to launch
+    let rom_path = matches.value_of("game").unwrap();
 
-    let game = matches.value_of("game").unwrap();
-
-    // ===== LAUNCH GAME =====
-
-    let path: &Path = Path::new(game);
-
-    let cartridge: Cartridge = Cartridge::new(path);
-
-    // Create the Eventloop for interacting with the window
-    let event_loop = EventLoop::new();
     // Create the GUI for displaying the graphics
+    let event_loop = EventLoop::new();
     let gui = GUI::new(&event_loop);
 
-    // Clock frequency
-    let ppu_clock_frequency = 5_369_318;
+    // Instantiate a NES and runs the game
+    let mut nes = NES::new(gui, config);
+    if let Err(e) = nes.insert_cartdrige(rom_path) {
+        error!("Error parsing ROM: {}", e);
+        exit(1);
+    }
 
-    // Creates the NES architecture
-    let p_ppu = Rc::new(RefCell::new(PPU::new(gui, palette_path)));
-    let p_apu = Rc::new(RefCell::new(APU::new(ppu_clock_frequency)));
-    let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
-    let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));
-    p_apu
-        .borrow_mut()
-        .attach_bus_and_cpu(p_bus.clone(), p_cpu.clone());
-    let mut nes: NES = NES::new(
-        p_bus.clone(),
-        p_cpu.clone(),
-        p_ppu.clone(),
-        p_apu.clone(),
-        ppu_clock_frequency,
-    );
-
-    // Runs the game on the cartridge
-    nes.insert_cartdrige(cartridge);
+    // Spawn a thread to run the NES ROM and give it a channel receiver to handle events from the main loop
     let (tx, rx): (Sender<Message>, Receiver<Message>) = mpsc::channel();
     thread::spawn(move || nes.launch_game(rx));
 
-    // Event loop for the window
-
+    // Run the event loop
     let mut input_helper = WinitInputHelper::new();
-
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 

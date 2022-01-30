@@ -68,12 +68,12 @@ pub struct PPU {
 }
 
 impl PPU {
-    pub fn new(gui: GUI, palette_path: Option<&str>) -> Self {
+    pub fn new(gui: GUI, palette_path: Option<String>) -> Self {
         let palette_path = match palette_path {
             Some(p) => p,
-            None => "./palette.pal",
+            None => String::from("./palette.pal"),
         };
-        let palettes = match Palette::from_file(palette_path) {
+        let palettes = match Palette::from_file(&palette_path) {
             Ok(p) => p,
             Err(_) => {
                 warn!(
@@ -843,6 +843,7 @@ impl PPU {
     // ===== DEBUGGING =====
 
     fn debug(&mut self) {
+        self.display_separation();
         self.display_pattern_table(0);
         self.display_pattern_table(1);
         self.display_separation();

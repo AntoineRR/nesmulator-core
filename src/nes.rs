@@ -1,27 +1,31 @@
-// Represents the NES system
-
 // ===== IMPORTS =====
 
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::mpsc::Receiver,
-    time::{Duration, Instant},
-};
+use std::cell::RefCell;
+use std::error::Error;
+use std::path::Path;
+use std::rc::Rc;
+use std::sync::mpsc::Receiver;
+use std::time::{Duration, Instant};
 
-use cartridge::cartridge::Cartridge;
 use log::error;
 use sdl2::audio::AudioSpecDesired;
 
+use crate::apu::apu::APU;
+use crate::bus::Bus;
+use crate::cartridge::cartridge::Cartridge;
+use crate::cpu::{cpu::CPU, enums::Interrupt};
+use crate::gui::GUI;
 use crate::ppu::ppu::PPU;
-use crate::{apu::apu::APU, bus::Bus};
-use crate::{
-    cartridge,
-    cpu::{cpu::CPU, enums::Interrupt},
-};
+use crate::Config;
+
+// ===== CONSTANTS =====
+
+const PPU_CLOCK_FREQUENCY: u64 = 5_369_318;
+const MIN_AUDIO_QUEUE_SIZE: u32 = 4 * 4410;
 
 // ===== MESSAGES =====
 
+/// Different messages that can be thrown at the NES by the event loop
 #[derive(PartialEq)]
 pub enum Message {
     Input((usize, u8)),
@@ -29,8 +33,6 @@ pub enum Message {
     ResizeWindow(u32, u32),
     ToggleDebugWindow,
 }
-
-const MIN_AUDIO_QUEUE_SIZE: u32 = 4 * 4410;
 
 // ===== NES STRUCT =====
 
@@ -63,14 +65,22 @@ pub struct NES {
 unsafe impl Send for NES {}
 
 impl NES {
-    pub fn new(
-        p_bus: Rc<RefCell<Bus>>,
-        p_cpu: Rc<RefCell<CPU>>,
-        p_ppu: Rc<RefCell<PPU>>,
-        p_apu: Rc<RefCell<APU>>,
-        ppu_clock_frequency: u64,
-    ) -> Self {
-        let clock_duration_1000 = Duration::from_micros(1_000_000_000 / ppu_clock_frequency);
+    pub fn new(gui: GUI, config: Config) -> Self {
+        // Duration of 1000 PPU cycles in seconds
+        let clock_duration_1000 = Duration::from_micros(1_000_000_000 / PPU_CLOCK_FREQUENCY);
+
+        // Create the NES architecture
+        let p_ppu = Rc::new(RefCell::new(PPU::new(gui, config.palette_path)));
+        let p_apu = Rc::new(RefCell::new(APU::new(PPU_CLOCK_FREQUENCY)));
+        let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
+        let p_cpu = Rc::new(RefCell::new(CPU::new(
+            p_bus.clone(),
+            config.display_cpu_logs,
+        )));
+        p_apu
+            .borrow_mut()
+            .attach_bus_and_cpu(p_bus.clone(), p_cpu.clone());
+
         NES {
             p_bus,
             p_cpu,
@@ -95,9 +105,15 @@ impl NES {
 
     // Simulates the insertion of a NES cartridge
     // Sets the mapper that is needed to read the data of the cartridge
-    pub fn insert_cartdrige(&mut self, cartridge: Cartridge) {
+    pub fn insert_cartdrige(&mut self, rom_path: &str) -> Result<(), Box<dyn Error>> {
+        let path = Path::new(rom_path);
+
+        let cartridge = Cartridge::new(path)?;
+
         self.p_bus.borrow_mut().o_p_mapper = Some(cartridge.mapper.clone());
         self.p_ppu.borrow_mut().ppu_bus.o_p_mapper = Some(cartridge.mapper.clone());
+
+        Ok(())
     }
 
     // Resets the CPU and launches the game

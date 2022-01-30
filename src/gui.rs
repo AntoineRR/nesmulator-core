@@ -16,11 +16,11 @@ use crate::ppu::palette::ARGBColor;
 
 // ===== CONSTANTS =====
 
-pub const MAIN_WINDOW_WIDTH: u32 = 256;
-pub const MAIN_WINDOW_HEIGHT: u32 = 240;
+const MAIN_WINDOW_WIDTH: u32 = 256;
+const MAIN_WINDOW_HEIGHT: u32 = 240;
 
-pub const DEBUG_WINDOW_WIDTH: u32 = 256;
-pub const DEBUG_WINDOW_HEIGHT: u32 = 128 + 2 + 6; // 2 rows to separate pattern tables and palette
+const DEBUG_WINDOW_WIDTH: u32 = 256;
+const DEBUG_WINDOW_HEIGHT: u32 = 240 + 128 + 2 + 6; // From top to bottom: main window | pattern table | palette
 
 // ===== STRUCT =====
 
@@ -65,8 +65,8 @@ impl GUI {
             self.main_pixels.resize_buffer(width, height);
             self.debug = false;
         } else {
-            let width = MAIN_WINDOW_WIDTH.max(DEBUG_WINDOW_WIDTH);
-            let height = MAIN_WINDOW_HEIGHT + DEBUG_WINDOW_HEIGHT;
+            let width = DEBUG_WINDOW_WIDTH;
+            let height = DEBUG_WINDOW_HEIGHT;
             self.main_pixels.resize_buffer(width, height);
             self.debug = true;
         }

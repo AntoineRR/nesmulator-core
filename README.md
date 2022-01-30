@@ -67,6 +67,7 @@ See [TESTS.md](./TESTS.md) for details about tests.
 * Pass more tests
 * Add a configuration file for mapping Controls
 * Improve error handling and add more logs
+* Detach audio and video handling from the NES emulator
 
 ## License
 

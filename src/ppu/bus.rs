@@ -122,6 +122,7 @@ impl PPUBus {
             Mirroring::OneScreenUpper => {
                 value = self.name_tables[1][(address & 0x03FF) as usize];
             }
+            Mirroring::FourScreens => panic!("Four screen mirroring is not handled for now"),
         }
         value
     }
@@ -176,6 +177,7 @@ impl PPUBus {
                 self.name_tables[0][(address & 0x03FF) as usize] = value;
                 self.name_tables[1][(address & 0x03FF) as usize] = value;
             }
+            Mirroring::FourScreens => panic!("Four screen mirroring is not handled for now"),
         }
     }
 
