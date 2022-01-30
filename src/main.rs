@@ -51,7 +51,7 @@ fn main() {
             Arg::new("debug")
                 .short('d')
                 .long("debug")
-                .value_name("LEVEL")
+                .value_name("INT")
                 .takes_value(true)
                 .about("Turn debugging information on"),
         )
@@ -60,6 +60,14 @@ fn main() {
                 .short('l')
                 .long("log")
                 .about("Display the CPU logs to the console"),
+        )
+        .arg(
+            Arg::new("palette")
+                .short('p')
+                .long("palette")
+                .value_name("FILE")
+                .takes_value(true)
+                .about("Sets a palette from a .pal file"),
         )
         .get_matches();
 
@@ -97,6 +105,10 @@ fn main() {
 
     let display_cpu_logs: bool = matches.is_present("log");
 
+    // Path to the palette to use
+
+    let palette_path = matches.value_of("palette");
+
     // Path to the game to launch
 
     let game = matches.value_of("game").unwrap();
@@ -116,7 +128,7 @@ fn main() {
     let ppu_clock_frequency = 5_369_318;
 
     // Creates the NES architecture
-    let p_ppu = Rc::new(RefCell::new(PPU::new(gui)));
+    let p_ppu = Rc::new(RefCell::new(PPU::new(gui, palette_path)));
     let p_apu = Rc::new(RefCell::new(APU::new(ppu_clock_frequency)));
     let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
     let p_cpu = Rc::new(RefCell::new(CPU::new(p_bus.clone(), display_cpu_logs)));

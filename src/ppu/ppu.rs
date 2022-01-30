@@ -3,13 +3,15 @@
 
 // ===== IMPORTS =====
 
+use log::warn;
+
 use crate::gui::GUI;
 
 use super::{
     bus::PPUBus,
     enums::{ControlFlag, MaskFlag, SpriteAttribute, StatusFlag, VRAMAddressMask},
     oam::OAM,
-    palette::{ARGBColor, PALETTE},
+    palette::{ARGBColor, Palette, PALETTE},
     registers::Registers,
 };
 
@@ -23,6 +25,9 @@ const MAX_SCANLINES: u16 = 261;
 pub struct PPU {
     // PPU registers
     pub registers: Registers,
+
+    // Palettes (with the emphasized versions)
+    palettes: Palette,
 
     // Background shifters ([0] => low bits, [1] => high bits)
     pattern_table_shifters: [u16; 2],
@@ -63,9 +68,26 @@ pub struct PPU {
 }
 
 impl PPU {
-    pub fn new(gui: GUI) -> Self {
+    pub fn new(gui: GUI, palette_path: Option<&str>) -> Self {
+        let palette_path = match palette_path {
+            Some(p) => p,
+            None => "./palette.pal",
+        };
+        let palettes = match Palette::from_file(palette_path) {
+            Ok(p) => p,
+            Err(_) => {
+                warn!(
+                    "Unable to load palette at {}, using default palette.",
+                    palette_path
+                );
+                Palette::default()
+            }
+        };
+
         PPU {
             registers: Registers::new(),
+
+            palettes,
 
             pattern_table_shifters: [0; 2],
             palette_shifters: [0; 2],
@@ -419,7 +441,24 @@ impl PPU {
 
     fn get_pixel_color(&self, palette: u8, color: u8) -> ARGBColor {
         let address: u16 = ((palette as u16) << 2) + (color as u16) + 0x3F00;
-        PALETTE[(self.ppu_bus.read(address) & 0x3F) as usize]
+        let mut palette_index = (self.ppu_bus.read(address) & 0x3F) as usize;
+        if self.registers.get_mask_flag(MaskFlag::GreyScale) {
+            palette_index &= 0x30;
+        }
+
+        let emphasize_r = self.registers.get_mask_flag(MaskFlag::EmphasizeRed);
+        let emphasize_g = self.registers.get_mask_flag(MaskFlag::EmphasizeGreen);
+        let emphasize_b = self.registers.get_mask_flag(MaskFlag::EmphasizeBlue);
+        match (emphasize_r, emphasize_g, emphasize_b) {
+            (false, false, false) => self.palettes.base[palette_index],
+            (true, false, false) => self.palettes.emphasize_r[palette_index],
+            (false, true, false) => self.palettes.emphasize_g[palette_index],
+            (false, false, true) => self.palettes.emphasize_b[palette_index],
+            (true, true, false) => self.palettes.emphasize_rg[palette_index],
+            (true, false, true) => self.palettes.emphasize_rb[palette_index],
+            (false, true, true) => self.palettes.emphasize_gb[palette_index],
+            (true, true, true) => self.palettes.emphasize_rgb[palette_index],
+        }
     }
 
     // ===== REGISTERS METHODS =====

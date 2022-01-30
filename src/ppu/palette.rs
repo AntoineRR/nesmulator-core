@@ -1,4 +1,6 @@
-// Implpements the different color palettes of the NES
+// Implements the different color palettes of the NES
+
+use std::{error::Error, fs};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ARGBColor {
@@ -16,6 +18,80 @@ impl ARGBColor {
             green,
             blue,
         }
+    }
+
+    fn black() -> Self {
+        ARGBColor::new(0, 0, 0, 0)
+    }
+}
+
+pub struct Palette {
+    pub base: [ARGBColor; 64],
+    pub emphasize_r: [ARGBColor; 64],
+    pub emphasize_g: [ARGBColor; 64],
+    pub emphasize_b: [ARGBColor; 64],
+    pub emphasize_rg: [ARGBColor; 64],
+    pub emphasize_rb: [ARGBColor; 64],
+    pub emphasize_gb: [ARGBColor; 64],
+    pub emphasize_rgb: [ARGBColor; 64],
+}
+
+impl Palette {
+    pub fn default() -> Self {
+        // No emphasize on default palette for now
+        Palette {
+            base: PALETTE.clone(),
+            emphasize_r: PALETTE.clone(),
+            emphasize_g: PALETTE.clone(),
+            emphasize_b: PALETTE.clone(),
+            emphasize_rg: PALETTE.clone(),
+            emphasize_rb: PALETTE.clone(),
+            emphasize_gb: PALETTE.clone(),
+            emphasize_rgb: PALETTE.clone(),
+        }
+    }
+
+    pub fn from_file(path: &str) -> Result<Self, Box<dyn Error>> {
+        fn parse_palette_bytes(palette: &[u8]) -> [ARGBColor; 64] {
+            let mut p = [ARGBColor::black(); 64];
+            for (i, color) in palette.chunks(3).enumerate() {
+                p[i] = ARGBColor::new(255, color[0], color[1], color[2]);
+            }
+            p
+        }
+
+        let raw = fs::read(path)?;
+
+        // Palette file can contain a base palette and all emphasized versions (8 in total)
+        // Each palette has 64 colors, and each color is composed of 3 bytes (r, g, b) => 1536 bytes
+        // Or just contain a base palette, used for all other emphasized components => 192 bytes
+        let is_full_palette = match raw.len() {
+            1536 => true,
+            192 => false,
+            _ => Err("Palette file has an incorrect format")?,
+        };
+
+        let mut palettes = vec![];
+        if is_full_palette {
+            for palette in raw.chunks(64 * 3) {
+                palettes.push(parse_palette_bytes(palette));
+            }
+        } else {
+            for _ in 0..8 {
+                palettes.push(parse_palette_bytes(&raw));
+            }
+        }
+
+        Ok(Palette {
+            base: palettes[0],
+            emphasize_r: palettes[1],
+            emphasize_g: palettes[2],
+            emphasize_b: palettes[3],
+            emphasize_rg: palettes[4],
+            emphasize_rb: palettes[5],
+            emphasize_gb: palettes[6],
+            emphasize_rgb: palettes[7],
+        })
     }
 }
 

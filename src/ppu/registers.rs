@@ -79,7 +79,10 @@ impl Registers {
                     self.clocks_before_emiting = 0;
                     self.emit_nmi = false;
                 }
-                if self.get_status_flag(StatusFlag::VBlank) && (value & 0x80) == 0x80 && !is_previous_nmi_flag_set {
+                if self.get_status_flag(StatusFlag::VBlank)
+                    && (value & 0x80) == 0x80
+                    && !is_previous_nmi_flag_set
+                {
                     if self.clocks_before_emiting == 0 {
                         self.emit_nmi = true;
                     }

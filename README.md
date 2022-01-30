@@ -15,12 +15,16 @@ I would also like to pass most of the tests from some tests roms listed in the N
 
 ## Current progress
 
-The CPU is emulated and a cartridge in the iNES format can be loaded into the emulator.
-For now, only cartridges using mapper 0, 1, 2 and 3 can be read (mapper 1 is still a WIP).
-The PPU is fully emulated.
-The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels), and displays the game screen.
-A debugging view (display of pattern tables and palette) can be toggled and the first controller is emulated (see controls below).
-The APU is partially emulated but not very accurate for now.
+[X] CPU is emulated and passes most tests
+[X] PPU is emulated and passes most tests
+[X] APU is emulated but not very accurate
+[X] First controller is emulated (see controls below)
+[X] A cartridge in the iNES format can be loaded into the emulator (provided as an argument in the CLI)
+[X] Mapper 0, 1, 2 and 3 are implemented (mapper 1 is still a WIP)
+[X] A palette in the .pal format can be loaded into the emulator (provided as an argument in the CLI (-p flag) or loads ./palette.pal), otherwise a default palette is hardcoded into the emulator
+[X] A debugging view (display of pattern tables and palette) can be toggled (see controls below)
+
+The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels).
 
 ## How to run
 
@@ -33,16 +37,24 @@ More options can be displayed with the `-h` or `--help` flag.
 
 ## Controls
 
-* UP -> Z
-* DOWN -> S
-* LEFT -> Q
-* RIGHT -> D
-* A -> I
-* B -> O
-* START -> X
-* SELECT -> C
+### Controller mapping
 
-* Pattern tables and palette display (debugging mode) -> E
+| Button | Key |
+| ------ | --- |
+| UP     | Z   |
+| DOWN   | S   |
+| LEFT   | Q   |
+| RIGHT  | D   |
+| A      | I   |
+| B      | O   |
+| START  | X   |
+| SELECT | C   |
+
+### Emulator features
+
+| Feature        | Key |
+| -------------- | --- |
+| Debugging mode | E   |
 
 ## Tests
 
@@ -53,6 +65,7 @@ See [TESTS.md](./TESTS.md) for details about tests.
 * Correct MMC1 mapper
 * Fix APU emulation, especially DMC
 * Pass more tests
+* Add a configuration file for mapping Controls
 
 ## License
 
@@ -66,3 +79,4 @@ This code is distributed under the [MIT license](LICENSE).
 * [Test ROMs](https://github.com/christopherpow/nes-test-roms)
 * [winit](https://github.com/rust-windowing/winit)
 * [pixels](https://github.com/parasyte/pixels)
+* [Joel Yliluoma palette generator](https://bisqwit.iki.fi/utils/nespalette.php)
