@@ -2,8 +2,8 @@ use env_logger::Env;
 use log::warn;
 
 pub mod controllers;
-pub mod gui;
 pub mod nes;
+pub mod utils;
 
 mod apu;
 mod bus;

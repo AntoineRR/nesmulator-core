@@ -3,15 +3,16 @@
 
 // ===== IMPORTS =====
 
+use std::error::Error;
+
 use log::warn;
 
-use crate::gui::GUI;
-
+use crate::utils::ARGBColor;
 use super::{
     bus::PPUBus,
     enums::{ControlFlag, MaskFlag, SpriteAttribute, StatusFlag, VRAMAddressMask},
     oam::OAM,
-    palette::{ARGBColor, Palette, PALETTE},
+    palette::Palette,
     registers::Registers,
 };
 
@@ -63,12 +64,13 @@ pub struct PPU {
 
     total_clock: u64,
 
-    // GUI
-    pub gui: GUI,
+    // Current frame infos
+    frame_buffer: [ARGBColor; 61_440],
+    is_frame_ready: bool,
 }
 
 impl PPU {
-    pub fn new(gui: GUI, palette_path: Option<String>) -> Self {
+    pub fn new(palette_path: Option<String>) -> Self {
         let palette_path = match palette_path {
             Some(p) => p,
             None => String::from("./palette.pal"),
@@ -117,8 +119,18 @@ impl PPU {
 
             total_clock: 0,
 
-            gui,
+            frame_buffer: [ARGBColor::black(); 61_440],
+            is_frame_ready: false,
         }
+    }
+
+    pub fn is_frame_ready(&self) -> bool {
+        self.is_frame_ready
+    }
+
+    pub fn get_frame_buffer(&mut self) -> [ARGBColor; 61_440] {
+        self.is_frame_ready = false;
+        self.frame_buffer
     }
 
     // ===== CLOCK =====
@@ -403,10 +415,8 @@ impl PPU {
             }
 
             // Renders pixel
-            self.gui.update_main_buffer(
-                (256 * self.scanline as u32 + self.cycles as u32 - 1) as usize,
-                self.get_pixel_color(palette, pattern),
-            );
+            self.frame_buffer[(256 * self.scanline as u32 + self.cycles as u32 - 1) as usize] =
+                self.get_pixel_color(palette, pattern);
         }
 
         // Increasing cycles and scanlines to reach a 341*262 matrix
@@ -419,12 +429,8 @@ impl PPU {
             if self.scanline > MAX_SCANLINES {
                 self.scanline = 0;
                 self.odd_frame = !self.odd_frame;
-                // Debugging
-                if self.gui.debug {
-                    self.debug(); // Updates debug buffer to display pattern tables
-                }
-                // A frame is ready to be displayed
-                self.gui.update();
+
+                self.is_frame_ready = true;
             }
         }
 
@@ -842,60 +848,59 @@ impl PPU {
 
     // ===== DEBUGGING =====
 
-    fn debug(&mut self) {
-        self.display_separation();
-        self.display_pattern_table(0);
-        self.display_pattern_table(1);
-        self.display_separation();
-        self.display_palette();
-    }
-
-    fn display_pattern_table(&mut self, number: u16) {
+    pub fn get_pattern_table(&self, number: u16) -> Result<[ARGBColor; 16384], Box<dyn Error>> {
+        if number > 1 {
+            Err("Pattern table number must be either 0 or 1")?;
+        }
+        let mut buffer = [ARGBColor::black(); 16384];
         for n_tile_y in 0..16 {
             for n_tile_x in 0..16 {
-                self.display_tile(n_tile_y, n_tile_x, number);
+                let buffer_offset = (n_tile_y * 128 + n_tile_x) * 8;
+                let tile = self.get_tile(n_tile_x, n_tile_y, number)?;
+                for (i, pixel) in tile.iter().enumerate() {
+                    buffer[buffer_offset + (i / 8) * 128 + i % 8] = *pixel;
+                }
             }
         }
+        Ok(buffer)
     }
 
-    fn display_tile(&mut self, n_tile_y: u16, n_tile_x: u16, number: u16) {
+    pub fn get_tile(
+        &self,
+        n_tile_x: usize,
+        n_tile_y: usize,
+        pattern_table: u16,
+    ) -> Result<[ARGBColor; 64], Box<dyn Error>> {
+        if n_tile_x >= 16 || n_tile_y >= 16 {
+            Err("Tile coordinates must be in [0;15]")?;
+        } else if pattern_table > 1 {
+            Err("Pattern table number must be either 0 or 1")?;
+        }
+        let mut buffer = [ARGBColor::black(); 64];
         let n_offset = n_tile_y * 256 + n_tile_x * 16;
         for row in 0..8 {
-            let mut tile_low: u8 = self.ppu_bus.read(number * 0x1000 + n_offset + row);
-            let mut tile_high: u8 = self.ppu_bus.read(number * 0x1000 + n_offset + row + 0x0008);
+            let mut tile_low: u8 = self
+                .ppu_bus
+                .read(pattern_table * 0x1000 + (n_offset + row) as u16);
+            let mut tile_high: u8 = self
+                .ppu_bus
+                .read(pattern_table * 0x1000 + (n_offset + row) as u16 + 0x0008);
             for col in 0..8 {
                 let color: u8 = (tile_low & 0x01) + (tile_high & 0x01);
                 tile_high >>= 1;
                 tile_low >>= 1;
-                let c: ARGBColor = self.get_pixel_color(0, color);
-                self.gui.update_debug_buffer(
-                    (n_tile_x * 8 + (7 - col) + number * 128 + (n_tile_y * 8 + row) * 256) as usize,
-                    c,
-                );
+                buffer[row * 8 + (7 - col)] = self.get_pixel_color(0, color);
             }
         }
+        Ok(buffer)
     }
 
-    fn display_separation(&mut self) {
-        for i in 0..512 {
-            self.gui
-                .update_debug_buffer(256 * 128 + i, ARGBColor::new(255, 50, 50, 50));
+    pub fn get_palette(&self) -> Result<[ARGBColor; 32], Box<dyn Error>> {
+        let mut buffer = [ARGBColor::black(); 32];
+        let address_offset = 0x3F00;
+        for i in 0..0x20 {
+            buffer[i] = self.palettes.base[(self.ppu_bus.read(address_offset + i as u16) & 0x3F) as usize];
         }
-    }
-
-    fn display_palette(&mut self) {
-        for address in 0x3F00..0x3F20 {
-            let offset = address & 0x00FF;
-            for i in 0..6 {
-                for j in 0..6 {
-                    let index =
-                        258 * 128 + (offset * 6) + (((offset % 4) == 0) as u32) * 2 + i + j * 256;
-                    self.gui.update_debug_buffer(
-                        index as usize,
-                        PALETTE[(self.ppu_bus.read(address as u16) & 0x3F) as usize],
-                    );
-                }
-            }
-        }
+        Ok(buffer)
     }
 }

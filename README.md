@@ -15,16 +15,25 @@ I would also like to pass most of the tests from some tests roms listed in the N
 
 ## Current progress
 
+### NES emulation core
+
 * [X] CPU is emulated and passes most tests
 * [X] PPU is emulated and passes most tests
 * [X] APU is emulated but not very accurate
 * [X] First controller is emulated (see controls below)
-* [X] A cartridge in the iNES format can be loaded into the emulator (provided as an argument in the CLI)
+* [X] A cartridge in the iNES format can be loaded into the emulator
 * [X] Mapper 0, 1, 2 and 3 are implemented (mapper 1 is still a WIP)
-* [X] A palette in the .pal format can be loaded into the emulator (provided as an argument in the CLI (-p flag) or loads ./palette.pal), otherwise a default palette is hardcoded into the emulator
-* [X] A debugging view (display of pattern tables and palette) can be toggled (see controls below)
+* [X] A palette in the .pal format can be loaded into the emulator, otherwise a default palette is hardcoded into the emulator
+
+### Provided GUI
+
+* [X] Display the game screen
+* [X] A debugging view (display of pattern tables and palette) can be toggled
+* [X] First Controller mapping for keyboard
+* [X] CLI with various flags (see below)
 
 The GUI is created using [winit](https://github.com/rust-windowing/winit) and [pixels](https://github.com/parasyte/pixels).
+The sound is handled by [sdl2](https://github.com/Rust-SDL2/rust-sdl2).
 
 ## How to run
 
@@ -67,7 +76,7 @@ See [TESTS.md](./TESTS.md) for details about tests.
 * Pass more tests
 * Add a configuration file for mapping Controls
 * Improve error handling and add more logs
-* Detach audio and video handling from the NES emulator
+* Add comments for auto generated documentation
 
 ## License
 

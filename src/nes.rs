@@ -4,35 +4,21 @@ use std::cell::RefCell;
 use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
-use std::sync::mpsc::Receiver;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use log::error;
-use sdl2::audio::AudioSpecDesired;
+use log::info;
 
 use crate::apu::apu::APU;
 use crate::bus::Bus;
 use crate::cartridge::cartridge::Cartridge;
 use crate::cpu::{cpu::CPU, enums::Interrupt};
-use crate::gui::GUI;
+use crate::utils::ARGBColor;
 use crate::ppu::ppu::PPU;
 use crate::Config;
 
 // ===== CONSTANTS =====
 
 const PPU_CLOCK_FREQUENCY: u64 = 5_369_318;
-const MIN_AUDIO_QUEUE_SIZE: u32 = 4 * 4410;
-
-// ===== MESSAGES =====
-
-/// Different messages that can be thrown at the NES by the event loop
-#[derive(PartialEq)]
-pub enum Message {
-    Input((usize, u8)),
-    DrawFrame,
-    ResizeWindow(u32, u32),
-    ToggleDebugWindow,
-}
 
 // ===== NES STRUCT =====
 
@@ -42,10 +28,6 @@ pub struct NES {
     p_cpu: Rc<RefCell<CPU>>,
     p_ppu: Rc<RefCell<PPU>>,
     p_apu: Rc<RefCell<APU>>,
-
-    // Synchronization
-    clock_duration_1000: Duration,
-    elapsed: Duration,
 
     // NES clock counter
     total_clock: u64,
@@ -65,12 +47,9 @@ pub struct NES {
 unsafe impl Send for NES {}
 
 impl NES {
-    pub fn new(gui: GUI, config: Config) -> Self {
-        // Duration of 1000 PPU cycles in seconds
-        let clock_duration_1000 = Duration::from_micros(1_000_000_000 / PPU_CLOCK_FREQUENCY);
-
+    pub fn new(config: Config) -> Self {
         // Create the NES architecture
-        let p_ppu = Rc::new(RefCell::new(PPU::new(gui, config.palette_path)));
+        let p_ppu = Rc::new(RefCell::new(PPU::new(config.palette_path)));
         let p_apu = Rc::new(RefCell::new(APU::new(PPU_CLOCK_FREQUENCY)));
         let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
         let p_cpu = Rc::new(RefCell::new(CPU::new(
@@ -87,9 +66,6 @@ impl NES {
             p_ppu,
             p_apu,
 
-            clock_duration_1000,
-            elapsed: Duration::new(0, 0),
-
             total_clock: 0,
 
             dma_started: false,
@@ -103,8 +79,6 @@ impl NES {
         }
     }
 
-    // Simulates the insertion of a NES cartridge
-    // Sets the mapper that is needed to read the data of the cartridge
     pub fn insert_cartdrige(&mut self, rom_path: &str) -> Result<(), Box<dyn Error>> {
         let path = Path::new(rom_path);
 
@@ -113,85 +87,88 @@ impl NES {
         self.p_bus.borrow_mut().o_p_mapper = Some(cartridge.mapper.clone());
         self.p_ppu.borrow_mut().ppu_bus.o_p_mapper = Some(cartridge.mapper.clone());
 
+        info!("ROM {} successfully loaded.", rom_path);
+
         Ok(())
     }
 
-    // Resets the CPU and launches the game
-    pub fn launch_game(&mut self, rx: Receiver<Message>) {
+    pub fn reset(&mut self) {
         self.p_cpu.borrow_mut().reset();
-        self.total_clock = 0;
+    }
 
-        // Sound
-        let sdl_context = sdl2::init().unwrap();
-        let audio_subsystem = sdl_context.audio().unwrap();
+    pub fn is_producing_samples(&self) -> bool {
+        self.add_samples
+    }
 
-        let desired_audio_specs = AudioSpecDesired {
-            freq: Some(44100),
-            channels: Some(1),
-            samples: Some(1024),
-        };
+    pub fn produce_samples(&mut self, produce: bool) {
+        self.add_samples = produce;
+    }
 
-        let queue = audio_subsystem
-            .open_queue(None, &desired_audio_specs)
-            .unwrap();
-        queue.resume();
+    pub fn get_samples(&mut self) -> Vec<f32> {
+        let samples = self.samples.clone();
+        self.samples.clear();
+        samples
+    }
 
-        loop {
-            let time = Instant::now();
+    pub fn get_1000_clock_duration(&self) -> Duration {
+        Duration::from_micros(1_000_000_000 / PPU_CLOCK_FREQUENCY)
+    }
 
-            // CPU and APU is clocked every 3 PPU cycles
-            if self.total_clock % 3 == 0 {
-                // If we initialized a DMA, do not clock CPU for nearly 513 cycles
-                if self.p_ppu.borrow().registers.perform_dma {
-                    self.perform_dma();
-                } else {
-                    self.p_cpu.borrow_mut().clock();
+    pub fn clock(&mut self) {
+        // CPU and APU is clocked every 3 PPU cycles
+        if self.total_clock % 3 == 0 {
+            // If we initialized a DMA, do not clock CPU for nearly 513 cycles
+            if self.p_ppu.borrow().registers.perform_dma {
+                self.perform_dma();
+            } else {
+                self.p_cpu.borrow_mut().clock();
+            }
+
+            if let Some(s) = self.p_apu.borrow_mut().clock() {
+                if self.add_samples {
+                    self.samples.push(s);
                 }
-
-                if let Some(s) = self.p_apu.borrow_mut().clock() {
-                    if self.add_samples {
-                        self.samples.push(s);
-                    }
-                }
-            }
-
-            // Check if an NMI interrupt should be thrown
-            if self.p_ppu.borrow().registers.emit_nmi {
-                self.p_ppu.borrow_mut().registers.emit_nmi = false;
-                self.p_cpu.borrow_mut().interrupt(Interrupt::NMI);
-            }
-
-            // Clock PPU
-            self.p_ppu.borrow_mut().clock();
-
-            // Check inputs
-            if let Ok(message) = rx.try_recv() {
-                self.handle_message(message);
-            }
-
-            // Sound
-            if !self.add_samples && queue.size() < MIN_AUDIO_QUEUE_SIZE {
-                self.add_samples = true;
-            } else if self.add_samples && queue.size() > MIN_AUDIO_QUEUE_SIZE {
-                self.add_samples = false;
-            }
-
-            if self.total_clock % 89_489 == 0 {
-                queue.queue(&self.samples[0..self.samples.len()]);
-                self.samples.clear();
-                self.add_samples = true;
-            }
-
-            self.total_clock = self.total_clock.wrapping_add(1);
-
-            self.elapsed += time.elapsed();
-            if self.total_clock % 1000 == 0 {
-                if self.elapsed < self.clock_duration_1000 {
-                    spin_sleep::sleep(self.clock_duration_1000 - self.elapsed);
-                }
-                self.elapsed = Duration::new(0, 0);
             }
         }
+
+        // Check if an NMI interrupt should be thrown
+        if self.p_ppu.borrow().registers.emit_nmi {
+            self.p_ppu.borrow_mut().registers.emit_nmi = false;
+            self.p_cpu.borrow_mut().interrupt(Interrupt::NMI);
+        }
+
+        // Clock PPU
+        self.p_ppu.borrow_mut().clock();
+
+        self.total_clock = self.total_clock.wrapping_add(1);
+    }
+
+    pub fn get_frame_buffer(&mut self) -> Option<[ARGBColor; 61_440]> {
+        if self.p_ppu.borrow().is_frame_ready() {
+            Some(self.p_ppu.borrow_mut().get_frame_buffer())
+        } else {
+            None
+        }
+    }
+
+    pub fn input(&mut self, id: usize, input: u8) -> Result<(), Box<dyn Error>> {
+        if id > 1 {
+            Err("Controller id must be either 0 or 1")?;
+        }
+        self.p_bus.borrow_mut().controllers[id].buffer = 0;
+        self.p_bus.borrow_mut().controllers[id].buffer |= input;
+        Ok(())
+    }
+
+    pub fn get_pattern_table(&self, number: u16) -> Result<[ARGBColor; 16384], Box<dyn Error>> {
+        if number > 1 {
+            Err("Pattern table number must be either 0 or 1")?;
+        }
+        self.p_ppu.borrow().get_pattern_table(number)
+    }
+
+    pub fn get_palette(&self) -> Result<[ARGBColor; 32], Box<dyn Error>> {
+        self.p_ppu.borrow().get_palette()
     }
 
     // Performs a DMA (transfer of 256 bytes of sprite data to PPU)
@@ -229,29 +206,6 @@ impl NES {
                     self.p_ppu.borrow_mut().registers.perform_dma = false;
                 }
             }
-        }
-    }
-
-    fn handle_message(&mut self, message: Message) {
-        if let Message::Input((id, input)) = message {
-            self.p_bus.borrow_mut().controllers[id].buffer = 0;
-            self.p_bus.borrow_mut().controllers[id].buffer |= input;
-        } else if let Message::ResizeWindow(width, height) = message {
-            self.p_ppu
-                .borrow_mut()
-                .gui
-                .main_pixels
-                .resize_surface(width, height);
-        } else if message == Message::DrawFrame {
-            self.p_ppu
-                .borrow_mut()
-                .gui
-                .main_pixels
-                .render()
-                .map_err(|e| error!("pixels.render() failed: {}", e))
-                .unwrap();
-        } else if message == Message::ToggleDebugWindow {
-            self.p_ppu.borrow_mut().gui.toggle_debugging();
         }
     }
 }

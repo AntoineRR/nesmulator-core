@@ -1,29 +1,7 @@
 // Implements the different color palettes of the NES
 
 use std::{error::Error, fs};
-
-#[derive(Debug, Clone, Copy)]
-pub struct ARGBColor {
-    pub alpha: u8,
-    pub red: u8,
-    pub green: u8,
-    pub blue: u8,
-}
-
-impl ARGBColor {
-    pub const fn new(alpha: u8, red: u8, green: u8, blue: u8) -> Self {
-        ARGBColor {
-            alpha,
-            red,
-            green,
-            blue,
-        }
-    }
-
-    fn black() -> Self {
-        ARGBColor::new(0, 0, 0, 0)
-    }
-}
+use crate::utils::ARGBColor;
 
 pub struct Palette {
     pub base: [ARGBColor; 64],

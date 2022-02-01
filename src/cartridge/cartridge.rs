@@ -3,9 +3,12 @@
 
 // ===== IMPORTS =====
 
-use std::{error::Error, fs::File, io::Read, path::Path, vec};
+use std::error::Error;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
-use log::{debug, info};
+use log::debug;
 
 use super::{
     mapper::{Mapper, Mirroring},
@@ -56,8 +59,6 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn new(path: &Path) -> Result<Self, Box<dyn Error>> {
-        info!("Loading {}", path.display());
-
         // Opens file in read only mode
         let mut file = File::open(path)?;
 
@@ -99,7 +100,7 @@ impl Cartridge {
             x => panic!("Mapper {} is not implemented", x),
         };
 
-        info!("Using mapper {}", header.mapper_number);
+        debug!("Using mapper {}", header.mapper_number);
 
         Ok(Cartridge { mapper })
     }

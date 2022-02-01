@@ -51,7 +51,7 @@ pub struct APU {
 impl APU {
     pub fn new(ppu_clock_frequency: u64) -> Self {
         let clock_frequency = ppu_clock_frequency / 3;
-        let sample_rate = clock_frequency as f32 / 52_000.0;
+        let sample_rate = clock_frequency as f32 / 44_100.0;
 
         let mut pulse_table = [0.0; 31];
         for i in 0..31 {
@@ -221,10 +221,8 @@ impl APU {
         self.frame_clock = self.frame_clock.wrapping_add(1);
 
         // Push the current amplitude to the sample buffer at a rate that is close to the 44100Hz required by sdl2
-        // We use 52000 instead of 44100 because it produces slightly more samples than required by sdl2.
         // If we produce less samples, the sound will pop and it is horrible to the ear. Instead, producing
         // a bit to much samples may result in a lower tune, but it is better than poping sounds.
-        // The sound is synchronized in the NES class even if we produce to many samples here.
         if self.frame_clock % self.sample_rate as u64 == 0 {
             return Some(self.apply_filters(self.get_amplitude()));
         }
