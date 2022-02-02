@@ -242,8 +242,7 @@ impl NES {
         if id > 1 {
             Err("Controller id must be either 0 or 1")?;
         }
-        self.p_bus.borrow_mut().controllers[id].buffer = 0;
-        self.p_bus.borrow_mut().controllers[id].buffer |= input;
+        self.p_bus.borrow_mut().set_input(id, input);
         Ok(())
     }
 

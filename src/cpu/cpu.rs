@@ -817,7 +817,7 @@ impl CPU {
             status & (Flag::Negative as u8) == Flag::Negative as u8,
         );
         let address: u16 = self.pop_from_stack() as u16 + ((self.pop_from_stack() as u16) << 8);
-        self.pc = address - 1;
+        self.pc = address.wrapping_sub(1);
     }
 
     // Return from subroutine

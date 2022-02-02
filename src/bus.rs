@@ -2,15 +2,19 @@
 
 // ===== IMPORTS =====
 
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
-use cartridge::mapper::Mapper;
-
-use crate::{apu::apu::APU, cartridge, controllers::Controller, ppu::ppu::PPU};
+use crate::cartridge::mapper::Mapper;
+use crate::controllers::Controller;
+use crate::apu::apu::APU;
+use crate::ppu::ppu::PPU;
 
 // ===== CONSTANTS =====
 
 pub const STACK_OFFSET: u16 = 0x100;
+
+// ===== TYPE ALIAS =====
 
 type MapperRc = Rc<RefCell<Box<dyn Mapper>>>;
 
@@ -22,7 +26,7 @@ pub struct Bus {
     p_ppu: Rc<RefCell<PPU>>,
     p_apu: Rc<RefCell<APU>>,
 
-    pub controllers: [Controller; 2],
+    controllers: [Controller; 2],
 }
 
 impl Bus {
@@ -47,6 +51,10 @@ impl Bus {
 
     pub fn get_cycles(&self) -> u16 {
         self.p_ppu.borrow().get_cycles()
+    }
+
+    pub fn set_input(&mut self, id: usize, input: u8) {
+        self.controllers[id].buffer = input;
     }
 
     // Reads data from the bus at the specified address

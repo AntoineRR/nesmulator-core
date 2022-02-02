@@ -103,25 +103,24 @@ fn main() {
         *control_flow = ControlFlow::Wait;
 
         if let Event::RedrawRequested(_) = event {
-            tx.send(Message::DrawFrame).unwrap();
+            send_message(&tx, Message::DrawFrame, control_flow);
         }
 
         if input_helper.update(&event) {
             // Close event
             if input_helper.key_pressed(VirtualKeyCode::Escape) || input_helper.quit() {
                 *control_flow = ControlFlow::Exit;
-                tx.send(Message::CloseApp).unwrap();
+                send_message(&tx, Message::CloseApp, control_flow);
                 info!("Closing application...");
                 exit(0);
             }
             // Resize event
             if let Some(size) = input_helper.window_resized() {
-                tx.send(Message::ResizeWindow(size.width, size.height))
-                    .unwrap();
+                send_message(&tx, Message::ResizeWindow(size.width, size.height), control_flow);
             }
             // Debug window
             if input_helper.key_pressed(VirtualKeyCode::E) {
-                tx.send(Message::ToggleDebugWindow).unwrap();
+                send_message(&tx, Message::ToggleDebugWindow, control_flow);
             }
             // Controller inputs
             let mut input = 0;
@@ -149,9 +148,17 @@ fn main() {
             if input_helper.key_held(VirtualKeyCode::O) {
                 input |= ControllerInput::B as u8;
             }
-            tx.send(Message::Input((0, input))).unwrap();
+            send_message(&tx, Message::Input((0, input)), control_flow);
         }
     });
+}
+
+fn send_message(tx: &Sender<Message>, message: Message, control_flow: &mut ControlFlow) {
+    if let Err(_) = tx.send(message) {
+        error!("Receiving thread 'run_nes' panicked");
+        *control_flow = ControlFlow::Exit;
+        exit(1);
+    }
 }
 
 fn init_env_logger(debug_level: Option<&str>) {
