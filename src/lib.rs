@@ -1,56 +1,42 @@
-use env_logger::Env;
-use log::warn;
+//! This crate provides an API to run a NES emulator.
+//! See more about the project on [Github](https://github.com/AntoineRR/nesmulator).
 
-pub mod controllers;
+/// Contain the NES struct, core of the emulator.
 pub mod nes;
+/// Contain some useful data structure.
 pub mod utils;
 
-mod apu;
-mod bus;
+mod controllers;
 mod cartridge;
 mod cpu;
 mod ppu;
+mod apu;
+mod bus;
 
-const DEFAULT_DEBUG_LEVEL: &str = "info";
-
+/// Configuration to pass to the emulator.
 pub struct Config {
-    palette_path: Option<String>,
-    display_cpu_logs: bool,
+    pub palette_path: Option<String>,
+    pub display_cpu_logs: bool,
 }
 
 impl Config {
+    /// Create a new configuration for the NES emulator.
+    /// the `palette_path` argument should lead to a valid .pal file.
     pub fn new(
         palette_path: Option<&str>,
         display_cpu_logs: bool,
-        debug_level: Option<&str>,
     ) -> Self {
-        let debug_level = if let Some(value) = debug_level {
-            match value {
-                "0" => "error",
-                "1" => "warn",
-                "2" => "info",
-                "3" => "debug",
-                "4" => "trace",
-                d => {
-                    warn!("Invalid debug level : {:?}, value must be in [0;4]. Using default debug level.", d);
-                    DEFAULT_DEBUG_LEVEL
-                }
-            }
-        } else {
-            DEFAULT_DEBUG_LEVEL
-        };
-
-        // Setup logger
-        // Logs level from winit and pixels crates are set to warn
-        env_logger::Builder::from_env(Env::default().default_filter_or(
-            debug_level.to_owned()
-                + ",gfx_memory=warn,gfx_backend_vulkan=warn,gfx_descriptor=warn,winit=warn,mio=warn,wgpu_core=warn,wgpu_hal=warn,naga=warn",
-        ))
-        .init();
-
         Config {
             palette_path: palette_path.map(str::to_string),
             display_cpu_logs,
+        }
+    }
+
+    /// Generate a default configuration for the NES emulator.
+    pub fn default() -> Self {
+        Config {
+            palette_path: None,
+            display_cpu_logs: false,
         }
     }
 }

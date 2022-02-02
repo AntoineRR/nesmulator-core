@@ -4,9 +4,10 @@ use std::thread;
 use std::error::Error;
 use std::time::{Duration, Instant};
 
+use env_logger::Env;
 use pixels::{Pixels, SurfaceTexture};
 use clap::{App, Arg};
-use log::{error, info};
+use log::{error, info, warn};
 use sdl2::audio::AudioSpecDesired;
 use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{ControlFlow, EventLoop};
@@ -15,13 +16,13 @@ use winit::window::{Window, WindowBuilder};
 use winit_input_helper::WinitInputHelper;
 
 use nes_emulator::utils::ARGBColor;
-use nes_emulator::controllers::ControllerInput;
+use nes_emulator::utils::ControllerInput;
 use nes_emulator::nes::NES;
 use nes_emulator::Config;
 
-/// Different messages that can be thrown at the NES by the event loop
+// Different messages that can be thrown at the NES by the event loop
 #[derive(PartialEq)]
-pub enum Message {
+enum Message {
     Input((usize, u8)),
     DrawFrame,
     ResizeWindow(u32, u32),
@@ -29,6 +30,7 @@ pub enum Message {
     CloseApp,
 }
 
+const DEFAULT_DEBUG_LEVEL: &str = "info";
 const MIN_AUDIO_QUEUE_SIZE: u32 = 4 * 4410;
 
 fn main() {
@@ -73,7 +75,9 @@ fn main() {
     let palette_path = matches.value_of("palette");
     let display_cpu_logs = matches.is_present("log");
     let debug_level = matches.value_of("debug");
-    let config = Config::new(palette_path, display_cpu_logs, debug_level);
+    let config = Config::new(palette_path, display_cpu_logs);
+
+    init_env_logger(debug_level);
 
     // Path to the game to launch
     let rom_path = matches.value_of("game").unwrap();
@@ -83,7 +87,7 @@ fn main() {
     let mut gui = GUI::new(&event_loop);
 
     // Instantiate a NES and runs the game
-    let mut nes = NES::new(config);
+    let mut nes = NES::from_config(config);
     if let Err(e) = nes.insert_cartdrige(rom_path) {
         error!("Error parsing ROM: {}", e);
         exit(1);
@@ -148,6 +152,32 @@ fn main() {
             tx.send(Message::Input((0, input))).unwrap();
         }
     });
+}
+
+fn init_env_logger(debug_level: Option<&str>) {
+    let debug_level = if let Some(value) = debug_level {
+        match value {
+            "0" => "error",
+            "1" => "warn",
+            "2" => "info",
+            "3" => "debug",
+            "4" => "trace",
+            d => {
+                warn!("Invalid debug level : {:?}, value must be in [0;4]. Using default debug level.", d);
+                DEFAULT_DEBUG_LEVEL
+            }
+        }
+    } else {
+        DEFAULT_DEBUG_LEVEL
+    };
+
+    // Setup logger
+    // Logs level from winit and pixels crates are set to warn
+    env_logger::Builder::from_env(Env::default().default_filter_or(
+        debug_level.to_owned()
+            + ",gfx_memory=warn,gfx_backend_vulkan=warn,gfx_descriptor=warn,winit=warn,mio=warn,wgpu_core=warn,wgpu_hal=warn,naga=warn",
+    ))
+    .init();
 }
 
 fn run_nes(nes: &mut NES, gui: &mut GUI, rx: Receiver<Message>) {
