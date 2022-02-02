@@ -3,7 +3,7 @@
 
 // ===== IMPORTS =====
 
-use std::error::Error;
+use std::{cell::RefCell, error::Error, rc::Rc};
 
 use log::warn;
 
@@ -14,12 +14,14 @@ use super::{
     palette::Palette,
     registers::Registers,
 };
-use crate::utils::ARGBColor;
+use crate::{cartridge::mapper::Mapper, utils::ARGBColor};
 
 // ===== CONSTANTS =====
 
 const MAX_CYCLES: u16 = 340;
 const MAX_SCANLINES: u16 = 261;
+
+type MapperRc = Rc<RefCell<Box<dyn Mapper>>>;
 
 // ===== STRUCT =====
 
@@ -55,11 +57,11 @@ pub struct PPU {
     is_sprite_0_rendered: bool,
 
     // Addressing variables
-    pub ppu_bus: PPUBus,
+    ppu_bus: PPUBus,
 
     // Variables required for display
-    pub cycles: u16,
-    pub scanline: u16,
+    cycles: u16,
+    scanline: u16,
     odd_frame: bool,
 
     total_clock: u64,
@@ -122,6 +124,18 @@ impl PPU {
             frame_buffer: [ARGBColor::black(); 61_440],
             is_frame_ready: false,
         }
+    }
+
+    pub fn set_mapper(&mut self, p_mapper: MapperRc) {
+        self.ppu_bus.set_mapper(p_mapper);
+    }
+
+    pub fn get_scanline(&self) -> u16 {
+        self.scanline
+    }
+
+    pub fn get_cycles(&self) -> u16 {
+        self.cycles
     }
 
     pub fn is_frame_ready(&self) -> bool {

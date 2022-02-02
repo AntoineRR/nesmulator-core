@@ -121,9 +121,11 @@ impl NES {
         let path = Path::new(rom_path);
 
         let cartridge = Cartridge::new(path)?;
+        let p_mapper = Rc::new(RefCell::new(cartridge.mapper));
 
-        self.p_bus.borrow_mut().o_p_mapper = Some(cartridge.mapper.clone());
-        self.p_ppu.borrow_mut().ppu_bus.o_p_mapper = Some(cartridge.mapper.clone());
+        self.p_bus.borrow_mut().set_mapper(p_mapper.clone());
+        self.p_ppu.borrow_mut().set_mapper(p_mapper.clone());
+        self.reset();
 
         info!("ROM {} successfully loaded.", rom_path);
 

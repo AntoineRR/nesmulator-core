@@ -1195,12 +1195,12 @@ impl CPU {
             self.sp
         ));
 
-        let scanline: u16 = self.p_bus.borrow().p_ppu.borrow().scanline;
+        let scanline: u16 = self.p_bus.borrow().get_scanline();
         let mut scanline_str: String = scanline.to_string();
         while scanline_str.len() < 3 {
             scanline_str = String::from(format!(" {}", scanline_str));
         }
-        let cycle: u16 = self.p_bus.borrow().p_ppu.borrow().cycles;
+        let cycle: u16 = self.p_bus.borrow().get_cycles();
         let mut cycle_str: String = cycle.to_string();
         while cycle_str.len() < 3 {
             cycle_str = String::from(format!(" {}", cycle_str));

@@ -12,12 +12,14 @@ use crate::{apu::apu::APU, cartridge, controllers::Controller, ppu::ppu::PPU};
 
 pub const STACK_OFFSET: u16 = 0x100;
 
+type MapperRc = Rc<RefCell<Box<dyn Mapper>>>;
+
 // ===== BUS STRUCT =====
 
 pub struct Bus {
     data: [u8; 0x10_000],
-    pub o_p_mapper: Option<Box<dyn Mapper>>,
-    pub p_ppu: Rc<RefCell<PPU>>,
+    o_p_mapper: Option<MapperRc>,
+    p_ppu: Rc<RefCell<PPU>>,
     p_apu: Rc<RefCell<APU>>,
 
     pub controllers: [Controller; 2],
@@ -33,6 +35,18 @@ impl Bus {
 
             controllers: [Controller::new(); 2],
         }
+    }
+
+    pub fn set_mapper(&mut self, p_mapper: MapperRc) {
+        self.o_p_mapper = Some(p_mapper);
+    }
+
+    pub fn get_scanline(&self) -> u16 {
+        self.p_ppu.borrow().get_scanline()
+    }
+
+    pub fn get_cycles(&self) -> u16 {
+        self.p_ppu.borrow().get_cycles()
     }
 
     // Reads data from the bus at the specified address
@@ -60,7 +74,14 @@ impl Bus {
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => value = self.data[address as usize],
             // 0x4021 - 0xFFFF / Handled by the mapper
-            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().prg_rom_read(address),
+            0x4021..=0xFFFF => {
+                value = self
+                    .o_p_mapper
+                    .as_ref()
+                    .unwrap()
+                    .borrow()
+                    .prg_rom_read(address)
+            }
         }
         value
     }
@@ -111,7 +132,14 @@ impl Bus {
             // 0x4018 - 0x4020 / I/O Refisters
             0x4018..=0x4020 => value = self.data[address as usize],
             // 0x4021 - 0xFFFF / Handled by the mapper
-            0x4021..=0xFFFF => value = self.o_p_mapper.as_ref().unwrap().prg_rom_read(address),
+            0x4021..=0xFFFF => {
+                value = self
+                    .o_p_mapper
+                    .as_ref()
+                    .unwrap()
+                    .borrow()
+                    .prg_rom_read(address)
+            }
         }
         value
     }
@@ -156,6 +184,7 @@ impl Bus {
                 .o_p_mapper
                 .as_mut()
                 .unwrap()
+                .borrow_mut()
                 .prg_rom_write(address, value),
         }
     }

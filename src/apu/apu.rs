@@ -110,7 +110,7 @@ impl APU {
                 self.frame_interrupt = false;
                 status
             }
-            _ => panic!("Invalid read on APU"),
+            a => panic!("Invalid read on APU: {:#X}", a),
         }
     }
 

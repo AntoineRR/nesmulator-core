@@ -2,9 +2,13 @@
 
 // ===== IMPORTS =====
 
+use std::{cell::RefCell, rc::Rc};
+
 use crate::cartridge::mapper::{Mapper, Mirroring};
 
 use super::enums::VRAMAddressMask;
+
+type MapperRc = Rc<RefCell<Box<dyn Mapper>>>;
 
 // ===== STRUCT =====
 
@@ -70,7 +74,7 @@ pub struct PPUBus {
     pub tmp_vram_address: VRAMAddress,
 
     // Mapper
-    pub o_p_mapper: Option<Box<dyn Mapper>>,
+    pub o_p_mapper: Option<MapperRc>,
 }
 
 impl PPUBus {
@@ -87,10 +91,21 @@ impl PPUBus {
         }
     }
 
+    pub fn set_mapper(&mut self, p_mapper: MapperRc) {
+        self.o_p_mapper = Some(p_mapper);
+    }
+
     pub fn read(&self, address: u16) -> u8 {
         let value: u8;
         match address {
-            0x0000..=0x1FFF => value = self.o_p_mapper.as_ref().unwrap().chr_rom_read(address),
+            0x0000..=0x1FFF => {
+                value = self
+                    .o_p_mapper
+                    .as_ref()
+                    .unwrap()
+                    .borrow()
+                    .chr_rom_read(address)
+            }
             0x2000..=0x2FFF => value = self.read_name_tables(address),
             0x3000..=0x3EFF => value = self.read_name_tables(address & 0x2FFF),
             0x3F00..=0x3FFF => value = self.read_palette_table(address & 0x001F),
@@ -101,7 +116,7 @@ impl PPUBus {
 
     fn read_name_tables(&self, address: u16) -> u8 {
         let value: u8;
-        match self.o_p_mapper.as_ref().unwrap().get_mirroring() {
+        match self.o_p_mapper.as_ref().unwrap().borrow().get_mirroring() {
             Mirroring::Horizontal => match address {
                 0x2000..=0x23FF => value = self.name_tables[0][(address & 0x03FF) as usize],
                 0x2400..=0x27FF => value = self.name_tables[0][(address & 0x03FF) as usize],
@@ -145,6 +160,7 @@ impl PPUBus {
                 .o_p_mapper
                 .as_mut()
                 .unwrap()
+                .borrow_mut()
                 .chr_rom_write(address, value),
             0x2000..=0x2FFF => self.write_name_tables(address, value),
             0x3000..=0x3EFF => self.write_name_tables(address & 0x2FFF, value),
@@ -154,7 +170,7 @@ impl PPUBus {
     }
 
     fn write_name_tables(&mut self, address: u16, value: u8) {
-        match self.o_p_mapper.as_ref().unwrap().get_mirroring() {
+        match self.o_p_mapper.as_ref().unwrap().borrow().get_mirroring() {
             Mirroring::Horizontal => match address {
                 0x2000..=0x23FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
                 0x2400..=0x27FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
