@@ -1,7 +1,7 @@
 // Implements the different color palettes of the NES
 
-use std::{error::Error, fs};
 use crate::utils::ARGBColor;
+use std::{error::Error, fs};
 
 pub struct Palette {
     pub base: [ARGBColor; 64],

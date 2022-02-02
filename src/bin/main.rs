@@ -1,23 +1,23 @@
+use std::error::Error;
 use std::process::exit;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
-use std::error::Error;
 use std::time::{Duration, Instant};
 
-use env_logger::Env;
-use pixels::{Pixels, SurfaceTexture};
 use clap::{App, Arg};
+use env_logger::Env;
 use log::{error, info, warn};
+use pixels::{Pixels, SurfaceTexture};
 use sdl2::audio::AudioSpecDesired;
+use winit::dpi::LogicalSize;
 use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{ControlFlow, EventLoop};
-use winit::dpi::LogicalSize;
 use winit::window::{Window, WindowBuilder};
 use winit_input_helper::WinitInputHelper;
 
+use nes_emulator::nes::NES;
 use nes_emulator::utils::ARGBColor;
 use nes_emulator::utils::ControllerInput;
-use nes_emulator::nes::NES;
 use nes_emulator::Config;
 
 // Different messages that can be thrown at the NES by the event loop

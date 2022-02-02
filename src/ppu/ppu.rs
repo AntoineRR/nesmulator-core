@@ -7,7 +7,6 @@ use std::error::Error;
 
 use log::warn;
 
-use crate::utils::ARGBColor;
 use super::{
     bus::PPUBus,
     enums::{ControlFlag, MaskFlag, SpriteAttribute, StatusFlag, VRAMAddressMask},
@@ -15,6 +14,7 @@ use super::{
     palette::Palette,
     registers::Registers,
 };
+use crate::utils::ARGBColor;
 
 // ===== CONSTANTS =====
 
@@ -899,7 +899,8 @@ impl PPU {
         let mut buffer = [ARGBColor::black(); 32];
         let address_offset = 0x3F00;
         for i in 0..0x20 {
-            buffer[i] = self.palettes.base[(self.ppu_bus.read(address_offset + i as u16) & 0x3F) as usize];
+            buffer[i] =
+                self.palettes.base[(self.ppu_bus.read(address_offset + i as u16) & 0x3F) as usize];
         }
         Ok(buffer)
     }

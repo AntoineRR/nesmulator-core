@@ -15,7 +15,7 @@ pub const STACK_OFFSET: u16 = 0x100;
 // ===== BUS STRUCT =====
 
 pub struct Bus {
-    data: [u8; 0x10000],
+    data: [u8; 0x10_000],
     pub o_p_mapper: Option<Box<dyn Mapper>>,
     pub p_ppu: Rc<RefCell<PPU>>,
     p_apu: Rc<RefCell<APU>>,
@@ -26,7 +26,7 @@ pub struct Bus {
 impl Bus {
     pub fn new(p_ppu: Rc<RefCell<PPU>>, p_apu: Rc<RefCell<APU>>) -> Self {
         Bus {
-            data: [0; 0x10000], // 64KB of ram
+            data: [0; 0x10_000], // 64KB of ram
             o_p_mapper: None,
             p_ppu,
             p_apu,

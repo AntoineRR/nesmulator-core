@@ -6,12 +6,12 @@ pub mod nes;
 /// Contain some useful data structure.
 pub mod utils;
 
-mod controllers;
-mod cartridge;
-mod cpu;
-mod ppu;
 mod apu;
 mod bus;
+mod cartridge;
+mod controllers;
+mod cpu;
+mod ppu;
 
 /// Configuration to pass to the emulator.
 pub struct Config {
@@ -22,10 +22,7 @@ pub struct Config {
 impl Config {
     /// Create a new configuration for the NES emulator.
     /// the `palette_path` argument should lead to a valid .pal file.
-    pub fn new(
-        palette_path: Option<&str>,
-        display_cpu_logs: bool,
-    ) -> Self {
+    pub fn new(palette_path: Option<&str>, display_cpu_logs: bool) -> Self {
         Config {
             palette_path: palette_path.map(str::to_string),
             display_cpu_logs,

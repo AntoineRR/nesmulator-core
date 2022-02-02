@@ -12,8 +12,8 @@ use crate::apu::apu::APU;
 use crate::bus::Bus;
 use crate::cartridge::cartridge::Cartridge;
 use crate::cpu::{cpu::CPU, enums::Interrupt};
-use crate::utils::ARGBColor;
 use crate::ppu::ppu::PPU;
+use crate::utils::ARGBColor;
 use crate::Config;
 
 // ===== CONSTANTS =====
@@ -164,25 +164,25 @@ impl NES {
     /// Clock the NES for one PPU cycle.
     /// The CPU and the APU are clocked every 3 PPU cycles.
     /// This call may have to be delayed to achieve an emulation running at the desired speed.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// For emulating the NES at the speed of a real NES, one might do the following:
     /// ```
     /// let target_time = nes.get_1000_clock_duration();
     /// let mut elapsed_time = Duration::new(0, 0);
     /// let mut clocks = 0;
-    /// 
+    ///
     /// loop {
     ///     let time = Instant::now();
     ///     
     ///     // Run one clock of emulation
     ///     nes.clock();
-    /// 
+    ///
     ///     // Get frame
     ///     // Synchronize sound
     ///     // Handle inputs
-    /// 
+    ///
     ///     // Synchronize to emulate at the desired speed
     ///     elapsed_time += time.elapsed();
     ///     clocks += 1;

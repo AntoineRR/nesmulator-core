@@ -30,11 +30,10 @@ impl ARGBColor {
     }
 }
 
-
 /// A utility enum to represent each input possible on a NES controller.
-/// 
+///
 /// # Example
-/// 
+///
 /// Using `winit_input_helper` crate:
 /// ```
 /// let mut input = 0;
