@@ -50,6 +50,10 @@ impl Mapper1 {
                     .expect("Failed to convert array"),
             );
         }
+        // Add additionnal CHR ROM to get 32 banks (max for MMC1)
+        while converted.len() < 0x20 {
+            converted.push([0; 0x1000]);
+        }
 
         Mapper1 {
             mirroring,

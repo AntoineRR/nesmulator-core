@@ -76,6 +76,7 @@ See [TESTS.md](./TESTS.md) for details about tests.
 * Add a configuration file for mapping Controls
 * Improve error handling and add more logs
 * Add a saving system
+* Improve mapper 1
 
 ## License
 
