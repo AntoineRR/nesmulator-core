@@ -138,6 +138,13 @@ impl NES {
         self.p_cpu.borrow_mut().reset();
     }
 
+    /// Read the bus memory at the given address
+    /// You should know what you are doing when calling this method as it can easily
+    /// be an invalid read
+    pub fn read_memory_at(&mut self, address: u16) -> u8 {
+        self.p_bus.borrow_mut().read(address)
+    }
+
     /// Return if the NES is currently adding samples produced by the APU to the samples buffer.
     pub fn is_producing_samples(&self) -> bool {
         self.add_samples
