@@ -178,6 +178,12 @@ impl NES {
     ///
     /// For emulating the NES at the speed of a real NES, one might do the following:
     /// ```
+    /// use std::time::{Duration, Instant};
+    /// 
+    /// use nes_emulator::nes::NES;
+    /// 
+    /// let mut nes = NES::new();
+    /// 
     /// let target_time = nes.get_1000_clock_duration();
     /// let mut elapsed_time = Duration::new(0, 0);
     /// let mut clocks = 0;
@@ -202,6 +208,9 @@ impl NES {
     ///         elapsed_time = Duration::new(0, 0);
     ///         clocks = 0;
     ///     }
+    /// 
+    ///     // Break the loop when you want to stop emulation
+    ///     break;
     /// }
     /// ```
     pub fn clock(&mut self) {

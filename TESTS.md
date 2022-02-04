@@ -1,10 +1,17 @@
-## Nesmulator Tests
+# Nesmulator Tests
+
+## Displaying logs
 
 The logs of the CPU and the PPU, including the disassembly of the ROM code, can be displayed in a similar manner to [Nintendulator](https://www.qmtpro.com/~nes/nintendulator/). This has been useful to compare the logs of my emulator to the ones from Nintendulator when nestest.nes is run on automation. The logs are the same on both emulators. They can be displayed using the `-l` flag.
 
-I used several test ROMs for testing my emulator. The CPU and PPU ones can be found [here](https://github.com/christopherpow/nes-test-roms), and the test ROMS for the mappers are [here](https://pineight.com/nes/holydiverbatman-bin-0.01.7z).
+Additionally, a level of debugging can be chosen with the `d` flag, followed by a debug level, from 1 to 4 included, 4 being the highest level of debugging.
+
+## Test ROMS
+
+I used several test ROMs for testing my emulator. Those can be found [here](https://github.com/christopherpow/nes-test-roms), and the test ROMS for the mappers are [here](https://pineight.com/nes/holydiverbatman-bin-0.01.7z).
 Some nes_instr_test ROMs fail because some undocumented opcodes are not implemented correctly for now.
-Here are the results :
+
+Here are some of the results :
 
 ### CPU
 
@@ -59,7 +66,7 @@ Here are the results :
 * [ ] sprite_overflow_tests/4.Obscure
 * [X] sprite_overflow_tests/5.Emulator
 
-## APU
+### APU
 
 * [ ] apu_test/apu_test
 * [X] apu_test/rom_singles/1-len_ctr
@@ -82,7 +89,7 @@ Here are the results :
 * [ ] blargg_apu_2005.07.30/10.len_halt_timing
 * [ ] blargg_apu_2005.07.30/11.len_reload_timing
 
-## Mappers
+### Mappers
 
 * [X] M0_P32K_C8K_V
 * [ ] M1_P128K
@@ -96,3 +103,21 @@ Here are the results :
 * [ ] M1_P512K_S32K
 * [X] M2_P128K_V
 * [X] M3_P32K_C32K_H
+
+## Integration tests
+
+Some test ROMs write their output strating at address 0x6000, allowing for automation in running tests. Some of those ROMs can be run automatically using integration tests.
+
+### How to setup
+
+Here are the step to follow to run those tests:
+
+* Download the test ROMs used from [this](https://github.com/christopherpow/nes-test-roms) repository.
+* Modify the `ROM_PATH_PREFIX` in `tests/common/mod.rs` to link to were you cloned the repository.
+* Run tests using `cargo test`
+
+### Running specific tests
+
+Some tests might fail as the emulator is still in development. This will prevent other tests from running.
+
+To run specific tests, you can specify the target file (eg: `cargo test --test cpu`), the target module (eg: `cargo test nes_instr_test::`), or the target test (eg: `cargo test nes_instr_test::implied`).
