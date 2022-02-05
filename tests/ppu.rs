@@ -35,7 +35,7 @@ mod ppu_vbl_nmi {
     fn suppression() {
         run_rom(&get_path("06-suppression.nes"));
     }
-    
+
     #[test]
     fn nmi_on_timing() {
         run_rom(&get_path("07-nmi_on_timing.nes"));

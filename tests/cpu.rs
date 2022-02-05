@@ -35,7 +35,7 @@ mod nes_instr_test {
     fn absolute_xy() {
         run_rom(&get_path("06-abs_xy.nes"));
     }
-    
+
     #[test]
     fn indirect_x() {
         run_rom(&get_path("07-ind_x.nes"));

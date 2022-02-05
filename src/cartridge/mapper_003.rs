@@ -2,11 +2,10 @@
 
 use log::warn;
 
-use super::mapper::{Mapper, Mirroring};
+use super::mapper::{INesHeader, Mapper, Mirroring};
 
-#[derive(Clone)]
 pub struct Mapper3 {
-    mirroring: Mirroring,
+    header: INesHeader,
     selected_chr_rom: usize,
     prg_rom: Vec<[u8; 16 * 1024]>,
     chr_rom: Vec<[u8; 8 * 1024]>,
@@ -16,10 +15,10 @@ impl Mapper3 {
     pub fn new(
         prg_rom: Vec<[u8; 16 * 1024]>,
         chr_rom: Vec<[u8; 8 * 1024]>,
-        mirroring: Mirroring,
+        header: INesHeader,
     ) -> Self {
         Mapper3 {
-            mirroring,
+            header,
             selected_chr_rom: 0,
             prg_rom,
             chr_rom,
@@ -63,10 +62,6 @@ impl Mapper for Mapper3 {
     }
 
     fn get_mirroring(&self) -> Mirroring {
-        self.mirroring
-    }
-
-    fn box_clone(&self) -> Box<dyn Mapper> {
-        Box::new((*self).clone())
+        self.header.mirroring
     }
 }

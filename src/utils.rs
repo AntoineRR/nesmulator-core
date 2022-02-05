@@ -38,13 +38,13 @@ impl ARGBColor {
 /// ```
 /// use winit::event::VirtualKeyCode;
 /// use winit_input_helper::WinitInputHelper;
-/// 
+///
 /// use nes_emulator::nes::NES;
 /// use nes_emulator::utils::ControllerInput;
-/// 
+///
 /// let mut nes = NES::new();
 /// let input_helper = WinitInputHelper::new();
-/// 
+///
 /// let mut input = 0;
 /// if input_helper.key_held(VirtualKeyCode::Z) {
 ///     input |= ControllerInput::Up as u8;

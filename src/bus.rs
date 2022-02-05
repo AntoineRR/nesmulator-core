@@ -5,9 +5,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::apu::apu::APU;
 use crate::cartridge::mapper::Mapper;
 use crate::controllers::Controller;
-use crate::apu::apu::APU;
 use crate::ppu::ppu::PPU;
 
 // ===== CONSTANTS =====

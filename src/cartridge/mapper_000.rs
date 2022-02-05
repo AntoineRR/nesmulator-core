@@ -2,11 +2,10 @@
 
 use log::warn;
 
-use super::mapper::{Mapper, Mirroring};
+use super::mapper::{INesHeader, Mapper, Mirroring};
 
-#[derive(Clone)]
 pub struct Mapper0 {
-    mirroring: Mirroring,
+    header: INesHeader,
     prg_rom: Vec<[u8; 16 * 1024]>,
     chr_rom: Vec<[u8; 8 * 1024]>,
     ram: [u8; 0x2000], // There can be RAM on Family Basic ROMs
@@ -16,10 +15,10 @@ impl Mapper0 {
     pub fn new(
         prg_rom: Vec<[u8; 16 * 1024]>,
         chr_rom: Vec<[u8; 8 * 1024]>,
-        mirroring: Mirroring,
+        header: INesHeader,
     ) -> Self {
         Mapper0 {
-            mirroring,
+            header,
             prg_rom,
             chr_rom,
             ram: [0; 0x2000],
@@ -63,10 +62,6 @@ impl Mapper for Mapper0 {
     }
 
     fn get_mirroring(&self) -> Mirroring {
-        self.mirroring
-    }
-
-    fn box_clone(&self) -> Box<dyn Mapper> {
-        Box::new((*self).clone())
+        self.header.mirroring
     }
 }

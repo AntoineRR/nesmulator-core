@@ -86,11 +86,17 @@ fn main() {
     let event_loop = EventLoop::new();
     let mut gui = GUI::new(&event_loop);
 
-    // Instantiate a NES and runs the game
+    // Instantiate a NES and connect a ROM file
     let mut nes = NES::from_config(config);
     if let Err(e) = nes.insert_cartdrige(rom_path) {
         error!("Error parsing ROM: {}", e);
         exit(1);
+    }
+    info!("ROM {} successfully loaded.", rom_path);
+
+    // Load a save for the current cartridge, if any
+    if let Ok(_) = nes.load_save() {
+        info!("Save successfully loaded.");
     }
 
     // Spawn a thread to run the NES ROM and give it a channel receiver to handle events from the main loop
@@ -116,7 +122,11 @@ fn main() {
             }
             // Resize event
             if let Some(size) = input_helper.window_resized() {
-                send_message(&tx, Message::ResizeWindow(size.width, size.height), control_flow);
+                send_message(
+                    &tx,
+                    Message::ResizeWindow(size.width, size.height),
+                    control_flow,
+                );
             }
             // Debug window
             if input_helper.key_pressed(VirtualKeyCode::E) {
@@ -271,6 +281,9 @@ fn handle_message(nes: &mut NES, gui: &mut GUI, message: Message) -> bool {
     } else if message == Message::ToggleDebugWindow {
         gui.toggle_debugging();
     } else if message == Message::CloseApp {
+        if let Ok(_) = nes.save() {
+            info!("Game successfully saved.");
+        }
         return false;
     }
     return true;

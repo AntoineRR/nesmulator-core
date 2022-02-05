@@ -1,10 +1,14 @@
 // Mapper 1 : MMC1
 
 use std::convert::TryInto;
+use std::error::Error;
+use std::fs::{self, File};
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use log::{debug, warn};
 
-use super::mapper::{Mapper, Mirroring};
+use super::mapper::{INesHeader, Mapper, Mirroring};
 
 #[derive(Debug)]
 enum PrgRomBankMode {
@@ -19,28 +23,28 @@ enum ChrRomBankMode {
     Switch4,
 }
 
-#[derive(Clone)]
 pub struct Mapper1 {
-    mirroring: Mirroring,
+    header: INesHeader,
+
     lo_prg_rom: usize,
     hi_prg_rom: usize,
     lo_chr_rom: usize,
     hi_chr_rom: usize,
+
     prg_rom: Vec<[u8; 0x4000]>,
     chr_rom: Vec<[u8; 0x1000]>,
+
     ram: [u8; 0x2000],
     ram_disabled: bool,
+
     shift_register: u8,
     n_bit_loaded: u8,
+
     control_register: u8,
 }
 
 impl Mapper1 {
-    pub fn new(
-        prg_rom: Vec<[u8; 0x4000]>,
-        chr_rom: Vec<[u8; 0x2000]>,
-        mirroring: Mirroring,
-    ) -> Self {
+    pub fn new(prg_rom: Vec<[u8; 0x4000]>, chr_rom: Vec<[u8; 0x2000]>, header: INesHeader) -> Self {
         let mut converted: Vec<[u8; 0x1000]> = vec![];
         for elt in chr_rom.iter() {
             converted.push(elt[0..0x1000].try_into().expect("Failed to convert array"));
@@ -56,7 +60,7 @@ impl Mapper1 {
         }
 
         Mapper1 {
-            mirroring,
+            header,
             lo_prg_rom: 0,
             hi_prg_rom: prg_rom.len() - 1,
             lo_chr_rom: 0,
@@ -86,6 +90,15 @@ impl Mapper1 {
             1 => ChrRomBankMode::Switch4,
             _ => panic!("Unreachable pattern"),
         }
+    }
+
+    fn get_path_to_save(&self) -> PathBuf {
+        let path_to_rom = Path::new(&self.header.path_to_rom);
+        path_to_rom
+            .parent()
+            .unwrap()
+            .join(path_to_rom.file_stem().unwrap())
+            .with_extension("sav")
     }
 }
 
@@ -225,7 +238,27 @@ impl Mapper for Mapper1 {
         }
     }
 
-    fn box_clone(&self) -> Box<dyn Mapper> {
-        Box::new((*self).clone())
+    fn load_persistent_memory(&mut self) -> Result<(), Box<dyn Error>> {
+        if self.header.has_persistent_memory {
+            let path_to_save = self.get_path_to_save();
+            if path_to_save.exists() {
+                self.ram = fs::read(path_to_save)?[..].try_into()?;
+                return Ok(());
+            }
+            Err(format!(
+                "Save file {} not found",
+                path_to_save.to_str().unwrap()
+            ))?
+        }
+        Err("ROM has no persistent memory")?
+    }
+
+    fn save_persistent_memory(&self) -> Result<(), Box<dyn Error>> {
+        if self.header.has_persistent_memory {
+            let mut save_file = File::create(self.get_path_to_save())?;
+            save_file.write_all(&self.ram)?;
+            return Ok(());
+        }
+        Err("ROM has no persistent memory")?
     }
 }

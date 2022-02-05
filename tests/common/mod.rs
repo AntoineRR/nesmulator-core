@@ -11,7 +11,7 @@ const CYCLES_COUNT_100_MS: u32 = 540_000;
 pub fn run_rom(rom_path: &str) {
     let mut nes = NES::new();
     nes.insert_cartdrige(rom_path).unwrap();
-    
+
     let mut should_reset = false;
     let mut cycle_count = 0;
 

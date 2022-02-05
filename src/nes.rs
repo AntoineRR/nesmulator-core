@@ -2,15 +2,12 @@
 
 use std::cell::RefCell;
 use std::error::Error;
-use std::path::Path;
 use std::rc::Rc;
 use std::time::Duration;
 
-use log::info;
-
 use crate::apu::apu::APU;
 use crate::bus::Bus;
-use crate::cartridge::cartridge::Cartridge;
+use crate::cartridge::mapper::{get_mapper, Mapper};
 use crate::cpu::{cpu::CPU, enums::Interrupt};
 use crate::ppu::ppu::PPU;
 use crate::utils::ARGBColor;
@@ -21,6 +18,8 @@ use crate::Config;
 /// Frequency at which the PPU of a NTSC NES is clocked (Hz).
 pub const PPU_CLOCK_FREQUENCY: u64 = 5_369_318;
 
+type MapperRc = Rc<RefCell<Box<dyn Mapper>>>;
+
 // ===== NES STRUCT =====
 
 /// Represent a NES. This will create the NES architecture and provide an API to run the emulation.
@@ -30,6 +29,9 @@ pub struct NES {
     p_cpu: Rc<RefCell<CPU>>,
     p_ppu: Rc<RefCell<PPU>>,
     p_apu: Rc<RefCell<APU>>,
+
+    // Mapper
+    o_p_mapper: Option<MapperRc>,
 
     // NES clock counter
     total_clock: u64,
@@ -70,6 +72,8 @@ impl NES {
             p_ppu,
             p_apu,
 
+            o_p_mapper: None,
+
             total_clock: 0,
 
             dma_started: false,
@@ -102,6 +106,8 @@ impl NES {
             p_ppu,
             p_apu,
 
+            o_p_mapper: None,
+
             total_clock: 0,
 
             dma_started: false,
@@ -118,16 +124,13 @@ impl NES {
     /// Load the ROM located at `rom_path` into the NES.
     /// The ROM file must be in a correct iNES or iNES v2 format.
     pub fn insert_cartdrige(&mut self, rom_path: &str) -> Result<(), Box<dyn Error>> {
-        let path = Path::new(rom_path);
-
-        let cartridge = Cartridge::new(path)?;
-        let p_mapper = Rc::new(RefCell::new(cartridge.mapper));
+        let mapper = get_mapper(rom_path)?;
+        let p_mapper = Rc::new(RefCell::new(mapper));
 
         self.p_bus.borrow_mut().set_mapper(p_mapper.clone());
         self.p_ppu.borrow_mut().set_mapper(p_mapper.clone());
+        self.o_p_mapper = Some(p_mapper.clone());
         self.reset();
-
-        info!("ROM {} successfully loaded.", rom_path);
 
         Ok(())
     }
@@ -179,11 +182,11 @@ impl NES {
     /// For emulating the NES at the speed of a real NES, one might do the following:
     /// ```
     /// use std::time::{Duration, Instant};
-    /// 
+    ///
     /// use nes_emulator::nes::NES;
-    /// 
+    ///
     /// let mut nes = NES::new();
-    /// 
+    ///
     /// let target_time = nes.get_1000_clock_duration();
     /// let mut elapsed_time = Duration::new(0, 0);
     /// let mut clocks = 0;
@@ -208,7 +211,7 @@ impl NES {
     ///         elapsed_time = Duration::new(0, 0);
     ///         clocks = 0;
     ///     }
-    /// 
+    ///
     ///     // Break the loop when you want to stop emulation
     ///     break;
     /// }
@@ -260,6 +263,24 @@ impl NES {
         }
         self.p_bus.borrow_mut().set_input(id, input);
         Ok(())
+    }
+
+    /// Load a save in the ".sav" format.
+    pub fn load_save(&self) -> Result<(), Box<dyn Error>> {
+        if let Some(m) = &self.o_p_mapper {
+            m.borrow_mut().load_persistent_memory()
+        } else {
+            Err("Insert a cartridge before trying to save")?
+        }
+    }
+
+    /// Save the game in the ".sav" format.
+    pub fn save(&self) -> Result<(), Box<dyn Error>> {
+        if let Some(m) = &self.o_p_mapper {
+            m.borrow().save_persistent_memory()
+        } else {
+            Err("Insert a cartridge before trying to save")?
+        }
     }
 
     /// Get the current pattern table.

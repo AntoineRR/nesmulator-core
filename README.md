@@ -24,6 +24,7 @@ I would also like to pass most of the tests from some tests roms listed in the N
 * [X] A cartridge in the iNES format can be loaded into the emulator
 * [X] Mapper 0, 1, 2 and 3 are implemented
 * [X] A palette in the .pal format can be loaded into the emulator, otherwise a default palette is hardcoded into the emulator
+* [X] ROM from cartridges that had a saving system can save the game in a file with the .sav extension
 
 ### Provided GUI
 
@@ -75,7 +76,8 @@ See [TESTS.md](./TESTS.md) for details about tests.
 * Pass more tests
 * Add a configuration file for mapping Controls
 * Improve error handling and add more logs
-* Add a saving system
+* Add a save state system
+* Allow to configure the save path
 * Improve mapper 1
 
 ## License

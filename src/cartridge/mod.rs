@@ -1,6 +1,5 @@
-pub mod cartridge;
 pub mod mapper;
-pub mod mapper_000;
-pub mod mapper_001;
-pub mod mapper_002;
-pub mod mapper_003;
+mod mapper_000;
+mod mapper_001;
+mod mapper_002;
+mod mapper_003;
