@@ -50,7 +50,7 @@ impl CPU {
             x: 0,
             y: 0,
             pc: 0,
-            sp: 0xFD,
+            sp: 0,
             p: 0x34,
 
             cycles: 0,
@@ -118,7 +118,10 @@ impl CPU {
         //     self.interrupt_queue.push(interrupt_type);
         //     return;
         // }
-        if !self.get_flag(Flag::InterruptDisable) || interrupt_type == Interrupt::NMI {
+        if !self.get_flag(Flag::InterruptDisable)
+            || interrupt_type == Interrupt::NMI
+            || interrupt_type == Interrupt::Reset
+        {
             if interrupt_type != Interrupt::Reset {
                 // Push program counter and status register on the stack
                 self.push_to_stack(((self.pc & 0xFF00) >> 8) as u8);
@@ -147,11 +150,7 @@ impl CPU {
 
     // Called when the reset button is pressed on the NES
     pub fn reset(&mut self) {
-        self.a = 0x00;
-        self.x = 0x00;
-        self.y = 0x00;
-        self.sp = 0xFD;
-        self.p = 0x20;
+        self.sp = self.sp.wrapping_sub(3);
         self.interrupt(Interrupt::Reset);
     }
 

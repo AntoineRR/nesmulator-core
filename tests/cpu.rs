@@ -117,3 +117,24 @@ mod instr_misc {
         format!("{}{}{}", ROM_PATH_PREFIX, DIR_PATH, rom)
     }
 }
+
+mod cpu_reset {
+    use crate::common::run_rom;
+    use crate::common::ROM_PATH_PREFIX;
+
+    const DIR_PATH: &str = "cpu_reset/";
+
+    #[test]
+    fn registers() {
+        run_rom(&get_path("registers.nes"))
+    }
+
+    #[test]
+    fn ram_after_reset() {
+        run_rom(&get_path("ram_after_reset.nes"))
+    }
+
+    fn get_path(rom: &str) -> String {
+        format!("{}{}{}", ROM_PATH_PREFIX, DIR_PATH, rom)
+    }
+}

@@ -65,6 +65,7 @@ More options can be displayed with the `-h` or `--help` flag.
 | Feature        | Key |
 | -------------- | --- |
 | Debugging mode | E   |
+| Reset CPU      | R   |
 
 ## Tests
 

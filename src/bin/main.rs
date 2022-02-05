@@ -23,7 +23,8 @@ use nes_emulator::Config;
 // Different messages that can be thrown at the NES by the event loop
 #[derive(PartialEq)]
 enum Message {
-    Input((usize, u8)),
+    Input(usize, u8),
+    Reset,
     DrawFrame,
     ResizeWindow(u32, u32),
     ToggleDebugWindow,
@@ -132,6 +133,10 @@ fn main() {
             if input_helper.key_pressed(VirtualKeyCode::E) {
                 send_message(&tx, Message::ToggleDebugWindow, control_flow);
             }
+            // Reset
+            if input_helper.key_pressed(VirtualKeyCode::R) {
+                send_message(&tx, Message::Reset, control_flow);
+            }
             // Controller inputs
             let mut input = 0;
             if input_helper.key_held(VirtualKeyCode::Z) {
@@ -158,7 +163,7 @@ fn main() {
             if input_helper.key_held(VirtualKeyCode::O) {
                 input |= ControllerInput::B as u8;
             }
-            send_message(&tx, Message::Input((0, input)), control_flow);
+            send_message(&tx, Message::Input(0, input), control_flow);
         }
     });
 }
@@ -199,8 +204,6 @@ fn init_env_logger(debug_level: Option<&str>) {
 
 fn run_nes(nes: &mut NES, gui: &mut GUI, rx: Receiver<Message>) {
     info!("Running NES emulation...");
-
-    nes.reset();
 
     // Sound
     let sdl_context = sdl2::init().unwrap();
@@ -269,22 +272,23 @@ fn run_nes(nes: &mut NES, gui: &mut GUI, rx: Receiver<Message>) {
 }
 
 fn handle_message(nes: &mut NES, gui: &mut GUI, message: Message) -> bool {
-    if let Message::Input((id, input)) = message {
-        if let Err(e) = nes.input(id, input) {
-            error!("Failed to handle controller input: {}", e);
-            exit(1);
+    match message {
+        Message::Input(id, input) => {
+            if let Err(e) = nes.input(id, input) {
+                error!("Failed to handle controller input: {}", e);
+                exit(1);
+            }
         }
-    } else if let Message::ResizeWindow(width, height) = message {
-        gui.resize(width, height);
-    } else if message == Message::DrawFrame {
-        gui.redraw();
-    } else if message == Message::ToggleDebugWindow {
-        gui.toggle_debugging();
-    } else if message == Message::CloseApp {
-        if let Ok(_) = nes.save() {
-            info!("Game successfully saved.");
+        Message::Reset => nes.reset(),
+        Message::ResizeWindow(width, height) => gui.resize(width, height),
+        Message::DrawFrame => gui.redraw(),
+        Message::ToggleDebugWindow => gui.toggle_debugging(),
+        Message::CloseApp => {
+            if let Ok(_) = nes.save() {
+                info!("Game successfully saved.");
+            }
+            return false;
         }
-        return false;
     }
     return true;
 }
