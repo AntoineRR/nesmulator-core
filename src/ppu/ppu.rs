@@ -69,6 +69,9 @@ pub struct PPU {
     // Current frame infos
     frame_buffer: [ARGBColor; 61_440],
     is_frame_ready: bool,
+
+    // Debug
+    debug_palette_id: u8,
 }
 
 impl PPU {
@@ -123,11 +126,17 @@ impl PPU {
 
             frame_buffer: [ARGBColor::black(); 61_440],
             is_frame_ready: false,
+
+            debug_palette_id: 0,
         }
     }
 
     pub fn set_mapper(&mut self, p_mapper: MapperRc) {
         self.ppu_bus.set_mapper(p_mapper);
+    }
+
+    pub fn set_debug_palette_id(&mut self, debug_palette_id: u8) {
+        self.debug_palette_id = debug_palette_id;
     }
 
     pub fn get_scanline(&self) -> u16 {
@@ -900,10 +909,10 @@ impl PPU {
                 .ppu_bus
                 .read(pattern_table * 0x1000 + (n_offset + row) as u16 + 0x0008);
             for col in 0..8 {
-                let color: u8 = (tile_low & 0x01) + (tile_high & 0x01);
+                let color: u8 = (tile_low & 0x01) | ((tile_high & 0x01) << 1);
                 tile_high >>= 1;
                 tile_low >>= 1;
-                buffer[row * 8 + (7 - col)] = self.get_pixel_color(0, color);
+                buffer[row * 8 + (7 - col)] = self.get_pixel_color(self.debug_palette_id, color);
             }
         }
         Ok(buffer)

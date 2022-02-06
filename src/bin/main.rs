@@ -26,6 +26,7 @@ enum Message {
     Input(usize, u8),
     Reset,
     DrawFrame,
+    ChangePaletteId(u8),
     ResizeWindow(u32, u32),
     ToggleDebugWindow,
     CloseApp,
@@ -105,6 +106,7 @@ fn main() {
     thread::spawn(move || run_nes(&mut nes, &mut gui, rx));
 
     // Run the event loop
+    let mut palette_id = 0;
     let mut input_helper = WinitInputHelper::new();
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -136,6 +138,23 @@ fn main() {
             // Reset
             if input_helper.key_pressed(VirtualKeyCode::R) {
                 send_message(&tx, Message::Reset, control_flow);
+            }
+            // Change debug palette
+            if input_helper.key_pressed(VirtualKeyCode::Left) {
+                if palette_id == 0 {
+                    palette_id = 7;
+                } else {
+                    palette_id -= 1;
+                }
+                send_message(&tx, Message::ChangePaletteId(palette_id), control_flow);
+            }
+            if input_helper.key_pressed(VirtualKeyCode::Right) {
+                if palette_id == 7 {
+                    palette_id = 0;
+                } else {
+                    palette_id += 1;
+                }
+                send_message(&tx, Message::ChangePaletteId(palette_id), control_flow);
             }
             // Controller inputs
             let mut input = 0;
@@ -282,6 +301,7 @@ fn handle_message(nes: &mut NES, gui: &mut GUI, message: Message) -> bool {
         Message::Reset => nes.reset(),
         Message::ResizeWindow(width, height) => gui.resize(width, height),
         Message::DrawFrame => gui.redraw(),
+        Message::ChangePaletteId(id) => nes.set_debug_palette_id(id).unwrap(),
         Message::ToggleDebugWindow => gui.toggle_debugging(),
         Message::CloseApp => {
             if let Ok(_) = nes.save() {

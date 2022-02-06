@@ -148,6 +148,15 @@ impl NES {
         self.p_bus.borrow_mut().read(address)
     }
 
+    /// Set the palette to use for displaying the pattern tables
+    pub fn set_debug_palette_id(&mut self, debug_palette_id: u8) -> Result<(), Box<dyn Error>> {
+        if debug_palette_id > 7 {
+            Err("Palette id must be between 0 and 7")?
+        }
+        self.p_ppu.borrow_mut().set_debug_palette_id(debug_palette_id);
+        Ok(())
+    }
+
     /// Return if the NES is currently adding samples produced by the APU to the samples buffer.
     pub fn is_producing_samples(&self) -> bool {
         self.add_samples
