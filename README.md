@@ -62,10 +62,11 @@ More options can be displayed with the `-h` or `--help` flag.
 
 ### Emulator features
 
-| Feature        | Key |
-| -------------- | --- |
-| Debugging mode | E   |
-| Reset CPU      | R   |
+| Feature              | Key        |
+| -------------------- | ---------- |
+| Debugging mode       | E          |
+| Choose debug palette | Left/Right |
+| Reset CPU            | R          |
 
 ## Tests
 
