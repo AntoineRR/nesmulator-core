@@ -139,6 +139,7 @@ impl NES {
     /// This will throw a reset interrupt at the NES emulated CPU.
     pub fn reset(&mut self) {
         self.p_cpu.borrow_mut().reset();
+        self.p_apu.borrow_mut().reset();
     }
 
     /// Read the bus memory at the given address

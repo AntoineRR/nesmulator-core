@@ -16,19 +16,19 @@ pub struct DMC {
     pub interrupt_flag: bool,
     irq_enabled: bool,
     loop_flag: bool,
-    rate: u16,
 
     sample_address: u16,
     sample_length: u16,
-    sample_buffer: u8,
+    sample_buffer: Option<u8>,
     current_address: u16,
     bytes_remaining: u16,
 
     silence_flag: bool,
+    output_shift_register: u8,
     bits_remaining: u8,
 
     timer: u16,
-    period: u16,
+    rate: u16,
 
     output_level: u8,
 }
@@ -42,19 +42,19 @@ impl DMC {
             interrupt_flag: false,
             irq_enabled: false,
             loop_flag: false,
-            rate: 0,
 
             sample_address: 0,
             sample_length: 0,
-            sample_buffer: 0,
+            sample_buffer: None,
             current_address: 0,
             bytes_remaining: 0,
 
             silence_flag: false,
+            output_shift_register: 0,
             bits_remaining: 1,
 
             timer: 0,
-            period: 0,
+            rate: 0,
 
             output_level: 0,
         }
@@ -65,10 +65,13 @@ impl DMC {
         self.p_cpu = Some(p_cpu);
     }
 
+    pub fn reset(&mut self) {
+        self.output_level &= 0x01;
+    }
+
     pub fn set_enabled(&mut self, enabled: bool) {
-        self.silence_flag = enabled;
         self.interrupt_flag = false;
-        if self.silence_flag {
+        if !enabled {
             self.bytes_remaining = 0;
         } else {
             if self.bytes_remaining == 0 {
@@ -90,7 +93,7 @@ impl DMC {
         self.loop_flag = value & 0x40 > 0;
         // Divide by 2 because the DMC_RATE table on the nesdev wiki contains the number of CPU cycles
         // and the DMC is clocked every 2 CPU cycles
-        self.rate = DMC_RATE[(value & 0x0F) as usize] / 2;
+        self.rate = DMC_RATE[(value & 0x0F) as usize];
     }
 
     pub fn set_output_level(&mut self, value: u8) {
@@ -106,35 +109,45 @@ impl DMC {
     }
 
     fn clock_reader(&mut self) {
-        if self.bytes_remaining == 0 || self.bits_remaining != 0 {
-            return;
-        }
-
-        if let Some(bus) = &self.p_bus {
-            self.sample_buffer = bus.borrow_mut().read(self.current_address);
-        } else {
-            panic!("No bus attached to the DMC");
-        }
-
-        if self.current_address < 0xFFFF {
-            self.current_address += 1;
-        } else {
-            self.current_address = 0x8000;
-        }
-        self.bytes_remaining -= 1;
-        if self.bytes_remaining == 0 {
-            if self.loop_flag {
-                self.current_address = self.sample_address;
-                self.bytes_remaining = self.sample_length;
-            } else if self.irq_enabled {
-                self.interrupt_flag = true;
+        if self.sample_buffer.is_none() {
+            if self.bytes_remaining == 0 {
+                if self.loop_flag {
+                    self.current_address = self.sample_address;
+                    self.bytes_remaining = self.sample_length;
+                } else if self.irq_enabled {
+                    self.interrupt_flag = true;
+                }
+                return;
             }
+
+            if let Some(bus) = &self.p_bus {
+                self.sample_buffer = Some(bus.borrow_mut().read(self.current_address));
+            } else {
+                panic!("No bus attached to the DMC");
+            }
+    
+            if self.current_address < 0xFFFF {
+                self.current_address += 1;
+            } else {
+                self.current_address = 0x8000;
+            }
+            self.bytes_remaining -= 1;
         }
     }
 
     fn clock_output(&mut self) {
+        if self.bits_remaining == 0 {
+            self.bits_remaining = 8;
+            if self.sample_buffer.is_none() {
+                self.silence_flag = true;
+            } else {
+                self.silence_flag = false;
+                self.output_shift_register = self.sample_buffer.unwrap();
+                self.sample_buffer = None;
+            }
+        }
         if !self.silence_flag {
-            if self.sample_buffer & 0x01 > 0 {
+            if self.output_shift_register & 0x01 > 0 {
                 if self.output_level <= 125 {
                     self.output_level += 2;
                 }
@@ -143,12 +156,9 @@ impl DMC {
                     self.output_level -= 2;
                 }
             }
-            self.sample_buffer >>= 1;
         }
+        self.output_shift_register >>= 1;
         self.bits_remaining -= 1;
-        if self.bits_remaining == 0 {
-            self.bits_remaining = 8;
-        }
     }
 
     pub fn clock(&mut self) {
@@ -159,11 +169,11 @@ impl DMC {
                 panic!("No CPU set for the DMC");
             }
         }
-        self.clock_reader();
         if self.timer != 0 {
             self.timer -= 1;
         } else {
-            self.timer = self.period + 1;
+            self.timer = self.rate + 1;
+            self.clock_reader();
             self.clock_output();
         }
     }

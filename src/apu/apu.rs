@@ -42,6 +42,8 @@ pub struct APU {
     mode: Mode,
     instant_clock: bool,
 
+    last_4017_value: u8,
+
     pulse_table: [f32; 31],
     tnd_table: [f32; 203],
 
@@ -73,12 +75,14 @@ impl APU {
             dmc: DMC::new(),
 
             interrupt_inhibit: false,
-            frame_interrupt: false,
+            frame_interrupt: true,
 
             sample_rate: sample_rate as u64,
             frame_clock: 0,
             mode: Mode::Step4,
             instant_clock: false,
+
+            last_4017_value: 0,
 
             pulse_table,
             tnd_table,
@@ -144,6 +148,7 @@ impl APU {
                 self.dmc.set_enabled(value & 0x10 > 0);
             }
             0x4017 => {
+                self.last_4017_value = value;
                 self.mode = match (value & 0x80) >> 7 {
                     0 => Mode::Step4,
                     1 => {
@@ -159,6 +164,13 @@ impl APU {
             }
             _ => panic!("Invalid address given to APU: {:#X}", address),
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.write_register(0x4015, 0x00);
+        self.write_register(0x4017, self.last_4017_value);
+        self.triangle.reset();
+        self.dmc.reset();
     }
 
     fn clock_quarter_frame(&mut self) {
@@ -214,9 +226,9 @@ impl APU {
             self.pulse1.clock();
             self.pulse2.clock();
             self.noise.clock();
-            self.dmc.clock();
         }
         self.triangle.clock();
+        self.dmc.clock();
 
         self.frame_clock = self.frame_clock.wrapping_add(1);
 

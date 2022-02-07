@@ -36,6 +36,10 @@ impl Triangle {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.step = 0;
+    }
+
     pub fn set_linear_counter(&mut self, value: u8) {
         self.control = value & 0x80 > 0;
         self.length_counter
