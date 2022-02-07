@@ -118,6 +118,23 @@ impl APU {
         }
     }
 
+    pub fn read_only_register(&self, address: u16) -> u8 {
+        match address {
+            0x4015 => {
+                let mut status: u8 = 0;
+                status |= !self.pulse1.length_counter.is_channel_silenced() as u8;
+                status |= (!self.pulse2.length_counter.is_channel_silenced() as u8) << 1;
+                status |= (!self.triangle.length_counter.is_channel_silenced() as u8) << 2;
+                status |= (!self.noise.length_counter.is_channel_silenced() as u8) << 3;
+                status |= (self.dmc.is_active() as u8) << 4;
+                status |= (self.frame_interrupt as u8) << 6;
+                status |= (self.dmc.interrupt_flag as u8) << 7;
+                status
+            }
+            _ => 0,
+        }
+    }
+
     pub fn write_register(&mut self, address: u16, value: u8) {
         match address {
             0x4000 => self.pulse1.set_control(value),

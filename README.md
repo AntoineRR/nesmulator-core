@@ -19,7 +19,7 @@ I would also like to pass most of the tests from some tests roms listed in the N
 
 * [X] CPU is emulated and passes most tests
 * [X] PPU is emulated and passes most tests
-* [X] APU is emulated but not very accurate
+* [X] APU is emulated
 * [X] First controller is emulated (see controls below)
 * [X] A cartridge in the iNES format can be loaded into the emulator
 * [X] Mapper 0, 1, 2 and 3 are implemented
@@ -74,7 +74,6 @@ See [TESTS.md](./TESTS.md) for details about tests.
 
 ## To do
 
-* Fix APU emulation, especially DMC
 * Pass more tests
 * Add a configuration file for mapping Controls
 * Improve error handling and add more logs

@@ -75,7 +75,7 @@ Here are some of the results :
 * [ ] apu_test/rom_singles/4-jitter
 * [ ] apu_test/rom_singles/5-len_timing
 * [ ] apu_test/rom_singles/6-irq_flag_timing
-* [ ] apu_test/rom_singles/7-dmc_basics
+* [X] apu_test/rom_singles/7-dmc_basics
 * [ ] apu_test/rom_singles/8-dmc_rates
 * [X] blargg_apu_2005.07.30/01.len_ctr
 * [X] blargg_apu_2005.07.30/02.len_table

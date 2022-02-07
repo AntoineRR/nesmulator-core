@@ -122,7 +122,7 @@ impl Bus {
                     .read_register_without_modification(address & 0x2007)
             }
             // 0x4000 - 0x4013 / NES APU I/O Registers
-            0x4000..=0x4013 => value = self.p_apu.borrow_mut().read_register(address),
+            0x4000..=0x4013 => value = self.p_apu.borrow().read_only_register(address),
             // 0x4014 / NES PPU Register
             0x4014 => {
                 value = self
@@ -132,7 +132,7 @@ impl Bus {
                     .read_register_without_modification(address)
             }
             // 0x4015 / NES APU Register
-            0x4015 => value = self.p_apu.borrow_mut().read_register(address),
+            0x4015 => value = self.p_apu.borrow().read_only_register(address),
             // 0x4016 / First controller
             0x4016 => value = self.data[address as usize],
             // 0x4017 / Second controller
