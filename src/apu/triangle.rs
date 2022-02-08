@@ -54,6 +54,7 @@ impl Triangle {
     pub fn set_high_timer(&mut self, value: u8) {
         self.length_counter.set_length_counter((value & 0xF8) >> 3);
         self.period = (self.period & 0x00FF) | ((value & 0x07) as u16) << 8;
+        self.linear_reload = true;
     }
 
     fn clock_sequencer(&mut self) {
