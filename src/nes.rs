@@ -176,11 +176,9 @@ impl NES {
         samples
     }
 
-    /// Get the Duration of 1000 clock cycles.
-    /// The duration of a clock cycle is calculated based on the duration of a real NTSC clock cycle
-    /// It is useful to get 1000 clock cycles duration instead of just one for synchronizing the emulation
-    pub fn get_1000_clock_duration(&self) -> Duration {
-        Duration::from_micros(1_000_000_000 / PPU_CLOCK_FREQUENCY)
+    /// Get the Duration of a frame.
+    pub fn get_one_frame_duration(&self) -> Duration {
+        Duration::from_micros(1_000_000 / 60)
     }
 
     /// Clock the NES for one PPU cycle.

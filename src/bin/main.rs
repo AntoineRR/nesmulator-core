@@ -2,7 +2,7 @@ use std::error::Error;
 use std::process::exit;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use clap::{App, Arg};
 use env_logger::Env;
@@ -239,15 +239,20 @@ fn run_nes(nes: &mut NES, gui: &mut GUI, rx: Receiver<Message>) {
         .unwrap();
     queue.resume();
 
-    let target_time = nes.get_1000_clock_duration();
-    let mut elapsed_time = Duration::new(0, 0);
-    let mut clocks = 0;
+    let target_time = nes.get_one_frame_duration();
+    let mut time = Instant::now();
 
     loop {
-        let time = Instant::now();
-
         // Run one clock of emulation
         nes.clock();
+
+        // Handle message from the main thread
+        if let Ok(m) = rx.try_recv() {
+            let keep_running = handle_message(nes, gui, m);
+            if !keep_running {
+                break;
+            }
+        }
 
         // Render frame if ready
         if let Some(frame) = nes.get_frame_buffer() {
@@ -260,32 +265,21 @@ fn run_nes(nes: &mut NES, gui: &mut GUI, rx: Receiver<Message>) {
                 );
             }
             gui.render().unwrap();
-            queue.queue(&nes.get_samples()[..]);
-        }
 
-        // Synchronize with sound
-        if !nes.is_producing_samples() && queue.size() < MIN_AUDIO_QUEUE_SIZE {
-            nes.produce_samples(true);
-        } else if nes.is_producing_samples() && queue.size() > MIN_AUDIO_QUEUE_SIZE {
-            nes.produce_samples(false);
-        }
-
-        if let Ok(m) = rx.try_recv() {
-            let keep_running = handle_message(nes, gui, m);
-            if !keep_running {
-                break;
+            // Synchronize with sound
+            if !nes.is_producing_samples() && queue.size() < MIN_AUDIO_QUEUE_SIZE {
+                nes.produce_samples(true);
+            } else if nes.is_producing_samples() && queue.size() > MIN_AUDIO_QUEUE_SIZE {
+                nes.produce_samples(false);
             }
-        }
+            queue.queue(&nes.get_samples()[..]);
 
-        // Synchronize to emulate at the desired speed
-        elapsed_time += time.elapsed();
-        clocks += 1;
-        if clocks >= 1000 {
+            // Synchronize the emulation to run at the correct speed
+            let elapsed_time = time.elapsed();
             if elapsed_time < target_time {
                 spin_sleep::sleep(target_time - elapsed_time);
             }
-            elapsed_time = Duration::new(0, 0);
-            clocks = 0;
+            time = Instant::now();
         }
     }
 }

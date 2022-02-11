@@ -17,3 +17,6 @@ spin_sleep = "1.0.0"
 
 [profile.dev]
 opt-level = 1
+
+[profile.release]
+debug = true
