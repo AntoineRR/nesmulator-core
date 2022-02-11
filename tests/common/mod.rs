@@ -1,4 +1,4 @@
-use nes_emulator::nes::NES;
+use nesmulator_core::nes::NES;
 
 pub const ROM_PATH_PREFIX: &str = "../ROM/Tests/nes-test-roms/";
 const RETURN_CODE_ADDRESS: u16 = 0x6000;

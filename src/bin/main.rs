@@ -15,10 +15,10 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 use winit_input_helper::WinitInputHelper;
 
-use nes_emulator::nes::NES;
-use nes_emulator::utils::ARGBColor;
-use nes_emulator::utils::ControllerInput;
-use nes_emulator::Config;
+use nesmulator_core::nes::NES;
+use nesmulator_core::utils::ARGBColor;
+use nesmulator_core::utils::ControllerInput;
+use nesmulator_core::Config;
 
 // Different messages that can be thrown at the NES by the event loop
 #[derive(PartialEq)]

@@ -1,8 +1,8 @@
 [package]
-name = "nes_emulator"
+name = "nesmulator_core"
 version = "0.1.0"
-authors = ["romero"]
-edition = "2018"
+authors = ["aromeroromero"]
+edition = "2021"
 resolver = "2"
 
 [dependencies]
