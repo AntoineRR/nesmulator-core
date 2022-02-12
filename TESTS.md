@@ -120,4 +120,8 @@ Here are the step to follow to run those tests:
 
 Some tests might fail as the emulator is still in development. This will prevent other tests from running.
 
-To run specific tests, you can specify the target file (eg: `cargo test --test cpu`), the target module (eg: `cargo test nes_instr_test::`), or the target test (eg: `cargo test nes_instr_test::implied`).
+```
+cargo test --test cpu  // Run tests in cpu.rs
+cargo test nes_instr_test::  // Run test in the nes_instr_test module
+cargo test nes_instr_test::implied  // Run test nes_instr_test::implied
+```

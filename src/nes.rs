@@ -154,7 +154,9 @@ impl NES {
         if debug_palette_id > 7 {
             Err("Palette id must be between 0 and 7")?
         }
-        self.p_ppu.borrow_mut().set_debug_palette_id(debug_palette_id);
+        self.p_ppu
+            .borrow_mut()
+            .set_debug_palette_id(debug_palette_id);
         Ok(())
     }
 

@@ -113,7 +113,7 @@ impl DMC {
             } else {
                 panic!("No bus attached to the DMC");
             }
-    
+
             if self.current_address < 0xFFFF {
                 self.current_address += 1;
             } else {

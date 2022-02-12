@@ -3,17 +3,9 @@ name = "nesmulator_core"
 version = "0.1.0"
 authors = ["aromeroromero"]
 edition = "2021"
-resolver = "2"
 
 [dependencies]
-winit = "0.26.0"
-winit_input_helper = "0.11.0"
-pixels = "0.9.0"
 log = "0.4.14"
-env_logger = "0.8.2"
-clap = "3.0.0-beta.2"
-sdl2 = "0.35.1"
-spin_sleep = "1.0.0"
 
 [profile.dev]
 opt-level = 1
