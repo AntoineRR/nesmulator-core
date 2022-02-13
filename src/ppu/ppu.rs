@@ -75,12 +75,12 @@ pub struct PPU {
 }
 
 impl PPU {
-    pub fn new(palette_path: Option<String>) -> Self {
+    pub fn new(palette_path: &Option<String>) -> Self {
         let palette_path = match palette_path {
             Some(p) => p,
-            None => String::from("./palette.pal"),
+            None => "./palette.pal",
         };
-        let palettes = match Palette::from_file(&palette_path) {
+        let palettes = match Palette::from_file(palette_path) {
             Ok(p) => p,
             Err(_) => {
                 warn!(

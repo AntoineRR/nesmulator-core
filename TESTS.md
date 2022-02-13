@@ -125,3 +125,8 @@ cargo test --test cpu  // Run tests in cpu.rs
 cargo test nes_instr_test::  // Run test in the nes_instr_test module
 cargo test nes_instr_test::implied  // Run test nes_instr_test::implied
 ```
+
+## Benchmark
+
+A benchmark can be run using `cargo bench`. The benchmark uses the [criterion](https://github.com/bheisler/criterion.rs) crate.
+This will repeatedly run the `nestest.nes` ROM in automation, restarting the nes emulator when it reaches the end of the ROM.

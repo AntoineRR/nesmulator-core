@@ -154,6 +154,10 @@ impl CPU {
         self.interrupt(Interrupt::Reset);
     }
 
+    pub fn set_program_counter_at(&mut self, address: u16) {
+        self.pc = address;
+    }
+
     // ===== CLOCK =====
 
     // Executes a clock cycle
@@ -1159,7 +1163,7 @@ impl CPU {
 
     // Used for unvalid operation codes
     pub fn err(&mut self, _: am) {
-        panic!("Encountered an unvalid opcode !");
+        panic!("Encountered an unvalid opcode at {:#X}", self.pc);
     }
 
     // ===== DEBUGGING =====

@@ -14,6 +14,7 @@ mod cpu;
 mod ppu;
 
 /// Configuration to pass to the emulator.
+#[derive(Clone)]
 pub struct Config {
     pub palette_path: Option<String>,
     pub display_cpu_logs: bool,

@@ -32,6 +32,12 @@ This crate is not published on crates.io (yet?), so to use it in one of your pro
 nesmulator_core = { git = "https://github.com/AntoineRR/nesmulator-core" }
 ```
 
+An example usage of this crate is provided in `src/bin/main.rs`. It will attempt to load the `nestest.nes` ROM and run it on automation until completion. To run this example, you first have to downolad the [nestest.nes](http://nickmass.com/images/nestest.nes) ROM and change the `rom_path` variable in `src/bin/main.rs` to link to its location on your computer. Then, run the following command:
+```
+cargo run --release
+```
+This will display the logs of the CPU.
+
 ## Tests
 
 See [TESTS.md](./TESTS.md) for details about tests.

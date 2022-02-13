@@ -46,6 +46,9 @@ pub struct NES {
     // Audio
     add_samples: bool,
     samples: Vec<f32>,
+
+    // Configuration
+    config: Config
 }
 
 unsafe impl Send for NES {}
@@ -55,41 +58,12 @@ impl NES {
     pub fn new() -> Self {
         let config = Config::default();
 
-        let p_ppu = Rc::new(RefCell::new(PPU::new(config.palette_path)));
-        let p_apu = Rc::new(RefCell::new(APU::new(PPU_CLOCK_FREQUENCY)));
-        let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
-        let p_cpu = Rc::new(RefCell::new(CPU::new(
-            p_bus.clone(),
-            config.display_cpu_logs,
-        )));
-        p_apu
-            .borrow_mut()
-            .attach_bus_and_cpu(p_bus.clone(), p_cpu.clone());
-
-        NES {
-            p_bus,
-            p_cpu,
-            p_ppu,
-            p_apu,
-
-            o_p_mapper: None,
-
-            total_clock: 0,
-
-            dma_started: false,
-            dma_hi_address: 0,
-            dma_base_address: 0,
-            dma_address_offset: 0,
-            dma_data: 0,
-
-            add_samples: true,
-            samples: vec![],
-        }
+        NES::from_config(config)
     }
 
     /// Create a NES using a custom configuration.
     pub fn from_config(config: Config) -> Self {
-        let p_ppu = Rc::new(RefCell::new(PPU::new(config.palette_path)));
+        let p_ppu = Rc::new(RefCell::new(PPU::new(&config.palette_path)));
         let p_apu = Rc::new(RefCell::new(APU::new(PPU_CLOCK_FREQUENCY)));
         let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
         let p_cpu = Rc::new(RefCell::new(CPU::new(
@@ -118,7 +92,13 @@ impl NES {
 
             add_samples: true,
             samples: vec![],
+
+            config,
         }
+    }
+
+    pub fn restart(&mut self) {
+        *self = NES::from_config(self.config.clone());
     }
 
     /// Load the ROM located at `rom_path` into the NES.
@@ -147,6 +127,13 @@ impl NES {
     /// be an invalid read
     pub fn read_memory_at(&mut self, address: u16) -> u8 {
         self.p_bus.borrow_mut().read(address)
+    }
+
+    /// Set the program counter of the CPU at a specific address
+    /// You should know what you are doing when calling this method as it can easily
+    /// result in a crash of the emulator
+    pub fn set_program_counter_at(&mut self, address: u16) {
+        self.p_cpu.borrow_mut().set_program_counter_at(address);
     }
 
     /// Set the palette to use for displaying the pattern tables
