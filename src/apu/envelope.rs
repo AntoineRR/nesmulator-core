@@ -29,18 +29,14 @@ impl Envelope {
             self.start_flag = false;
             self.delay_level_counter = 15;
             self.divider = self.volume;
+        } else if self.divider != 0 {
+            self.divider -= 1;
         } else {
-            if self.divider != 0 {
-                self.divider -= 1;
-            } else {
-                self.divider = self.volume;
-                if self.delay_level_counter != 0 {
-                    self.delay_level_counter -= 1;
-                } else {
-                    if self.loop_flag {
-                        self.delay_level_counter = 15;
-                    }
-                }
+            self.divider = self.volume;
+            if self.delay_level_counter != 0 {
+                self.delay_level_counter -= 1;
+            } else if self.loop_flag {
+                self.delay_level_counter = 15;
             }
         }
     }

@@ -40,10 +40,8 @@ impl LengthCounter {
     }
 
     pub fn clock(&mut self) {
-        if !self.length_counter_halt {
-            if self.length_counter != 0 {
-                self.length_counter -= 1;
-            }
+        if !self.length_counter_halt && self.length_counter != 0 {
+            self.length_counter -= 1;
         }
     }
 }

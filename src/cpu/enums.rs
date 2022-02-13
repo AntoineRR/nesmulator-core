@@ -36,7 +36,7 @@ pub enum Flag {
 // Interrupts type
 #[derive(Debug, PartialEq)]
 pub enum Interrupt {
-    IRQ,
-    NMI,
+    Irq,
+    Nmi,
     Reset,
 }

@@ -18,14 +18,14 @@ impl Palette {
     pub fn default() -> Self {
         // No emphasize on default palette for now
         Palette {
-            base: PALETTE.clone(),
-            emphasize_r: PALETTE.clone(),
-            emphasize_g: PALETTE.clone(),
-            emphasize_b: PALETTE.clone(),
-            emphasize_rg: PALETTE.clone(),
-            emphasize_rb: PALETTE.clone(),
-            emphasize_gb: PALETTE.clone(),
-            emphasize_rgb: PALETTE.clone(),
+            base: PALETTE,
+            emphasize_r: PALETTE,
+            emphasize_g: PALETTE,
+            emphasize_b: PALETTE,
+            emphasize_rg: PALETTE,
+            emphasize_rb: PALETTE,
+            emphasize_gb: PALETTE,
+            emphasize_rgb: PALETTE,
         }
     }
 
@@ -46,7 +46,7 @@ impl Palette {
         let is_full_palette = match raw.len() {
             1536 => true,
             192 => false,
-            _ => Err("Palette file has an incorrect format")?,
+            _ => return Err("Palette file has an incorrect format".into()),
         };
 
         let mut palettes = vec![];

@@ -1,17 +1,15 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{
-    bus::Bus,
-    cpu::{cpu::CPU, enums::Interrupt},
-};
+use crate::bus::Bus;
+use crate::cpu::{enums::Interrupt, Cpu};
 
 const DMC_RATE: [u16; 16] = [
     428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54,
 ];
 
-pub struct DMC {
+pub struct Dmc {
     p_bus: Option<Rc<RefCell<Bus>>>,
-    p_cpu: Option<Rc<RefCell<CPU>>>,
+    p_cpu: Option<Rc<RefCell<Cpu>>>,
 
     pub interrupt_flag: bool,
     irq_enabled: bool,
@@ -33,9 +31,9 @@ pub struct DMC {
     output_level: u8,
 }
 
-impl DMC {
+impl Dmc {
     pub fn new() -> Self {
-        DMC {
+        Dmc {
             p_bus: None,
             p_cpu: None,
 
@@ -60,7 +58,7 @@ impl DMC {
         }
     }
 
-    pub fn attach_bus_and_cpu(&mut self, p_bus: Rc<RefCell<Bus>>, p_cpu: Rc<RefCell<CPU>>) {
+    pub fn attach_bus_and_cpu(&mut self, p_bus: Rc<RefCell<Bus>>, p_cpu: Rc<RefCell<Cpu>>) {
         self.p_bus = Some(p_bus);
         self.p_cpu = Some(p_cpu);
     }
@@ -73,11 +71,9 @@ impl DMC {
         self.interrupt_flag = false;
         if !enabled {
             self.bytes_remaining = 0;
-        } else {
-            if self.bytes_remaining == 0 {
-                self.current_address = self.sample_address;
-                self.bytes_remaining = self.sample_length;
-            }
+        } else if self.bytes_remaining == 0 {
+            self.current_address = self.sample_address;
+            self.bytes_remaining = self.sample_length;
         }
     }
 
@@ -137,10 +133,8 @@ impl DMC {
                 if self.output_level <= 125 {
                     self.output_level += 2;
                 }
-            } else {
-                if self.output_level >= 2 {
-                    self.output_level -= 2;
-                }
+            } else if self.output_level >= 2 {
+                self.output_level -= 2;
             }
             self.output_shift_register >>= 1;
         }
@@ -160,7 +154,7 @@ impl DMC {
     pub fn clock(&mut self) {
         if self.interrupt_flag {
             if let Some(cpu) = &self.p_cpu {
-                cpu.borrow_mut().interrupt(Interrupt::IRQ);
+                cpu.borrow_mut().interrupt(Interrupt::Irq);
             } else {
                 panic!("No CPU set for the DMC");
             }

@@ -79,10 +79,8 @@ impl Triangle {
     pub fn clock_linear_counter(&mut self) {
         if self.linear_reload {
             self.linear_counter = self.linear_period;
-        } else {
-            if self.linear_counter != 0 {
-                self.linear_counter -= 1;
-            }
+        } else if self.linear_counter != 0 {
+            self.linear_counter -= 1;
         }
         if !self.control {
             self.linear_reload = false;

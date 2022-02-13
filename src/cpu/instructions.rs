@@ -2,15 +2,15 @@
 
 // ===== IMPORTS =====
 
-use super::cpu::CPU;
 use super::enums::AdressingMode as am;
+use super::Cpu;
 
 // ===== CPU INSTRUCTION STRUCT =====
 
 pub struct CpuInstruction {
     pub name: &'static str,
     pub opcode: u8,
-    pub execute: fn(&mut CPU, am),
+    pub execute: fn(&mut Cpu, am),
     pub adressing_mode: am,
     pub cycles: u8,
     pub add_cycle: bool,
@@ -28,7 +28,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BRK",
         opcode: 0x00,
-        execute: CPU::brk,
+        execute: Cpu::brk,
         adressing_mode: am::Implicit,
         cycles: 7,
         add_cycle: false,
@@ -37,7 +37,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ORA",
         opcode: 0x01,
-        execute: CPU::ora,
+        execute: Cpu::ora,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -46,7 +46,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x02,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -55,7 +55,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SLO",
         opcode: 0x03,
-        execute: CPU::slo,
+        execute: Cpu::slo,
         adressing_mode: am::IndirectX,
         cycles: 8,
         add_cycle: false,
@@ -64,7 +64,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x04,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -73,7 +73,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ORA",
         opcode: 0x05,
-        execute: CPU::ora,
+        execute: Cpu::ora,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -82,7 +82,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ASL",
         opcode: 0x06,
-        execute: CPU::asl,
+        execute: Cpu::asl,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -91,7 +91,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SLO",
         opcode: 0x07,
-        execute: CPU::slo,
+        execute: Cpu::slo,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -100,7 +100,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "PHP",
         opcode: 0x08,
-        execute: CPU::php,
+        execute: Cpu::php,
         adressing_mode: am::Implicit,
         cycles: 3,
         add_cycle: false,
@@ -109,7 +109,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ORA",
         opcode: 0x09,
-        execute: CPU::ora,
+        execute: Cpu::ora,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -118,7 +118,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ASL",
         opcode: 0x0A,
-        execute: CPU::asl,
+        execute: Cpu::asl,
         adressing_mode: am::Accumulator,
         cycles: 2,
         add_cycle: false,
@@ -127,7 +127,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ANC",
         opcode: 0x0B,
-        execute: CPU::anc,
+        execute: Cpu::anc,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -136,7 +136,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x0C,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -145,7 +145,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ORA",
         opcode: 0x0D,
-        execute: CPU::ora,
+        execute: Cpu::ora,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -154,7 +154,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ASL",
         opcode: 0x0E,
-        execute: CPU::asl,
+        execute: Cpu::asl,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -163,7 +163,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SLO",
         opcode: 0x0F,
-        execute: CPU::slo,
+        execute: Cpu::slo,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -172,7 +172,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BPL",
         opcode: 0x10,
-        execute: CPU::bpl,
+        execute: Cpu::bpl,
         adressing_mode: am::Relative,
         cycles: 2,
         add_cycle: true,
@@ -181,7 +181,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ORA",
         opcode: 0x11,
-        execute: CPU::ora,
+        execute: Cpu::ora,
         adressing_mode: am::IndirectY,
         cycles: 5,
         add_cycle: true,
@@ -190,7 +190,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x12,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -199,7 +199,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SLO",
         opcode: 0x13,
-        execute: CPU::slo,
+        execute: Cpu::slo,
         adressing_mode: am::IndirectY,
         cycles: 8,
         add_cycle: false,
@@ -208,7 +208,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x14,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -217,7 +217,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ORA",
         opcode: 0x15,
-        execute: CPU::ora,
+        execute: Cpu::ora,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -226,7 +226,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ASL",
         opcode: 0x16,
-        execute: CPU::asl,
+        execute: Cpu::asl,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -235,7 +235,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SLO",
         opcode: 0x17,
-        execute: CPU::slo,
+        execute: Cpu::slo,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -244,7 +244,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CLC",
         opcode: 0x18,
-        execute: CPU::clc,
+        execute: Cpu::clc,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -253,7 +253,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ORA",
         opcode: 0x19,
-        execute: CPU::ora,
+        execute: Cpu::ora,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -262,7 +262,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x1A,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -271,7 +271,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SLO",
         opcode: 0x1B,
-        execute: CPU::slo,
+        execute: Cpu::slo,
         adressing_mode: am::AbsoluteY,
         cycles: 7,
         add_cycle: false,
@@ -280,7 +280,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x1C,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -289,7 +289,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ORA",
         opcode: 0x1D,
-        execute: CPU::ora,
+        execute: Cpu::ora,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -298,7 +298,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ASL",
         opcode: 0x1E,
-        execute: CPU::asl,
+        execute: Cpu::asl,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -307,7 +307,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SLO",
         opcode: 0x1F,
-        execute: CPU::slo,
+        execute: Cpu::slo,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -316,7 +316,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "JSR",
         opcode: 0x20,
-        execute: CPU::jsr,
+        execute: Cpu::jsr,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -325,7 +325,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "AND",
         opcode: 0x21,
-        execute: CPU::and,
+        execute: Cpu::and,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -334,7 +334,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x22,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -343,7 +343,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RLA",
         opcode: 0x23,
-        execute: CPU::rla,
+        execute: Cpu::rla,
         adressing_mode: am::IndirectX,
         cycles: 8,
         add_cycle: false,
@@ -352,7 +352,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BIT",
         opcode: 0x24,
-        execute: CPU::bit,
+        execute: Cpu::bit,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -361,7 +361,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "AND",
         opcode: 0x25,
-        execute: CPU::and,
+        execute: Cpu::and,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -370,7 +370,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROL",
         opcode: 0x26,
-        execute: CPU::rol,
+        execute: Cpu::rol,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -379,7 +379,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RLA",
         opcode: 0x27,
-        execute: CPU::rla,
+        execute: Cpu::rla,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -388,7 +388,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "PLP",
         opcode: 0x28,
-        execute: CPU::plp,
+        execute: Cpu::plp,
         adressing_mode: am::Implicit,
         cycles: 4,
         add_cycle: false,
@@ -397,7 +397,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "AND",
         opcode: 0x29,
-        execute: CPU::and,
+        execute: Cpu::and,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -406,7 +406,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROL",
         opcode: 0x2A,
-        execute: CPU::rol,
+        execute: Cpu::rol,
         adressing_mode: am::Accumulator,
         cycles: 2,
         add_cycle: false,
@@ -415,7 +415,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ANC",
         opcode: 0x2B,
-        execute: CPU::anc,
+        execute: Cpu::anc,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -424,7 +424,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BIT",
         opcode: 0x2C,
-        execute: CPU::bit,
+        execute: Cpu::bit,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -433,7 +433,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "AND",
         opcode: 0x2D,
-        execute: CPU::and,
+        execute: Cpu::and,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -442,7 +442,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROL",
         opcode: 0x2E,
-        execute: CPU::rol,
+        execute: Cpu::rol,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -451,7 +451,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RLA",
         opcode: 0x2F,
-        execute: CPU::rla,
+        execute: Cpu::rla,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -460,7 +460,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BMI",
         opcode: 0x30,
-        execute: CPU::bmi,
+        execute: Cpu::bmi,
         adressing_mode: am::Relative,
         cycles: 2,
         add_cycle: true,
@@ -469,7 +469,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "AND",
         opcode: 0x31,
-        execute: CPU::and,
+        execute: Cpu::and,
         adressing_mode: am::IndirectY,
         cycles: 5,
         add_cycle: true,
@@ -478,7 +478,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x32,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -487,7 +487,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RLA",
         opcode: 0x33,
-        execute: CPU::rla,
+        execute: Cpu::rla,
         adressing_mode: am::IndirectY,
         cycles: 8,
         add_cycle: false,
@@ -496,7 +496,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x34,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -505,7 +505,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "AND",
         opcode: 0x35,
-        execute: CPU::and,
+        execute: Cpu::and,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -514,7 +514,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROL",
         opcode: 0x36,
-        execute: CPU::rol,
+        execute: Cpu::rol,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -523,7 +523,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RLA",
         opcode: 0x37,
-        execute: CPU::rla,
+        execute: Cpu::rla,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -532,7 +532,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SEC",
         opcode: 0x38,
-        execute: CPU::sec,
+        execute: Cpu::sec,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -541,7 +541,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "AND",
         opcode: 0x39,
-        execute: CPU::and,
+        execute: Cpu::and,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -550,7 +550,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x3A,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -559,7 +559,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RLA",
         opcode: 0x3B,
-        execute: CPU::rla,
+        execute: Cpu::rla,
         adressing_mode: am::AbsoluteY,
         cycles: 7,
         add_cycle: false,
@@ -568,7 +568,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x3C,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -577,7 +577,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "AND",
         opcode: 0x3D,
-        execute: CPU::and,
+        execute: Cpu::and,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -586,7 +586,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROL",
         opcode: 0x3E,
-        execute: CPU::rol,
+        execute: Cpu::rol,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -595,7 +595,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RLA",
         opcode: 0x3F,
-        execute: CPU::rla,
+        execute: Cpu::rla,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -604,7 +604,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RTI",
         opcode: 0x40,
-        execute: CPU::rti,
+        execute: Cpu::rti,
         adressing_mode: am::Implicit,
         cycles: 6,
         add_cycle: false,
@@ -613,7 +613,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "EOR",
         opcode: 0x41,
-        execute: CPU::eor,
+        execute: Cpu::eor,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -622,7 +622,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x42,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -631,7 +631,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SRE",
         opcode: 0x43,
-        execute: CPU::sre,
+        execute: Cpu::sre,
         adressing_mode: am::IndirectX,
         cycles: 8,
         add_cycle: false,
@@ -640,7 +640,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x44,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -649,7 +649,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "EOR",
         opcode: 0x45,
-        execute: CPU::eor,
+        execute: Cpu::eor,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -658,7 +658,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LSR",
         opcode: 0x46,
-        execute: CPU::lsr,
+        execute: Cpu::lsr,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -667,7 +667,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SRE",
         opcode: 0x47,
-        execute: CPU::sre,
+        execute: Cpu::sre,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -676,7 +676,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "PHA",
         opcode: 0x48,
-        execute: CPU::pha,
+        execute: Cpu::pha,
         adressing_mode: am::Implicit,
         cycles: 3,
         add_cycle: false,
@@ -685,7 +685,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "EOR",
         opcode: 0x49,
-        execute: CPU::eor,
+        execute: Cpu::eor,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -694,7 +694,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LSR",
         opcode: 0x4A,
-        execute: CPU::lsr,
+        execute: Cpu::lsr,
         adressing_mode: am::Accumulator,
         cycles: 2,
         add_cycle: false,
@@ -703,7 +703,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ASR",
         opcode: 0x4B,
-        execute: CPU::asr,
+        execute: Cpu::asr,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -712,7 +712,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "JMP",
         opcode: 0x4C,
-        execute: CPU::jmp,
+        execute: Cpu::jmp,
         adressing_mode: am::Absolute,
         cycles: 3,
         add_cycle: false,
@@ -721,7 +721,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "EOR",
         opcode: 0x4D,
-        execute: CPU::eor,
+        execute: Cpu::eor,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -730,7 +730,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LSR",
         opcode: 0x4E,
-        execute: CPU::lsr,
+        execute: Cpu::lsr,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -739,7 +739,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SRE",
         opcode: 0x4F,
-        execute: CPU::sre,
+        execute: Cpu::sre,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -748,7 +748,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BVC",
         opcode: 0x50,
-        execute: CPU::bvc,
+        execute: Cpu::bvc,
         adressing_mode: am::Relative,
         cycles: 2,
         add_cycle: true,
@@ -757,7 +757,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "EOR",
         opcode: 0x51,
-        execute: CPU::eor,
+        execute: Cpu::eor,
         adressing_mode: am::IndirectY,
         cycles: 5,
         add_cycle: true,
@@ -766,7 +766,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x52,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -775,7 +775,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SRE",
         opcode: 0x53,
-        execute: CPU::sre,
+        execute: Cpu::sre,
         adressing_mode: am::IndirectY,
         cycles: 8,
         add_cycle: false,
@@ -784,7 +784,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x54,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -793,7 +793,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "EOR",
         opcode: 0x55,
-        execute: CPU::eor,
+        execute: Cpu::eor,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -802,7 +802,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LSR",
         opcode: 0x56,
-        execute: CPU::lsr,
+        execute: Cpu::lsr,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -811,7 +811,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SRE",
         opcode: 0x57,
-        execute: CPU::sre,
+        execute: Cpu::sre,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -820,7 +820,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CLI",
         opcode: 0x58,
-        execute: CPU::cli,
+        execute: Cpu::cli,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -829,7 +829,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "EOR",
         opcode: 0x59,
-        execute: CPU::eor,
+        execute: Cpu::eor,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -838,7 +838,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x5A,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -847,7 +847,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SRE",
         opcode: 0x5B,
-        execute: CPU::sre,
+        execute: Cpu::sre,
         adressing_mode: am::AbsoluteY,
         cycles: 7,
         add_cycle: false,
@@ -856,7 +856,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x5C,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -865,7 +865,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "EOR",
         opcode: 0x5D,
-        execute: CPU::eor,
+        execute: Cpu::eor,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -874,7 +874,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LSR",
         opcode: 0x5E,
-        execute: CPU::lsr,
+        execute: Cpu::lsr,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -883,7 +883,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SRE",
         opcode: 0x5F,
-        execute: CPU::sre,
+        execute: Cpu::sre,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -892,7 +892,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RTS",
         opcode: 0x60,
-        execute: CPU::rts,
+        execute: Cpu::rts,
         adressing_mode: am::Implicit,
         cycles: 6,
         add_cycle: false,
@@ -901,7 +901,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ADC",
         opcode: 0x61,
-        execute: CPU::adc,
+        execute: Cpu::adc,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -910,7 +910,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x62,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -919,7 +919,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RRA",
         opcode: 0x63,
-        execute: CPU::rra,
+        execute: Cpu::rra,
         adressing_mode: am::IndirectX,
         cycles: 8,
         add_cycle: false,
@@ -928,7 +928,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x64,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -937,7 +937,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ADC",
         opcode: 0x65,
-        execute: CPU::adc,
+        execute: Cpu::adc,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -946,7 +946,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROR",
         opcode: 0x66,
-        execute: CPU::ror,
+        execute: Cpu::ror,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -955,7 +955,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RRA",
         opcode: 0x67,
-        execute: CPU::rra,
+        execute: Cpu::rra,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -964,7 +964,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "PLA",
         opcode: 0x68,
-        execute: CPU::pla,
+        execute: Cpu::pla,
         adressing_mode: am::Implicit,
         cycles: 4,
         add_cycle: false,
@@ -973,7 +973,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ADC",
         opcode: 0x69,
-        execute: CPU::adc,
+        execute: Cpu::adc,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -982,7 +982,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROR",
         opcode: 0x6A,
-        execute: CPU::ror,
+        execute: Cpu::ror,
         adressing_mode: am::Accumulator,
         cycles: 2,
         add_cycle: false,
@@ -991,7 +991,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ARR",
         opcode: 0x6B,
-        execute: CPU::arr,
+        execute: Cpu::arr,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1000,7 +1000,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "JMP",
         opcode: 0x6C,
-        execute: CPU::jmp,
+        execute: Cpu::jmp,
         adressing_mode: am::Indirect,
         cycles: 5,
         add_cycle: false,
@@ -1009,7 +1009,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ADC",
         opcode: 0x6D,
-        execute: CPU::adc,
+        execute: Cpu::adc,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1018,7 +1018,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROR",
         opcode: 0x6E,
-        execute: CPU::ror,
+        execute: Cpu::ror,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -1027,7 +1027,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RRA",
         opcode: 0x6F,
-        execute: CPU::rra,
+        execute: Cpu::rra,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -1036,7 +1036,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BVS",
         opcode: 0x70,
-        execute: CPU::bvs,
+        execute: Cpu::bvs,
         adressing_mode: am::Relative,
         cycles: 2,
         add_cycle: true,
@@ -1045,7 +1045,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ADC",
         opcode: 0x71,
-        execute: CPU::adc,
+        execute: Cpu::adc,
         adressing_mode: am::IndirectY,
         cycles: 5,
         add_cycle: true,
@@ -1054,7 +1054,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x72,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -1063,7 +1063,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RRA",
         opcode: 0x73,
-        execute: CPU::rra,
+        execute: Cpu::rra,
         adressing_mode: am::IndirectY,
         cycles: 8,
         add_cycle: false,
@@ -1072,7 +1072,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x74,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -1081,7 +1081,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ADC",
         opcode: 0x75,
-        execute: CPU::adc,
+        execute: Cpu::adc,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -1090,7 +1090,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROR",
         opcode: 0x76,
-        execute: CPU::ror,
+        execute: Cpu::ror,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -1099,7 +1099,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RRA",
         opcode: 0x77,
-        execute: CPU::rra,
+        execute: Cpu::rra,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -1108,7 +1108,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SEI",
         opcode: 0x78,
-        execute: CPU::sei,
+        execute: Cpu::sei,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1117,7 +1117,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ADC",
         opcode: 0x79,
-        execute: CPU::adc,
+        execute: Cpu::adc,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -1126,7 +1126,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x7A,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1135,7 +1135,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RRA",
         opcode: 0x7B,
-        execute: CPU::rra,
+        execute: Cpu::rra,
         adressing_mode: am::AbsoluteY,
         cycles: 7,
         add_cycle: false,
@@ -1144,7 +1144,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x7C,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -1153,7 +1153,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ADC",
         opcode: 0x7D,
-        execute: CPU::adc,
+        execute: Cpu::adc,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -1162,7 +1162,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ROR",
         opcode: 0x7E,
-        execute: CPU::ror,
+        execute: Cpu::ror,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -1171,7 +1171,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "RRA",
         opcode: 0x7F,
-        execute: CPU::rra,
+        execute: Cpu::rra,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -1180,7 +1180,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x80,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1189,7 +1189,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STA",
         opcode: 0x81,
-        execute: CPU::sta,
+        execute: Cpu::sta,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -1198,7 +1198,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x82,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1207,7 +1207,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SAX",
         opcode: 0x83,
-        execute: CPU::sax,
+        execute: Cpu::sax,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -1216,7 +1216,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STY",
         opcode: 0x84,
-        execute: CPU::sty,
+        execute: Cpu::sty,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1225,7 +1225,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STA",
         opcode: 0x85,
-        execute: CPU::sta,
+        execute: Cpu::sta,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1234,7 +1234,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STX",
         opcode: 0x86,
-        execute: CPU::stx,
+        execute: Cpu::stx,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1243,7 +1243,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SAX",
         opcode: 0x87,
-        execute: CPU::sax,
+        execute: Cpu::sax,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1252,7 +1252,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DEY",
         opcode: 0x88,
-        execute: CPU::dey,
+        execute: Cpu::dey,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1261,7 +1261,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0x89,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1270,7 +1270,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "TXA",
         opcode: 0x8A,
-        execute: CPU::txa,
+        execute: Cpu::txa,
         adressing_mode: am::Accumulator,
         cycles: 2,
         add_cycle: false,
@@ -1279,7 +1279,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ANE",
         opcode: 0x8B,
-        execute: CPU::ane,
+        execute: Cpu::ane,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1288,7 +1288,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STY",
         opcode: 0x8C,
-        execute: CPU::sty,
+        execute: Cpu::sty,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1297,7 +1297,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STA",
         opcode: 0x8D,
-        execute: CPU::sta,
+        execute: Cpu::sta,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1306,7 +1306,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STX",
         opcode: 0x8E,
-        execute: CPU::stx,
+        execute: Cpu::stx,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1315,7 +1315,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SAX",
         opcode: 0x8F,
-        execute: CPU::sax,
+        execute: Cpu::sax,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1324,7 +1324,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BCC",
         opcode: 0x90,
-        execute: CPU::bcc,
+        execute: Cpu::bcc,
         adressing_mode: am::Relative,
         cycles: 2,
         add_cycle: true,
@@ -1333,7 +1333,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STA",
         opcode: 0x91,
-        execute: CPU::sta,
+        execute: Cpu::sta,
         adressing_mode: am::IndirectY,
         cycles: 6,
         add_cycle: false,
@@ -1342,7 +1342,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0x92,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -1351,7 +1351,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SHA",
         opcode: 0x93,
-        execute: CPU::sha,
+        execute: Cpu::sha,
         adressing_mode: am::IndirectY,
         cycles: 6,
         add_cycle: false,
@@ -1360,7 +1360,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STY",
         opcode: 0x94,
-        execute: CPU::sty,
+        execute: Cpu::sty,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -1369,7 +1369,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STA",
         opcode: 0x95,
-        execute: CPU::sta,
+        execute: Cpu::sta,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -1378,7 +1378,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STX",
         opcode: 0x96,
-        execute: CPU::stx,
+        execute: Cpu::stx,
         adressing_mode: am::ZeroPageY,
         cycles: 4,
         add_cycle: false,
@@ -1387,7 +1387,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SAX",
         opcode: 0x97,
-        execute: CPU::sax,
+        execute: Cpu::sax,
         adressing_mode: am::ZeroPageY,
         cycles: 4,
         add_cycle: false,
@@ -1396,7 +1396,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "TYA",
         opcode: 0x98,
-        execute: CPU::tya,
+        execute: Cpu::tya,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1405,7 +1405,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STA",
         opcode: 0x99,
-        execute: CPU::sta,
+        execute: Cpu::sta,
         adressing_mode: am::AbsoluteY,
         cycles: 5,
         add_cycle: false,
@@ -1414,7 +1414,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "TXS",
         opcode: 0x9A,
-        execute: CPU::txs,
+        execute: Cpu::txs,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1423,7 +1423,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SHS",
         opcode: 0x9B,
-        execute: CPU::shs,
+        execute: Cpu::shs,
         adressing_mode: am::AbsoluteY,
         cycles: 5,
         add_cycle: false,
@@ -1432,7 +1432,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SHY",
         opcode: 0x9C,
-        execute: CPU::shy,
+        execute: Cpu::shy,
         adressing_mode: am::AbsoluteX,
         cycles: 5,
         add_cycle: false,
@@ -1441,7 +1441,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "STA",
         opcode: 0x9D,
-        execute: CPU::sta,
+        execute: Cpu::sta,
         adressing_mode: am::AbsoluteX,
         cycles: 5,
         add_cycle: false,
@@ -1450,7 +1450,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SHX",
         opcode: 0x9E,
-        execute: CPU::shx,
+        execute: Cpu::shx,
         adressing_mode: am::AbsoluteX,
         cycles: 5,
         add_cycle: false,
@@ -1459,7 +1459,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SHA",
         opcode: 0x9F,
-        execute: CPU::sha,
+        execute: Cpu::sha,
         adressing_mode: am::AbsoluteX,
         cycles: 5,
         add_cycle: false,
@@ -1468,7 +1468,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDY",
         opcode: 0xA0,
-        execute: CPU::ldy,
+        execute: Cpu::ldy,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1477,7 +1477,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDA",
         opcode: 0xA1,
-        execute: CPU::lda,
+        execute: Cpu::lda,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -1486,7 +1486,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDX",
         opcode: 0xA2,
-        execute: CPU::ldx,
+        execute: Cpu::ldx,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1495,7 +1495,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LAX",
         opcode: 0xA3,
-        execute: CPU::lax,
+        execute: Cpu::lax,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -1504,7 +1504,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDY",
         opcode: 0xA4,
-        execute: CPU::ldy,
+        execute: Cpu::ldy,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1513,7 +1513,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDA",
         opcode: 0xA5,
-        execute: CPU::lda,
+        execute: Cpu::lda,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1522,7 +1522,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDX",
         opcode: 0xA6,
-        execute: CPU::ldx,
+        execute: Cpu::ldx,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1531,7 +1531,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LAX",
         opcode: 0xA7,
-        execute: CPU::lax,
+        execute: Cpu::lax,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1540,7 +1540,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "TAY",
         opcode: 0xA8,
-        execute: CPU::tay,
+        execute: Cpu::tay,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1549,7 +1549,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDA",
         opcode: 0xA9,
-        execute: CPU::lda,
+        execute: Cpu::lda,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1558,7 +1558,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "TAX",
         opcode: 0xAA,
-        execute: CPU::tax,
+        execute: Cpu::tax,
         adressing_mode: am::Accumulator,
         cycles: 2,
         add_cycle: false,
@@ -1567,7 +1567,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LXA",
         opcode: 0xAB,
-        execute: CPU::lxa,
+        execute: Cpu::lxa,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1576,7 +1576,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDY",
         opcode: 0xAC,
-        execute: CPU::ldy,
+        execute: Cpu::ldy,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1585,7 +1585,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDA",
         opcode: 0xAD,
-        execute: CPU::lda,
+        execute: Cpu::lda,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1594,7 +1594,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDX",
         opcode: 0xAE,
-        execute: CPU::ldx,
+        execute: Cpu::ldx,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1603,7 +1603,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LAX",
         opcode: 0xAF,
-        execute: CPU::lax,
+        execute: Cpu::lax,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1612,7 +1612,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BCS",
         opcode: 0xB0,
-        execute: CPU::bcs,
+        execute: Cpu::bcs,
         adressing_mode: am::Relative,
         cycles: 2,
         add_cycle: true,
@@ -1621,7 +1621,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDA",
         opcode: 0xB1,
-        execute: CPU::lda,
+        execute: Cpu::lda,
         adressing_mode: am::IndirectY,
         cycles: 5,
         add_cycle: true,
@@ -1630,7 +1630,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0xB2,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -1639,7 +1639,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LAX",
         opcode: 0xB3,
-        execute: CPU::lax,
+        execute: Cpu::lax,
         adressing_mode: am::IndirectY,
         cycles: 5,
         add_cycle: true,
@@ -1648,7 +1648,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDY",
         opcode: 0xB4,
-        execute: CPU::ldy,
+        execute: Cpu::ldy,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -1657,7 +1657,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDA",
         opcode: 0xB5,
-        execute: CPU::lda,
+        execute: Cpu::lda,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -1666,7 +1666,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDX",
         opcode: 0xB6,
-        execute: CPU::ldx,
+        execute: Cpu::ldx,
         adressing_mode: am::ZeroPageY,
         cycles: 4,
         add_cycle: false,
@@ -1675,7 +1675,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LAX",
         opcode: 0xB7,
-        execute: CPU::lax,
+        execute: Cpu::lax,
         adressing_mode: am::ZeroPageY,
         cycles: 4,
         add_cycle: false,
@@ -1684,7 +1684,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CLV",
         opcode: 0xB8,
-        execute: CPU::clv,
+        execute: Cpu::clv,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1693,7 +1693,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDA",
         opcode: 0xB9,
-        execute: CPU::lda,
+        execute: Cpu::lda,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -1702,7 +1702,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "TSX",
         opcode: 0xBA,
-        execute: CPU::tsx,
+        execute: Cpu::tsx,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1711,7 +1711,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LAS",
         opcode: 0xBB,
-        execute: CPU::las,
+        execute: Cpu::las,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -1720,7 +1720,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDY",
         opcode: 0xBC,
-        execute: CPU::ldy,
+        execute: Cpu::ldy,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -1729,7 +1729,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDA",
         opcode: 0xBD,
-        execute: CPU::lda,
+        execute: Cpu::lda,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -1738,7 +1738,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LDX",
         opcode: 0xBE,
-        execute: CPU::ldx,
+        execute: Cpu::ldx,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -1747,7 +1747,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "LAX",
         opcode: 0xBF,
-        execute: CPU::lax,
+        execute: Cpu::lax,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -1756,7 +1756,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CPY",
         opcode: 0xC0,
-        execute: CPU::cpy,
+        execute: Cpu::cpy,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1765,7 +1765,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CMP",
         opcode: 0xC1,
-        execute: CPU::cmp,
+        execute: Cpu::cmp,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -1774,7 +1774,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xC2,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1783,7 +1783,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DCP",
         opcode: 0xC3,
-        execute: CPU::dcp,
+        execute: Cpu::dcp,
         adressing_mode: am::IndirectX,
         cycles: 8,
         add_cycle: false,
@@ -1792,7 +1792,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CPY",
         opcode: 0xC4,
-        execute: CPU::cpy,
+        execute: Cpu::cpy,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1801,7 +1801,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CMP",
         opcode: 0xC5,
-        execute: CPU::cmp,
+        execute: Cpu::cmp,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -1810,7 +1810,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DEC",
         opcode: 0xC6,
-        execute: CPU::dec,
+        execute: Cpu::dec,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -1819,7 +1819,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DCP",
         opcode: 0xC7,
-        execute: CPU::dcp,
+        execute: Cpu::dcp,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -1828,7 +1828,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "INY",
         opcode: 0xC8,
-        execute: CPU::iny,
+        execute: Cpu::iny,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1837,7 +1837,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CMP",
         opcode: 0xC9,
-        execute: CPU::cmp,
+        execute: Cpu::cmp,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1846,7 +1846,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DEX",
         opcode: 0xCA,
-        execute: CPU::dex,
+        execute: Cpu::dex,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1855,7 +1855,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBX",
         opcode: 0xCB,
-        execute: CPU::sbx,
+        execute: Cpu::sbx,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -1864,7 +1864,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CPY",
         opcode: 0xCC,
-        execute: CPU::cpy,
+        execute: Cpu::cpy,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1873,7 +1873,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CMP",
         opcode: 0xCD,
-        execute: CPU::cmp,
+        execute: Cpu::cmp,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -1882,7 +1882,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DEC",
         opcode: 0xCE,
-        execute: CPU::dec,
+        execute: Cpu::dec,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -1891,7 +1891,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DCP",
         opcode: 0xCF,
-        execute: CPU::dcp,
+        execute: Cpu::dcp,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -1900,7 +1900,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BNE",
         opcode: 0xD0,
-        execute: CPU::bne,
+        execute: Cpu::bne,
         adressing_mode: am::Relative,
         cycles: 2,
         add_cycle: true,
@@ -1909,7 +1909,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CMP",
         opcode: 0xD1,
-        execute: CPU::cmp,
+        execute: Cpu::cmp,
         adressing_mode: am::IndirectY,
         cycles: 5,
         add_cycle: true,
@@ -1918,7 +1918,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0xD2,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -1927,7 +1927,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DCP",
         opcode: 0xD3,
-        execute: CPU::dcp,
+        execute: Cpu::dcp,
         adressing_mode: am::IndirectY,
         cycles: 8,
         add_cycle: false,
@@ -1936,7 +1936,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xD4,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -1945,7 +1945,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CMP",
         opcode: 0xD5,
-        execute: CPU::cmp,
+        execute: Cpu::cmp,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -1954,7 +1954,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DEC",
         opcode: 0xD6,
-        execute: CPU::dec,
+        execute: Cpu::dec,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -1963,7 +1963,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DCP",
         opcode: 0xD7,
-        execute: CPU::dcp,
+        execute: Cpu::dcp,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -1972,7 +1972,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CLD",
         opcode: 0xD8,
-        execute: CPU::cld,
+        execute: Cpu::cld,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1981,7 +1981,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CMP",
         opcode: 0xD9,
-        execute: CPU::cmp,
+        execute: Cpu::cmp,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -1990,7 +1990,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xDA,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -1999,7 +1999,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DCP",
         opcode: 0xDB,
-        execute: CPU::dcp,
+        execute: Cpu::dcp,
         adressing_mode: am::AbsoluteY,
         cycles: 7,
         add_cycle: false,
@@ -2008,7 +2008,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xDC,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -2017,7 +2017,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CMP",
         opcode: 0xDD,
-        execute: CPU::cmp,
+        execute: Cpu::cmp,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -2026,7 +2026,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DEC",
         opcode: 0xDE,
-        execute: CPU::dec,
+        execute: Cpu::dec,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -2035,7 +2035,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "DCP",
         opcode: 0xDF,
-        execute: CPU::dcp,
+        execute: Cpu::dcp,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -2044,7 +2044,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CPX",
         opcode: 0xE0,
-        execute: CPU::cpx,
+        execute: Cpu::cpx,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -2053,7 +2053,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xE1,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::IndirectX,
         cycles: 6,
         add_cycle: false,
@@ -2062,7 +2062,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xE2,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -2071,7 +2071,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ISB",
         opcode: 0xE3,
-        execute: CPU::isb,
+        execute: Cpu::isb,
         adressing_mode: am::IndirectX,
         cycles: 8,
         add_cycle: false,
@@ -2080,7 +2080,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CPX",
         opcode: 0xE4,
-        execute: CPU::cpx,
+        execute: Cpu::cpx,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -2089,7 +2089,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xE5,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::ZeroPage,
         cycles: 3,
         add_cycle: false,
@@ -2098,7 +2098,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "INC",
         opcode: 0xE6,
-        execute: CPU::inc,
+        execute: Cpu::inc,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -2107,7 +2107,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ISB",
         opcode: 0xE7,
-        execute: CPU::isb,
+        execute: Cpu::isb,
         adressing_mode: am::ZeroPage,
         cycles: 5,
         add_cycle: false,
@@ -2116,7 +2116,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "INX",
         opcode: 0xE8,
-        execute: CPU::inx,
+        execute: Cpu::inx,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -2125,7 +2125,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xE9,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -2134,7 +2134,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xEA,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -2143,7 +2143,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xEB,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::Immediate,
         cycles: 2,
         add_cycle: false,
@@ -2152,7 +2152,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "CPX",
         opcode: 0xEC,
-        execute: CPU::cpx,
+        execute: Cpu::cpx,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -2161,7 +2161,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xED,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::Absolute,
         cycles: 4,
         add_cycle: false,
@@ -2170,7 +2170,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "INC",
         opcode: 0xEE,
-        execute: CPU::inc,
+        execute: Cpu::inc,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -2179,7 +2179,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ISB",
         opcode: 0xEF,
-        execute: CPU::isb,
+        execute: Cpu::isb,
         adressing_mode: am::Absolute,
         cycles: 6,
         add_cycle: false,
@@ -2188,7 +2188,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BEQ",
         opcode: 0xF0,
-        execute: CPU::beq,
+        execute: Cpu::beq,
         adressing_mode: am::Relative,
         cycles: 2,
         add_cycle: true,
@@ -2197,7 +2197,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xF1,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::IndirectY,
         cycles: 5,
         add_cycle: true,
@@ -2206,7 +2206,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "???",
         opcode: 0xF2,
-        execute: CPU::err,
+        execute: Cpu::err,
         adressing_mode: am::NoMode,
         cycles: 1,
         add_cycle: false,
@@ -2215,7 +2215,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ISB",
         opcode: 0xF3,
-        execute: CPU::isb,
+        execute: Cpu::isb,
         adressing_mode: am::IndirectY,
         cycles: 8,
         add_cycle: false,
@@ -2224,7 +2224,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xF4,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -2233,7 +2233,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xF5,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::ZeroPageX,
         cycles: 4,
         add_cycle: false,
@@ -2242,7 +2242,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "INC",
         opcode: 0xF6,
-        execute: CPU::inc,
+        execute: Cpu::inc,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -2251,7 +2251,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ISB",
         opcode: 0xF7,
-        execute: CPU::isb,
+        execute: Cpu::isb,
         adressing_mode: am::ZeroPageX,
         cycles: 6,
         add_cycle: false,
@@ -2260,7 +2260,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SED",
         opcode: 0xF8,
-        execute: CPU::sed,
+        execute: Cpu::sed,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -2269,7 +2269,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xF9,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::AbsoluteY,
         cycles: 4,
         add_cycle: true,
@@ -2278,7 +2278,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xFA,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::Implicit,
         cycles: 2,
         add_cycle: false,
@@ -2287,7 +2287,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ISB",
         opcode: 0xFB,
-        execute: CPU::isb,
+        execute: Cpu::isb,
         adressing_mode: am::AbsoluteY,
         cycles: 7,
         add_cycle: false,
@@ -2296,7 +2296,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "NOP",
         opcode: 0xFC,
-        execute: CPU::nop,
+        execute: Cpu::nop,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -2305,7 +2305,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "SBC",
         opcode: 0xFD,
-        execute: CPU::sbc,
+        execute: Cpu::sbc,
         adressing_mode: am::AbsoluteX,
         cycles: 4,
         add_cycle: true,
@@ -2314,7 +2314,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "INC",
         opcode: 0xFE,
-        execute: CPU::inc,
+        execute: Cpu::inc,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,
@@ -2323,7 +2323,7 @@ pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "ISB",
         opcode: 0xFF,
-        execute: CPU::isb,
+        execute: Cpu::isb,
         adressing_mode: am::AbsoluteX,
         cycles: 7,
         add_cycle: false,

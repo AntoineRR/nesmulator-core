@@ -25,10 +25,10 @@ pub trait Mapper {
     fn chr_rom_write(&mut self, address: u16, value: u8);
     fn get_mirroring(&self) -> Mirroring;
     fn load_persistent_memory(&mut self) -> Result<(), Box<dyn Error>> {
-        Err("ROM has no persistent memory")?
+        Err("ROM has no persistent memory".into())
     }
     fn save_persistent_memory(&self) -> Result<(), Box<dyn Error>> {
-        Err("ROM has no persistent memory")?
+        Err("ROM has no persistent memory".into())
     }
 }
 
@@ -47,7 +47,7 @@ pub struct INesHeader {
 impl INesHeader {
     pub fn new(buffer: [u8; 16], path_to_rom: &str) -> Result<Self, Box<dyn Error>> {
         if buffer[0..4] != [0x4E, 0x45, 0x53, 0x1A] {
-            Err("Invalid iNES format")?;
+            return Err("Invalid iNES format".into());
         }
 
         let n_prg_rom = buffer[4];
@@ -81,7 +81,7 @@ pub fn get_mapper(path: &str) -> Result<Box<dyn Mapper>, Box<dyn Error>> {
     // Reads the first 16 bytes of the file
     // This is the header of the file
     let mut buffer: [u8; 16] = [0; 16];
-    file.read(&mut buffer)?;
+    file.read_exact(&mut buffer)?;
     let header = INesHeader::new(buffer, path)?;
 
     debug!(
@@ -93,7 +93,7 @@ pub fn get_mapper(path: &str) -> Result<Box<dyn Mapper>, Box<dyn Error>> {
     let mut prg_rom = vec![];
     let mut buffer = [0; 16 * 1024];
     for _i in 0..header.n_prg_rom {
-        file.read(&mut buffer)?;
+        file.read_exact(&mut buffer)?;
         prg_rom.push(buffer);
     }
 
@@ -101,10 +101,10 @@ pub fn get_mapper(path: &str) -> Result<Box<dyn Mapper>, Box<dyn Error>> {
     let mut chr_rom = vec![];
     let mut buffer = [0; 8 * 1024];
     for _i in 0..header.n_chr_rom {
-        file.read(&mut buffer)?;
+        file.read_exact(&mut buffer)?;
         chr_rom.push(buffer);
     }
-    if chr_rom.len() == 0 {
+    if chr_rom.is_empty() {
         chr_rom.push(buffer);
     }
 

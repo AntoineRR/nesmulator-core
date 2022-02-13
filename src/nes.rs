@@ -5,11 +5,11 @@ use std::error::Error;
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::apu::apu::APU;
+use crate::apu::Apu;
 use crate::bus::Bus;
 use crate::cartridge::mapper::{get_mapper, Mapper};
-use crate::cpu::{cpu::CPU, enums::Interrupt};
-use crate::ppu::ppu::PPU;
+use crate::cpu::{enums::Interrupt, Cpu};
+use crate::ppu::Ppu;
 use crate::utils::ARGBColor;
 use crate::Config;
 
@@ -26,9 +26,9 @@ type MapperRc = Rc<RefCell<Box<dyn Mapper>>>;
 pub struct NES {
     // NES components
     p_bus: Rc<RefCell<Bus>>,
-    p_cpu: Rc<RefCell<CPU>>,
-    p_ppu: Rc<RefCell<PPU>>,
-    p_apu: Rc<RefCell<APU>>,
+    p_cpu: Rc<RefCell<Cpu>>,
+    p_ppu: Rc<RefCell<Ppu>>,
+    p_apu: Rc<RefCell<Apu>>,
 
     // Mapper
     o_p_mapper: Option<MapperRc>,
@@ -48,10 +48,16 @@ pub struct NES {
     samples: Vec<f32>,
 
     // Configuration
-    config: Config
+    config: Config,
 }
 
 unsafe impl Send for NES {}
+
+impl Default for NES {
+    fn default() -> Self {
+        NES::new()
+    }
+}
 
 impl NES {
     /// Create a NES using the default configuration.
@@ -63,10 +69,10 @@ impl NES {
 
     /// Create a NES using a custom configuration.
     pub fn from_config(config: Config) -> Self {
-        let p_ppu = Rc::new(RefCell::new(PPU::new(&config.palette_path)));
-        let p_apu = Rc::new(RefCell::new(APU::new(PPU_CLOCK_FREQUENCY)));
+        let p_ppu = Rc::new(RefCell::new(Ppu::new(&config.palette_path)));
+        let p_apu = Rc::new(RefCell::new(Apu::new(PPU_CLOCK_FREQUENCY)));
         let p_bus = Rc::new(RefCell::new(Bus::new(p_ppu.clone(), p_apu.clone())));
-        let p_cpu = Rc::new(RefCell::new(CPU::new(
+        let p_cpu = Rc::new(RefCell::new(Cpu::new(
             p_bus.clone(),
             config.display_cpu_logs,
         )));
@@ -139,7 +145,7 @@ impl NES {
     /// Set the palette to use for displaying the pattern tables
     pub fn set_debug_palette_id(&mut self, debug_palette_id: u8) -> Result<(), Box<dyn Error>> {
         if debug_palette_id > 7 {
-            Err("Palette id must be between 0 and 7")?
+            return Err("Palette id must be between 0 and 7".into());
         }
         self.p_ppu
             .borrow_mut()
@@ -233,7 +239,7 @@ impl NES {
         // Check if an NMI interrupt should be thrown
         if self.p_ppu.borrow().registers.emit_nmi {
             self.p_ppu.borrow_mut().registers.emit_nmi = false;
-            self.p_cpu.borrow_mut().interrupt(Interrupt::NMI);
+            self.p_cpu.borrow_mut().interrupt(Interrupt::Nmi);
         }
 
         // Clock PPU
@@ -256,7 +262,7 @@ impl NES {
     /// Will return an error if the id is not 0 or 1.
     pub fn input(&mut self, id: usize, input: u8) -> Result<(), Box<dyn Error>> {
         if id > 1 {
-            Err("Controller id must be either 0 or 1")?;
+            return Err("Controller id must be either 0 or 1".into());
         }
         self.p_bus.borrow_mut().set_input(id, input);
         Ok(())
@@ -267,7 +273,7 @@ impl NES {
         if let Some(m) = &self.o_p_mapper {
             m.borrow_mut().load_persistent_memory()
         } else {
-            Err("Insert a cartridge before trying to save")?
+            Err("Insert a cartridge before trying to save".into())
         }
     }
 
@@ -276,7 +282,7 @@ impl NES {
         if let Some(m) = &self.o_p_mapper {
             m.borrow().save_persistent_memory()
         } else {
-            Err("Insert a cartridge before trying to save")?
+            Err("Insert a cartridge before trying to save".into())
         }
     }
 
@@ -285,7 +291,7 @@ impl NES {
     /// Will return an error if number is not 0 or 1.
     pub fn get_pattern_table(&self, number: u16) -> Result<[ARGBColor; 16384], Box<dyn Error>> {
         if number > 1 {
-            Err("Pattern table number must be either 0 or 1")?;
+            return Err("Pattern table number must be either 0 or 1".into());
         }
         self.p_ppu.borrow().get_pattern_table(number)
     }

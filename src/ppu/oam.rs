@@ -3,14 +3,14 @@
 use super::sprite::Sprite;
 
 #[derive(Debug)]
-pub struct OAM {
+pub struct Oam {
     pub primary: [Sprite; 64],
     pub secondary: [Sprite; 8],
 }
 
-impl OAM {
+impl Oam {
     pub fn new() -> Self {
-        OAM {
+        Oam {
             primary: [Sprite::default(); 64],
             secondary: [Sprite::default(); 8],
         }

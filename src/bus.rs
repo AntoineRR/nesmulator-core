@@ -5,10 +5,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::apu::apu::APU;
+use crate::apu::Apu;
 use crate::cartridge::mapper::Mapper;
 use crate::controllers::Controller;
-use crate::ppu::ppu::PPU;
+use crate::ppu::Ppu;
 
 // ===== CONSTANTS =====
 
@@ -21,18 +21,18 @@ type MapperRc = Rc<RefCell<Box<dyn Mapper>>>;
 // ===== BUS STRUCT =====
 
 pub struct Bus {
-    data: [u8; 0x10_000],
+    data: [u8; 0x0001_0000],
     o_p_mapper: Option<MapperRc>,
-    p_ppu: Rc<RefCell<PPU>>,
-    p_apu: Rc<RefCell<APU>>,
+    p_ppu: Rc<RefCell<Ppu>>,
+    p_apu: Rc<RefCell<Apu>>,
 
     controllers: [Controller; 2],
 }
 
 impl Bus {
-    pub fn new(p_ppu: Rc<RefCell<PPU>>, p_apu: Rc<RefCell<APU>>) -> Self {
+    pub fn new(p_ppu: Rc<RefCell<Ppu>>, p_apu: Rc<RefCell<Apu>>) -> Self {
         Bus {
-            data: [0; 0x10_000], // 64KB of ram
+            data: [0; 0x0001_0000], // 64KB of ram
             o_p_mapper: None,
             p_ppu,
             p_apu,

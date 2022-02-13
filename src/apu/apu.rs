@@ -2,11 +2,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     bus::Bus,
-    cpu::{cpu::CPU, enums::Interrupt},
+    cpu::{enums::Interrupt, Cpu},
 };
 
 use super::{
-    dmc::DMC,
+    dmc::Dmc,
     filters::{Filter, HighPassFilter, LowPassFilter},
     noise::Noise,
     pulse::Pulse,
@@ -25,14 +25,14 @@ enum Mode {
     Step5,
 }
 
-pub struct APU {
-    p_cpu: Option<Rc<RefCell<CPU>>>,
+pub struct Apu {
+    p_cpu: Option<Rc<RefCell<Cpu>>>,
 
     pulse1: Pulse,
     pulse2: Pulse,
     triangle: Triangle,
     noise: Noise,
-    dmc: DMC,
+    dmc: Dmc,
 
     interrupt_inhibit: bool,
     frame_interrupt: bool,
@@ -50,29 +50,29 @@ pub struct APU {
     filters: [Box<dyn Filter>; 3],
 }
 
-impl APU {
+impl Apu {
     pub fn new(ppu_clock_frequency: u64) -> Self {
         let clock_frequency = ppu_clock_frequency / 3;
         let sample_rate = clock_frequency as f32 / 44_100.0;
 
         let mut pulse_table = [0.0; 31];
-        for i in 0..31 {
-            pulse_table[i] = 95.52 / (8128.0 / i as f32 + 100.0);
+        for (i, elt) in pulse_table.iter_mut().enumerate() {
+            *elt = 95.52 / (8128.0 / i as f32 + 100.0);
         }
 
         let mut tnd_table = [0.0; 203];
-        for i in 0..203 {
-            tnd_table[i] = 163.67 / (24329.0 / i as f32 + 100.0);
+        for (i, elt) in tnd_table.iter_mut().enumerate() {
+            *elt = 163.67 / (24329.0 / i as f32 + 100.0);
         }
 
-        APU {
+        Apu {
             p_cpu: None,
 
             pulse1: Pulse::new(false),
             pulse2: Pulse::new(true),
             triangle: Triangle::new(),
             noise: Noise::new(),
-            dmc: DMC::new(),
+            dmc: Dmc::new(),
 
             interrupt_inhibit: false,
             frame_interrupt: true,
@@ -95,7 +95,7 @@ impl APU {
         }
     }
 
-    pub fn attach_bus_and_cpu(&mut self, p_bus: Rc<RefCell<Bus>>, p_cpu: Rc<RefCell<CPU>>) {
+    pub fn attach_bus_and_cpu(&mut self, p_bus: Rc<RefCell<Bus>>, p_cpu: Rc<RefCell<Cpu>>) {
         self.p_cpu = Some(p_cpu.clone());
         self.dmc.attach_bus_and_cpu(p_bus, p_cpu);
     }
@@ -228,7 +228,7 @@ impl APU {
             if !self.interrupt_inhibit {
                 self.frame_interrupt = true;
                 if let Some(cpu) = &self.p_cpu {
-                    cpu.borrow_mut().interrupt(Interrupt::IRQ);
+                    cpu.borrow_mut().interrupt(Interrupt::Irq);
                 } else {
                     panic!("No CPU attached to the APU");
                 }

@@ -1,7 +1,7 @@
 use super::{
     bus::PPUBus,
     enums::{ControlFlag, MaskFlag, StatusFlag, VRAMAddressMask},
-    oam::OAM,
+    oam::Oam,
 };
 
 // Reprensents the PPU registers
@@ -70,22 +70,21 @@ impl Registers {
     }
 
     // Writes value to one of the PPU registers
-    pub fn write_register(&mut self, ppu_bus: &mut PPUBus, oam: &mut OAM, address: u16, value: u8) {
+    pub fn write_register(&mut self, ppu_bus: &mut PPUBus, oam: &mut Oam, address: u16, value: u8) {
         match address {
             0x2000 => {
                 let is_previous_nmi_flag_set = self.ctrl & 0x80 > 0;
                 self.ctrl = value;
-                if !(value & 0x80 > 0) {
+                if value & 0x80 == 0 {
                     self.clocks_before_emiting = 0;
                     self.emit_nmi = false;
                 }
                 if self.get_status_flag(StatusFlag::VBlank)
                     && (value & 0x80) == 0x80
                     && !is_previous_nmi_flag_set
+                    && self.clocks_before_emiting == 0
                 {
-                    if self.clocks_before_emiting == 0 {
-                        self.emit_nmi = true;
-                    }
+                    self.emit_nmi = true;
                 }
                 ppu_bus
                     .tmp_vram_address
@@ -159,7 +158,7 @@ impl Registers {
     }
 
     // Reads value from one of the PPU registers
-    pub fn read_register(&mut self, ppu_bus: &mut PPUBus, oam: &OAM, address: u16) -> u8 {
+    pub fn read_register(&mut self, ppu_bus: &mut PPUBus, oam: &Oam, address: u16) -> u8 {
         let mut value: u8;
         match address {
             0x2000 => value = self.decay,

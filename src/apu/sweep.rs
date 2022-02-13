@@ -43,7 +43,7 @@ impl SweepUnit {
             change as i16
         };
         let target_period = (*period as i16 + change) as u16;
-        self.mute = target_period < 8 || target_period > 0x7FF;
+        self.mute = !(8..=0x7FF).contains(&target_period);
 
         if self.divider == 0 && self.enabled && !self.mute {
             *period = target_period;

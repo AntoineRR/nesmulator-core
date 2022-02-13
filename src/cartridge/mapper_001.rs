@@ -245,12 +245,9 @@ impl Mapper for Mapper1 {
                 self.ram = fs::read(path_to_save)?[..].try_into()?;
                 return Ok(());
             }
-            Err(format!(
-                "Save file {} not found",
-                path_to_save.to_str().unwrap()
-            ))?
+            return Err(format!("Save file {} not found", path_to_save.to_str().unwrap()).into());
         }
-        Err("ROM has no persistent memory")?
+        Err("ROM has no persistent memory".into())
     }
 
     fn save_persistent_memory(&self) -> Result<(), Box<dyn Error>> {
@@ -259,6 +256,6 @@ impl Mapper for Mapper1 {
             save_file.write_all(&self.ram)?;
             return Ok(());
         }
-        Err("ROM has no persistent memory")?
+        Err("ROM has no persistent memory".into())
     }
 }
