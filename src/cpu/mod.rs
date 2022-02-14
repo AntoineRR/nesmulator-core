@@ -6,15 +6,14 @@ pub mod instructions;
 
 // ====== IMPORTS =====
 
-use core::panic;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::fmt::Write;
 
 use crate::bus::Bus;
 use crate::bus::STACK_OFFSET;
 use enums::{AdressingMode as am, Flag, Interrupt};
 use instructions::{CpuInstruction, INSTRUCTIONS};
-use std::fmt::Write;
 
 // ===== CPU STRUCT =====
 
@@ -33,6 +32,7 @@ pub struct Cpu {
 
     // Does the current instruction require an eventual additional cycle ?
     require_add_cycle: bool,
+    page_crossed: bool,
 
     interrupt_queue: Vec<Interrupt>,
 
@@ -59,6 +59,7 @@ impl Cpu {
             cycles: 0,
 
             require_add_cycle: false,
+            page_crossed: false,
 
             interrupt_queue: vec![],
 
@@ -187,7 +188,7 @@ impl Cpu {
             (instruction.execute)(self, instruction.adressing_mode);
 
             // Increase program counter
-            self.pc += 1;
+            self.pc = self.pc.wrapping_add(1);
 
             // Sets the correct number of cycles
             self.cycles += instruction.cycles - 1;
@@ -201,6 +202,7 @@ impl Cpu {
 
     // Returns the parameters for the instruction as an address
     fn fetch_address(&mut self, mode: am) -> u16 {
+        self.page_crossed = false;
         match mode {
             am::Implicit => 0,
             am::Accumulator => self.a as u16,
@@ -221,6 +223,9 @@ impl Cpu {
             am::ZeroPageY => {
                 self.pc += 1;
                 let address: u8 = self.read_bus(self.pc);
+                if (address as u16 + self.y as u16) & 0x0100 > 0 {
+                    self.read_bus((address as u16 & 0xFF00) | (((address as u16).wrapping_add(self.x as u16)) & 0x00FF));  // Dummy read
+                }
                 (address as u16 + self.y as u16) % 0x100
             }
             am::Relative => {
@@ -240,11 +245,15 @@ impl Cpu {
                 self.pc += 1;
                 let hi: u8 = self.read_bus(self.pc);
                 let address: u16 = lo as u16 + ((hi as u16) << 8);
-                let result: u32 = address as u32 + self.x as u32;
-                if (self.require_add_cycle) && ((result as u16 & 0xFF00) != (address & 0xFF00)) {
-                    self.cycles += 1;
+                let result = (address as u32 + self.x as u32) as u16;
+                if (result & 0xFF00) != (address & 0xFF00) {
+                    if self.require_add_cycle {
+                        self.cycles += 1;
+                    }
+                    self.read_bus((address & 0xFF00) | (result & 0x00FF));  // Dummy read
+                    self.page_crossed = true;
                 }
-                result as u16
+                result
             }
             am::AbsoluteY => {
                 self.pc += 1;
@@ -252,10 +261,13 @@ impl Cpu {
                 self.pc += 1;
                 let hi: u8 = self.read_bus(self.pc);
                 let address: u16 = lo as u16 + ((hi as u16) << 8);
-                let addition: u32 = address as u32 + self.y as u32;
-                let result: u16 = (addition & 0x0000_FFFF) as u16;
-                if (self.require_add_cycle) && ((result & 0xFF00) != (address & 0xFF00)) {
-                    self.cycles += 1;
+                let result = (address as u32 + self.y as u32) as u16;
+                if (result & 0xFF00) != (address & 0xFF00) {
+                    if self.require_add_cycle {
+                        self.cycles += 1;
+                    }
+                    self.read_bus((address & 0xFF00) | (result & 0x00FF));  // Dummy read
+                    self.page_crossed = true;
                 }
                 result
             }
@@ -265,16 +277,12 @@ impl Cpu {
                 self.pc += 1;
                 let hi: u8 = self.read_bus(self.pc);
                 let ptr: u16 = lo as u16 + ((hi as u16) << 8);
-                let address_lo: u8;
-                let address_hi: u8;
-                if lo == 0xFF {
+                let (address_lo, address_hi) = if lo == 0xFF {
                     // Hardware bug
-                    address_lo = self.read_bus(ptr);
-                    address_hi = self.read_bus(ptr & 0xFF00);
+                    (self.read_bus(ptr), self.read_bus(ptr & 0xFF00))
                 } else {
-                    address_lo = self.read_bus(ptr);
-                    address_hi = self.read_bus(ptr + 1);
-                }
+                    (self.read_bus(ptr), self.read_bus(ptr + 1))
+                };
                 address_lo as u16 + ((address_hi as u16) << 8)
             }
             am::IndirectX => {
@@ -287,12 +295,14 @@ impl Cpu {
                 self.pc += 1;
                 let ptr_lo: u16 = (self.read_bus(self.pc) as u16) % 0x100; // address in the 0x00 page
                 let ptr_hi: u16 = (ptr_lo + 1) % 0x100;
-                let address_lo: u8 = self.read_bus(ptr_lo);
-                let address_hi: u8 = self.read_bus(ptr_hi);
-                let address: u16 = address_lo as u16 + ((address_hi as u16) << 8);
-                let result: u16 = ((address as u32 + self.y as u32) % 0x10000) as u16;
-                if (self.require_add_cycle) && ((result & 0xFF00) != (address & 0xFF00)) {
-                    self.cycles += 1;
+                let address: u16 = self.read_bus(ptr_lo) as u16 + ((self.read_bus(ptr_hi) as u16) << 8);
+                let result: u16 = ((address as u32 + self.y as u32) % 0x1_0000) as u16;
+                if (result & 0xFF00) != (address & 0xFF00) {
+                    if self.require_add_cycle {
+                        self.cycles += 1;
+                    }
+                    self.read_bus((address & 0xFF00) | (result & 0x00FF));  // Dummy read
+                    self.page_crossed = true;
                 }
                 result
             }
@@ -457,6 +467,7 @@ impl Cpu {
     pub fn brk(&mut self, _: am) {
         self.pc += 1;
         self.set_flag(Flag::Break, true);
+        self.set_flag(Flag::Unused, true);
         self.interrupt(Interrupt::Irq);
     }
 
@@ -554,11 +565,10 @@ impl Cpu {
     // M,Z,N = M-1
     pub fn dec(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
-        let data: u8 = self.read_bus(address);
-        let result = data.wrapping_sub(1);
-        self.write_bus(address, result);
-        self.set_flag(Flag::Zero, result == 0);
-        self.set_flag(Flag::Negative, (result & 0x80) == 0x80);
+        let data: u8 = self.read_bus(address).wrapping_sub(1);
+        self.write_bus(address, data);
+        self.set_flag(Flag::Zero, data == 0);
+        self.set_flag(Flag::Negative, (data & 0x80) == 0x80);
     }
 
     // Decrement x register
@@ -618,7 +628,7 @@ impl Cpu {
     // pc = addr
     pub fn jmp(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
-        self.pc = address - 1;
+        self.pc = address.wrapping_sub(1);
     }
 
     // Jump to subroutine
@@ -626,7 +636,7 @@ impl Cpu {
         let address: u16 = self.fetch_address(mode);
         self.push_to_stack((self.pc >> 8) as u8);
         self.push_to_stack(self.pc as u8);
-        self.pc = address - 1;
+        self.pc = address.wrapping_sub(1);
     }
 
     // Load accumulator
@@ -992,13 +1002,10 @@ impl Cpu {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address).wrapping_sub(1);
         self.write_bus(address, data);
-        let result = self.a.wrapping_sub(data);
-        self.set_flag(Flag::Zero, result == 0x00);
+        let result = self.a as i16 - data as i16;
+        self.set_flag(Flag::Zero, result as u8 == 0x00);
         self.set_flag(Flag::Carry, self.a >= data);
-        self.set_flag(
-            Flag::Negative,
-            (self.a > data) || ((self.a == 0) && ((data & 0x80) == 0x80)),
-        );
+        self.set_flag(Flag::Negative, (result as u8 & 0x80) == 0x80);
     }
 
     // Same as INC + SBC
@@ -1049,8 +1056,7 @@ impl Cpu {
     pub fn lxa(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        self.a |= self.read_bus(0x00EE);
-        self.a &= data;
+        self.a = data;
         self.x = self.a;
         self.set_flag(Flag::Zero, self.a == 0x00);
         self.set_flag(Flag::Negative, (self.a & 0x80) == 0x80);
@@ -1072,10 +1078,11 @@ impl Cpu {
     pub fn rra(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let ror_data: u8 = (data >> 1) + (self.get_flag(Flag::Carry) as u8 * 0x80);
-        self.write_bus(address, ror_data);
-        let carry: u8 = data & 0x01;
-        let result: u16 = self.a as u16 + ror_data as u16 + carry as u16;
+        let rored = (data >> 1) + (self.get_flag(Flag::Carry) as u8 * 0x80);
+        self.write_bus(address, rored);
+        self.set_flag(Flag::Carry, (data & 0x01) == 0x01);
+
+        let result: u16 = self.a as u16 + rored as u16 + self.get_flag(Flag::Carry) as u16;
         let previous_a: u8 = self.a;
         self.a = result as u8;
         self.set_flag(Flag::Carry, (result & 0x0100) == 0x0100);
@@ -1083,7 +1090,7 @@ impl Cpu {
         self.set_flag(Flag::Negative, (self.a & 0x80) == 0x80);
         self.set_flag(
             Flag::Overflow,
-            !(previous_a ^ ror_data) & (previous_a ^ (result as u8)) == 0x80,
+            (previous_a ^ rored) & 0x80 == 0 && (previous_a ^ result as u8) & 0x80 == 0x80,
         );
     }
 
@@ -1097,11 +1104,12 @@ impl Cpu {
     // X = (A&X)-M
     pub fn sbx(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
-        let data: u8 = ((self.read_bus(address)) ^ 0xFF).wrapping_add(1);
-        let result: u16 = ((self.x as u16) & (self.a as u16)) + (data as u16);
+        let data: u8 = self.read_bus(address);
+        let anded = self.x & self.a;
+        let result = anded as i16 - data as i16;
         self.x = result as u8;
-        self.set_flag(Flag::Carry, (result & 0x0100) == 0x0100);
         self.set_flag(Flag::Zero, result as u8 == 0x00);
+        self.set_flag(Flag::Carry, anded >= data);
         self.set_flag(Flag::Negative, (result as u8 & 0x80) == 0x80);
     }
 
@@ -1125,6 +1133,11 @@ impl Cpu {
     pub fn shx(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let result: u8 = self.x & (((address & 0xFF00) >> 8) + 1) as u8;
+        let address = if self.page_crossed {
+            address & 0x00FF + ((result as u16) << 8)
+        } else {
+            address
+        };
         self.write_bus(address, result);
     }
 
@@ -1132,6 +1145,11 @@ impl Cpu {
     pub fn shy(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let result: u8 = self.y & (((address & 0xFF00) >> 8) + 1) as u8;
+        let address = if self.page_crossed {
+            address & 0x00FF + ((result as u16) << 8)
+        } else {
+            address
+        };
         self.write_bus(address, result);
     }
 

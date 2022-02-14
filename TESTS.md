@@ -9,7 +9,6 @@ Additionally, a level of debugging can be chosen with the `d` flag, followed by 
 ## Test ROMS
 
 I used several test ROMs for testing my emulator. Those can be found [here](https://github.com/christopherpow/nes-test-roms), and the test ROMS for the mappers are [here](https://pineight.com/nes/holydiverbatman-bin-0.01.7z).
-Some nes_instr_test ROMs fail because some undocumented opcodes are not implemented correctly for now.
 
 Here are some of the results :
 
@@ -21,16 +20,20 @@ Here are some of the results :
 * [X] branch_timing_tests/3.Forward_Branch
 * [X] cpu_timing_test6/cpu_timing_test
 * [X] nes_instr_test/rom_singles/01-implied
-* [ ] nes_instr_test/rom_singles/02-immediate
-* [ ] nes_instr_test/rom_singles/03-zero_page
-* [ ] nes_instr_test/rom_singles/04-zp_xy
-* [ ] nes_instr_test/rom_singles/05-absolute
-* [ ] nes_instr_test/rom_singles/06-abs_xy
-* [ ] nes_instr_test/rom_singles/07-ind_x
-* [ ] nes_instr_test/rom_singles/08-ind_y
+* [X] nes_instr_test/rom_singles/02-immediate
+* [X] nes_instr_test/rom_singles/03-zero_page
+* [X] nes_instr_test/rom_singles/04-zp_xy
+* [X] nes_instr_test/rom_singles/05-absolute
+* [X] nes_instr_test/rom_singles/06-abs_xy
+* [X] nes_instr_test/rom_singles/07-ind_x
+* [X] nes_instr_test/rom_singles/08-ind_y
 * [X] nes_instr_test/rom_singles/09-branches
 * [X] nes_instr_test/rom_singles/10-stack
 * [ ] nes_instr_test/rom_singles/11-special
+* [X] instr_misc/rom_singles/01-abs_x_wrap
+* [X] instr_misc/rom_singles/02-branch_wrap
+* [ ] instr_misc/rom_singles/03-dummy_reads
+* [X] instr_misc/rom_singles/04-dummy_reads_apu
 
 ### PPU
 

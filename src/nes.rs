@@ -97,7 +97,7 @@ impl NES {
             dma_data: 0,
 
             add_samples: true,
-            samples: vec![],
+            samples: Vec::with_capacity(1024),
 
             config,
         }
