@@ -3,7 +3,7 @@
 // ===== ENUMS =====
 
 // All the possible adressing modes of the CPU
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum AdressingMode {
     Implicit,
     Accumulator,

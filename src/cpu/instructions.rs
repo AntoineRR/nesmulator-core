@@ -22,8 +22,6 @@ pub struct CpuInstruction {
 // The whole set of instructions of the CPU.
 // Some instructions are not valid, and some are not documented and not implemented here.
 // The unimplemented instructions return an error with the ERR method.
-// Their name is written in lower case
-#[allow(dead_code)]
 pub const INSTRUCTIONS: [CpuInstruction; 256] = [
     CpuInstruction {
         name: "BRK",

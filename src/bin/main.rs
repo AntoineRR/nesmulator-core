@@ -14,7 +14,7 @@ fn nestest_automation(run_once: bool) {
 
     // Instantiate a NES and connect the nestest ROM file
     let mut nes = NES::from_config(Config {
-        display_cpu_logs: false,  // Change to true to follow each CPU instruction
+        display_cpu_logs: false, // Change to true to follow each CPU instruction
         palette_path: None,
     });
     if let Err(e) = nes.insert_cartdrige(rom_path) {
