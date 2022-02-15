@@ -92,3 +92,35 @@ mod ppu_open_bus {
         format!("{}{}{}", ROM_PATH_PREFIX, DIR_PATH, rom)
     }
 }
+
+mod oam_read {
+    use crate::common::run_rom;
+    use crate::common::ROM_PATH_PREFIX;
+
+    const DIR_PATH: &str = "oam_read/";
+
+    #[test]
+    fn oam_read() {
+        run_rom(&get_path("oam_read.nes"));
+    }
+
+    fn get_path(rom: &str) -> String {
+        format!("{}{}{}", ROM_PATH_PREFIX, DIR_PATH, rom)
+    }
+}
+
+mod oam_stress {
+    use crate::common::run_rom;
+    use crate::common::ROM_PATH_PREFIX;
+
+    const DIR_PATH: &str = "oam_stress/";
+
+    #[test]
+    fn oam_stress() {
+        run_rom(&get_path("oam_stress.nes"));
+    }
+
+    fn get_path(rom: &str) -> String {
+        format!("{}{}{}", ROM_PATH_PREFIX, DIR_PATH, rom)
+    }
+}

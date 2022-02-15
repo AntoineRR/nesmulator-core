@@ -14,11 +14,8 @@ Here are some of the results :
 
 ### CPU
 
-* [X] nestest
-* [X] branch_timing_tests/1.Branch_Basics
-* [X] branch_timing_tests/2.Backward_Branch
-* [X] branch_timing_tests/3.Forward_Branch
-* [X] cpu_timing_test6/cpu_timing_test
+#### Automatically tested (see [Integration tests](#Integration-tests))
+
 * [X] nes_instr_test/rom_singles/01-implied
 * [X] nes_instr_test/rom_singles/02-immediate
 * [X] nes_instr_test/rom_singles/03-zero_page
@@ -30,28 +27,56 @@ Here are some of the results :
 * [X] nes_instr_test/rom_singles/09-branches
 * [X] nes_instr_test/rom_singles/10-stack
 * [ ] nes_instr_test/rom_singles/11-special
+* [X] instr_timing/rom_singles/1-instr_timing
+* [X] instr_timing/rom_singles/2-branch_timing
 * [X] instr_misc/rom_singles/01-abs_x_wrap
 * [X] instr_misc/rom_singles/02-branch_wrap
 * [ ] instr_misc/rom_singles/03-dummy_reads
 * [X] instr_misc/rom_singles/04-dummy_reads_apu
+* [X] cpu_reset/registers
+* [X] cpu_reset/ram_after_reset
+* [ ] cpu_exec_space/test_cpu_exec_space_apu
+* [ ] cpu_exec_space/test_cpu_exec_space_ppuio
+* [ ] cpu_interrupts_v2/rom_singles/1-cli_latency
+* [ ] cpu_interrupts_v2/rom_singles/2-nmi_and_brk
+* [ ] cpu_interrupts_v2/rom_singles/3-nmi_and_irq
+* [ ] cpu_interrupts_v2/rom_singles/4-irq_and_dma
+* [ ] cpu_interrupts_v2/rom_singles/5-branch_delays_irq
+
+#### Manually tested
+
+* [X] nestest
+* [X] branch_timing_tests/1.Branch_Basics
+* [X] branch_timing_tests/2.Backward_Branch
+* [X] branch_timing_tests/3.Forward_Branch
+* [X] cpu_timing_test6/cpu_timing_test
 
 ### PPU
 
-* [X] blargg_ppu_tests_2005.09.15b/palette_ram
-* [X] blargg_ppu_tests_2005.09.15b/sprite_ram
-* [ ] blargg_ppu_tests_2005.09.15b/vbl_clear_time
-* [X] blargg_ppu_tests_2005.09.15b/vram_access
+#### Automatically tested (see [Integration tests](#Integration-tests))
+
+* [X] ppu_vbl_nmi/rom_singles/01-vbl_basics
+* [X] ppu_vbl_nmi/rom_singles/02-vbl_set_time
+* [X] ppu_vbl_nmi/rom_singles/03-vbl_clear_time
+* [ ] ppu_vbl_nmi/rom_singles/04-nmi_control
+* [ ] ppu_vbl_nmi/rom_singles/05-nmi_timing
+* [X] ppu_vbl_nmi/rom_singles/06-suppression
+* [ ] ppu_vbl_nmi/rom_singles/07-nmi_on_timing
+* [X] ppu_vbl_nmi/rom_singles/08-nmi_off_timing
+* [X] ppu_vbl_nmi/rom_singles/09-even_odd_frames
+* [ ] ppu_vbl_nmi/rom_singles/10-even_odd_timing
+* [ ] ppu_read_buffer/test_ppu_read_buffer
 * [X] ppu_open_bus/ppu_open_bus
-* [ ] scanline/scanline
-* [X] vbl_nmi_timing/1.frame_basics
-* [X] vbl_nmi_timing/2.vbl_timing
-* [X] vbl_nmi_timing/3.even_odd_frames
-* [X] vbl_nmi_timing/4.vbl_clear_timing
-* [X] vbl_nmi_timing/5.nmi_suppression
-* [X] vbl_nmi_timing/6.nmi_disable
-* [ ] vbl_nmi_timing/7.nmi_timing
 * [X] oam_read/oam_read
 * [X] oam_stress/oam_stress
+
+#### Manually tested
+
+* [X] blargg_ppu_tests_2005.09.15b/palette_ram
+* [X] blargg_ppu_tests_2005.09.15b/sprite_ram
+* [ ] blargg_ppu_tests_2005.09.15b/power_up_palette
+* [ ] blargg_ppu_tests_2005.09.15b/vbl_clear_time
+* [X] blargg_ppu_tests_2005.09.15b/vram_access
 * [X] sprite_hit_tests_2005.10.05/01.basics
 * [X] sprite_hit_tests_2005.10.05/02.alignment
 * [X] sprite_hit_tests_2005.10.05/03.corners
@@ -68,10 +93,12 @@ Here are some of the results :
 * [ ] sprite_overflow_tests/3.Timing
 * [ ] sprite_overflow_tests/4.Obscure
 * [X] sprite_overflow_tests/5.Emulator
+* [ ] scanline/scanline
 
 ### APU
 
-* [ ] apu_test/apu_test
+#### Automatically tested (see [Integration tests](#Integration-tests))
+
 * [X] apu_test/rom_singles/1-len_ctr
 * [ ] apu_test/rom_singles/2-len_table
 * [X] apu_test/rom_singles/3-irq_flag
@@ -80,6 +107,15 @@ Here are some of the results :
 * [ ] apu_test/rom_singles/6-irq_flag_timing
 * [X] apu_test/rom_singles/7-dmc_basics
 * [ ] apu_test/rom_singles/8-dmc_rates
+* [X] apu_reset/4015_cleared
+* [ ] apu_reset/4017_timing
+* [ ] apu_reset/4017_written
+* [ ] apu_reset/irq_flag_cleared
+* [ ] apu_reset/len_ctrs_enabled
+* [ ] apu_reset/works_immediately
+
+#### Manually tested
+
 * [X] blargg_apu_2005.07.30/01.len_ctr
 * [X] blargg_apu_2005.07.30/02.len_table
 * [X] blargg_apu_2005.07.30/03.irq_flag
@@ -93,6 +129,8 @@ Here are some of the results :
 * [ ] blargg_apu_2005.07.30/11.len_reload_timing
 
 ### Mappers
+
+#### Manually tested
 
 * [X] M0_P32K_C8K_V
 * [ ] M1_P128K

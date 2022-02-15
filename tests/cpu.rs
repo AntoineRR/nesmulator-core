@@ -138,3 +138,60 @@ mod cpu_reset {
         format!("{}{}{}", ROM_PATH_PREFIX, DIR_PATH, rom)
     }
 }
+
+mod cpu_exec_space {
+    use crate::common::run_rom;
+    use crate::common::ROM_PATH_PREFIX;
+
+    const DIR_PATH: &str = "cpu_exec_space/";
+
+    #[test]
+    fn apu() {
+        run_rom(&get_path("test_cpu_exec_space_apu.nes"))
+    }
+
+    #[test]
+    fn ppuio() {
+        run_rom(&get_path("test_cpu_exec_space_ppuio.nes"))
+    }
+
+    fn get_path(rom: &str) -> String {
+        format!("{}{}{}", ROM_PATH_PREFIX, DIR_PATH, rom)
+    }
+}
+
+mod cpu_interrupts_v2 {
+    use crate::common::run_rom;
+    use crate::common::ROM_PATH_PREFIX;
+
+    const DIR_PATH: &str = "cpu_interrupts_v2/rom_singles/";
+
+    #[test]
+    fn cli_latency() {
+        run_rom(&get_path("1-cli_latency.nes"))
+    }
+
+    #[test]
+    fn nmi_and_brk() {
+        run_rom(&get_path("2-nmi_and_brk.nes"))
+    }
+
+    #[test]
+    fn nmi_and_irq() {
+        run_rom(&get_path("3-nmi_and_irq.nes"))
+    }
+
+    #[test]
+    fn irq_and_dma() {
+        run_rom(&get_path("4-irq_and_dma.nes"))
+    }
+
+    #[test]
+    fn branch_delays_irq() {
+        run_rom(&get_path("5-branch_delays_irq.nes"))
+    }
+
+    fn get_path(rom: &str) -> String {
+        format!("{}{}{}", ROM_PATH_PREFIX, DIR_PATH, rom)
+    }
+}
