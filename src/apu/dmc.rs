@@ -105,7 +105,10 @@ impl Dmc {
     fn clock_reader(&mut self) {
         if self.sample_buffer.is_none() && self.bytes_remaining > 0 {
             if let Some(bus) = &self.p_bus {
-                self.sample_buffer = Some(bus.borrow_mut().read(self.current_address));
+                match bus.borrow_mut().read(self.current_address) {
+                    Ok(s) => self.sample_buffer = Some(s),
+                    Err(e) => panic!("{}", e),
+                }
             } else {
                 panic!("No bus attached to the DMC");
             }

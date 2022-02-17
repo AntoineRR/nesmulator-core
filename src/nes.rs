@@ -131,7 +131,7 @@ impl NES {
     /// Read the bus memory at the given address
     /// You should know what you are doing when calling this method as it can easily
     /// be an invalid read
-    pub fn read_memory_at(&mut self, address: u16) -> u8 {
+    pub fn read_memory_at(&mut self, address: u16) -> Result<u8, Box<dyn Error>> {
         self.p_bus.borrow_mut().read(address)
     }
 
@@ -316,13 +316,17 @@ impl NES {
             if self.total_clock % 2 == 0 {
                 let address: u16 =
                     self.dma_address_offset as u16 + ((self.dma_hi_address as u16) << 8);
-                self.dma_data = self.p_bus.borrow_mut().read(address);
+                match self.p_bus.borrow_mut().read(address) {
+                    Ok(data) => self.dma_data = data,
+                    Err(e) => panic!("{}", e),
+                }
             }
             // On odd cycles, write data to the PPU OAM
             else {
                 self.p_ppu
                     .borrow_mut()
-                    .write_register(0x2004, self.dma_data);
+                    .write_register(0x2004, self.dma_data)
+                    .unwrap();
 
                 if self.dma_address_offset < 255 {
                     self.dma_address_offset += 1;

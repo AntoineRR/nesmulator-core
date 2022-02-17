@@ -2,9 +2,12 @@
 
 // ===== IMPORTS =====
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, error::Error, rc::Rc};
 
-use crate::cartridge::mapper::{Mapper, Mirroring};
+use crate::{
+    cartridge::mapper::{Mapper, Mirroring},
+    errors::{InvalidPPUBusReadError, InvalidPPUBusWriteError},
+};
 
 use super::enums::VRAMAddressMask;
 
@@ -95,66 +98,56 @@ impl PPUBus {
         self.o_p_mapper = Some(p_mapper);
     }
 
-    pub fn read(&self, address: u16) -> u8 {
-        let value: u8;
+    pub fn read(&self, address: u16) -> Result<u8, Box<dyn Error>> {
         match address {
-            0x0000..=0x1FFF => {
-                value = self
-                    .o_p_mapper
-                    .as_ref()
-                    .unwrap()
-                    .borrow()
-                    .chr_rom_read(address)
-            }
-            0x2000..=0x2FFF => value = self.read_name_tables(address),
-            0x3000..=0x3EFF => value = self.read_name_tables(address & 0x2FFF),
-            0x3F00..=0x3FFF => value = self.read_palette_table(address & 0x001F),
-            _ => panic!("Invalid address given to PPU : {:#X}", address),
+            0x0000..=0x1FFF => self
+                .o_p_mapper
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .chr_rom_read(address),
+            0x2000..=0x2FFF => self.read_name_tables(address),
+            0x3000..=0x3EFF => self.read_name_tables(address & 0x2FFF),
+            0x3F00..=0x3FFF => self.read_palette_table(address & 0x001F),
+            _ => Err(Box::new(InvalidPPUBusReadError(address))),
         }
-        value
     }
 
-    fn read_name_tables(&self, address: u16) -> u8 {
-        let value: u8;
+    fn read_name_tables(&self, address: u16) -> Result<u8, Box<dyn Error>> {
         match self.o_p_mapper.as_ref().unwrap().borrow().get_mirroring() {
             Mirroring::Horizontal => match address {
-                0x2000..=0x23FF => value = self.name_tables[0][(address & 0x03FF) as usize],
-                0x2400..=0x27FF => value = self.name_tables[0][(address & 0x03FF) as usize],
-                0x2800..=0x2BFF => value = self.name_tables[1][(address & 0x03FF) as usize],
-                0x2C00..=0x2FFF => value = self.name_tables[1][(address & 0x03FF) as usize],
-                _ => panic!("Invalid nametable address : {:#X}", address),
+                0x2000..=0x23FF => Ok(self.name_tables[0][(address & 0x03FF) as usize]),
+                0x2400..=0x27FF => Ok(self.name_tables[0][(address & 0x03FF) as usize]),
+                0x2800..=0x2BFF => Ok(self.name_tables[1][(address & 0x03FF) as usize]),
+                0x2C00..=0x2FFF => Ok(self.name_tables[1][(address & 0x03FF) as usize]),
+                _ => Err(Box::new(InvalidPPUBusReadError(address))),
             },
             Mirroring::Vertical => match address {
-                0x2000..=0x23FF => value = self.name_tables[0][(address & 0x03FF) as usize],
-                0x2400..=0x27FF => value = self.name_tables[1][(address & 0x03FF) as usize],
-                0x2800..=0x2BFF => value = self.name_tables[0][(address & 0x03FF) as usize],
-                0x2C00..=0x2FFF => value = self.name_tables[1][(address & 0x03FF) as usize],
-                _ => panic!("Invalid nametable address : {:#X}", address),
+                0x2000..=0x23FF => Ok(self.name_tables[0][(address & 0x03FF) as usize]),
+                0x2400..=0x27FF => Ok(self.name_tables[1][(address & 0x03FF) as usize]),
+                0x2800..=0x2BFF => Ok(self.name_tables[0][(address & 0x03FF) as usize]),
+                0x2C00..=0x2FFF => Ok(self.name_tables[1][(address & 0x03FF) as usize]),
+                _ => Err(Box::new(InvalidPPUBusReadError(address))),
             },
-            Mirroring::OneScreenLower => {
-                value = self.name_tables[0][(address & 0x03FF) as usize];
-            }
-            Mirroring::OneScreenUpper => {
-                value = self.name_tables[1][(address & 0x03FF) as usize];
-            }
+            Mirroring::OneScreenLower => Ok(self.name_tables[0][(address & 0x03FF) as usize]),
+            Mirroring::OneScreenUpper => Ok(self.name_tables[1][(address & 0x03FF) as usize]),
             Mirroring::FourScreens => panic!("Four screen mirroring is not handled for now"),
         }
-        value
     }
 
-    fn read_palette_table(&self, address: u16) -> u8 {
-        let mut index: u16 = address;
-        match index {
-            0x0010 => index = 0x0000,
-            0x0014 => index = 0x0004,
-            0x0018 => index = 0x0008,
-            0x001C => index = 0x000C,
-            _ => (),
-        }
-        self.palette_table[index as usize]
+    fn read_palette_table(&self, address: u16) -> Result<u8, Box<dyn Error>> {
+        let index = match address {
+            0x0010 => 0x0000,
+            0x0014 => 0x0004,
+            0x0018 => 0x0008,
+            0x001C => 0x000C,
+            a if a <= 0x001F => a,
+            _ => return Err(Box::new(InvalidPPUBusReadError(address))),
+        };
+        Ok(self.palette_table[index as usize])
     }
 
-    pub fn write(&mut self, address: u16, value: u8) {
+    pub fn write(&mut self, address: u16, value: u8) -> Result<(), Box<dyn Error>> {
         match address {
             0x0000..=0x1FFF => self
                 .o_p_mapper
@@ -165,25 +158,25 @@ impl PPUBus {
             0x2000..=0x2FFF => self.write_name_tables(address, value),
             0x3000..=0x3EFF => self.write_name_tables(address & 0x2FFF, value),
             0x3F00..=0x3FFF => self.write_palette_table(address & 0x001F, value),
-            _ => panic!("Invalid address given to PPU : {:#X}", address),
+            _ => Err(Box::new(InvalidPPUBusWriteError(address))),
         }
     }
 
-    fn write_name_tables(&mut self, address: u16, value: u8) {
+    fn write_name_tables(&mut self, address: u16, value: u8) -> Result<(), Box<dyn Error>> {
         match self.o_p_mapper.as_ref().unwrap().borrow().get_mirroring() {
             Mirroring::Horizontal => match address {
                 0x2000..=0x23FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
                 0x2400..=0x27FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
                 0x2800..=0x2BFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
                 0x2C00..=0x2FFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
-                _ => panic!("Invalid nametable address : {:#X}", address),
+                _ => return Err(Box::new(InvalidPPUBusWriteError(address))),
             },
             Mirroring::Vertical => match address {
                 0x2000..=0x23FF => self.name_tables[0][(address & 0x03FF) as usize] = value,
                 0x2400..=0x27FF => self.name_tables[1][(address & 0x03FF) as usize] = value,
                 0x2800..=0x2BFF => self.name_tables[0][(address & 0x03FF) as usize] = value,
                 0x2C00..=0x2FFF => self.name_tables[1][(address & 0x03FF) as usize] = value,
-                _ => panic!("Invalid nametable address : {:#X}", address),
+                _ => return Err(Box::new(InvalidPPUBusWriteError(address))),
             },
             Mirroring::OneScreenLower => {
                 self.name_tables[0][(address & 0x03FF) as usize] = value;
@@ -195,17 +188,19 @@ impl PPUBus {
             }
             Mirroring::FourScreens => panic!("Four screen mirroring is not handled for now"),
         }
+        Ok(())
     }
 
-    fn write_palette_table(&mut self, address: u16, value: u8) {
-        let mut index: u16 = address;
-        match index {
-            0x0010 => index = 0x0000,
-            0x0014 => index = 0x0004,
-            0x0018 => index = 0x0008,
-            0x001C => index = 0x000C,
-            _ => (),
-        }
+    fn write_palette_table(&mut self, address: u16, value: u8) -> Result<(), Box<dyn Error>> {
+        let index = match address {
+            0x0010 => 0x0000,
+            0x0014 => 0x0004,
+            0x0018 => 0x0008,
+            0x001C => 0x000C,
+            a if a <= 0x001F => a,
+            _ => return Err(Box::new(InvalidPPUBusWriteError(address))),
+        };
         self.palette_table[index as usize] = value;
+        Ok(())
     }
 }

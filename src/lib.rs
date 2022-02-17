@@ -11,6 +11,7 @@ mod bus;
 mod cartridge;
 mod controllers;
 mod cpu;
+mod errors;
 mod ppu;
 
 /// Configuration to pass to the emulator.

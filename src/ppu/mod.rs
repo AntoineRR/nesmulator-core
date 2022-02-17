@@ -191,7 +191,7 @@ impl Ppu {
                             | VRAMAddressMask::CoarseYScroll as u16
                             | VRAMAddressMask::NametableSelect as u16))
                         + 0x2000; // Name table address space offset
-                    self.next_name_table_byte = self.ppu_bus.read(address);
+                    self.next_name_table_byte = self.read_bus(address);
                 }
                 // Get the attribute table values
                 else if ((self.cycles - 1) % 8) == 2 {
@@ -214,7 +214,7 @@ impl Ppu {
                             .get_address_part(VRAMAddressMask::NametableSelect)
                             << 10)
                         + 0x23C0; // Attribute table address space offset
-                    self.next_attribute_table_byte = self.ppu_bus.read(address);
+                    self.next_attribute_table_byte = self.read_bus(address);
                     // We have the 4 areas in our next attribute table byte (top left, top right, bottom left and bottom right)
                     // We need to get the right palette value for our next 8 pixels
                     // This depends on the 2 lower bits of coarse Y and coarse X
@@ -253,7 +253,7 @@ impl Ppu {
                             .get_control_flag(ControlFlag::BackgroundPatternTableAddress)
                             as u16)
                             << 12);
-                    self.next_low_background_byte = self.ppu_bus.read(address);
+                    self.next_low_background_byte = self.read_bus(address);
                 }
                 // Get the high background tile byte
                 else if ((self.cycles - 1) % 8) == 6 {
@@ -269,7 +269,7 @@ impl Ppu {
                             as u16)
                             << 12)
                         + 8;
-                    self.next_high_background_byte = self.ppu_bus.read(address);
+                    self.next_high_background_byte = self.read_bus(address);
                 }
                 // Increment VRAM Address
                 else if ((self.cycles - 1) % 8) == 7 {
@@ -288,9 +288,8 @@ impl Ppu {
 
             // Unused read
             if self.cycles == 338 || self.cycles == 340 {
-                self.next_name_table_byte = self
-                    .ppu_bus
-                    .read(0x2000 + (self.ppu_bus.vram_address.address & 0x0FFF));
+                self.next_name_table_byte =
+                    self.read_bus(0x2000 + (self.ppu_bus.vram_address.address & 0x0FFF));
             }
 
             // === SPRITES ===
@@ -469,11 +468,20 @@ impl Ppu {
         }
     }
 
+    // ===== READ =====
+
+    fn read_bus(&self, address: u16) -> u8 {
+        match self.ppu_bus.read(address) {
+            Ok(byte) => byte,
+            Err(e) => panic!("{}", e),
+        }
+    }
+
     // ===== GET COLOR METHOD =====
 
     fn get_pixel_color(&self, palette: u8, color: u8) -> ARGBColor {
         let address: u16 = ((palette as u16) << 2) + (color as u16) + 0x3F00;
-        let mut palette_index = (self.ppu_bus.read(address) & 0x3F) as usize;
+        let mut palette_index = (self.read_bus(address) & 0x3F) as usize;
         if self.registers.get_mask_flag(MaskFlag::GreyScale) {
             palette_index &= 0x30;
         }
@@ -495,14 +503,18 @@ impl Ppu {
 
     // ===== REGISTERS METHODS =====
 
-    pub fn write_register(&mut self, address: u16, value: u8) {
+    pub fn write_register(&mut self, address: u16, value: u8) -> Result<(), Box<dyn Error>> {
         self.registers
-            .write_register(&mut self.ppu_bus, &mut self.oam, address, value);
+            .write_register(&mut self.ppu_bus, &mut self.oam, address, value)
     }
 
-    pub fn read_register(&mut self, address: u16) -> u8 {
+    pub fn read_register(&mut self, address: u16) -> Result<u8, Box<dyn Error>> {
         self.registers
             .read_register(&mut self.ppu_bus, &self.oam, address)
+    }
+
+    pub fn read_only_register(&self, address: u16) -> Result<u8, Box<dyn Error>> {
+        self.registers.read_only_register(address)
     }
 
     // ===== SPRITE RELATED METHODS =====
@@ -643,8 +655,8 @@ impl Ppu {
                     }
 
                     // Get low and high bytes of the sprite
-                    let mut lo_sprite: u8 = self.ppu_bus.read(lo_address);
-                    let mut hi_sprite: u8 = self.ppu_bus.read(lo_address + 8);
+                    let mut lo_sprite: u8 = self.read_bus(lo_address);
+                    let mut hi_sprite: u8 = self.read_bus(lo_address + 8);
 
                     // Flip horizontally
                     if self.oam.secondary[sprite_index]
@@ -674,7 +686,7 @@ impl Ppu {
                         self.oam.secondary[sprite_index].attribute;
                 }
                 3..=7 => (),
-                _ => panic!("Unreachable pattern"),
+                _ => unreachable!(),
             }
         }
     }
@@ -901,12 +913,9 @@ impl Ppu {
         let mut buffer = [ARGBColor::black(); 64];
         let n_offset = n_tile_y * 256 + n_tile_x * 16;
         for row in 0..8 {
-            let mut tile_low: u8 = self
-                .ppu_bus
-                .read(pattern_table * 0x1000 + (n_offset + row) as u16);
-            let mut tile_high: u8 = self
-                .ppu_bus
-                .read(pattern_table * 0x1000 + (n_offset + row) as u16 + 0x0008);
+            let mut tile_low: u8 = self.read_bus(pattern_table * 0x1000 + (n_offset + row) as u16);
+            let mut tile_high: u8 =
+                self.read_bus(pattern_table * 0x1000 + (n_offset + row) as u16 + 0x0008);
             for col in 0..8 {
                 let color: u8 = (tile_low & 0x01) | ((tile_high & 0x01) << 1);
                 tile_high >>= 1;
@@ -921,8 +930,7 @@ impl Ppu {
         let mut buffer = [ARGBColor::black(); 32];
         let address_offset = 0x3F00;
         for (i, pixel) in buffer.iter_mut().enumerate() {
-            *pixel =
-                self.palettes.base[(self.ppu_bus.read(address_offset + i as u16) & 0x3F) as usize];
+            *pixel = self.palettes.base[(self.read_bus(address_offset + i as u16) & 0x3F) as usize];
         }
         Ok(buffer)
     }

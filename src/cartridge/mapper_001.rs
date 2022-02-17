@@ -6,7 +6,9 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use log::{debug, warn};
+use log::debug;
+
+use crate::errors::{InvalidMapperReadError, InvalidMapperWriteError};
 
 use super::mapper::{INesHeader, Mapper, Mirroring};
 
@@ -80,7 +82,7 @@ impl Mapper1 {
             0 | 1 => PrgRomBankMode::Switch32,
             2 => PrgRomBankMode::Switch16FirstFixed,
             3 => PrgRomBankMode::Switch16LastFixed,
-            _ => panic!("Unreachable pattern"),
+            _ => unreachable!(),
         }
     }
 
@@ -88,7 +90,7 @@ impl Mapper1 {
         match (self.control_register & 0x10) >> 4 {
             0 => ChrRomBankMode::Switch8,
             1 => ChrRomBankMode::Switch4,
-            _ => panic!("Unreachable pattern"),
+            _ => unreachable!(),
         }
     }
 
@@ -103,43 +105,44 @@ impl Mapper1 {
 }
 
 impl Mapper for Mapper1 {
-    fn prg_rom_read(&self, address: u16) -> u8 {
-        let value: u8;
+    fn prg_rom_read(&self, address: u16) -> Result<u8, Box<dyn Error>> {
         match address {
-            0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}", address),
-            0x4020..=0x5FFF => value = 0, // panic!("Mapper 1 doesn't use this address : {:#X}", address),
-            0x6000..=0x7FFF => value = self.ram[(address & 0x1FFF) as usize],
+            0x0000..=0x401F => Err(Box::new(InvalidMapperReadError(address))),
+            0x4020..=0x5FFF => Err(Box::new(InvalidMapperReadError(address))),
+            0x6000..=0x7FFF => Ok(self.ram[(address & 0x1FFF) as usize]),
             0x8000..=0xBFFF => match self.get_prg_rom_bank_mode() {
                 PrgRomBankMode::Switch32 => {
-                    value = self.prg_rom[self.lo_prg_rom][(address & 0x3FFF) as usize]
+                    Ok(self.prg_rom[self.lo_prg_rom][(address & 0x3FFF) as usize])
                 }
                 PrgRomBankMode::Switch16FirstFixed => {
-                    value = self.prg_rom[0][(address & 0x3FFF) as usize]
+                    Ok(self.prg_rom[0][(address & 0x3FFF) as usize])
                 }
                 PrgRomBankMode::Switch16LastFixed => {
-                    value = self.prg_rom[self.lo_prg_rom][(address & 0x3FFF) as usize]
+                    Ok(self.prg_rom[self.lo_prg_rom][(address & 0x3FFF) as usize])
                 }
             },
             0xC000..=0xFFFF => match self.get_prg_rom_bank_mode() {
                 PrgRomBankMode::Switch32 => {
-                    value = self.prg_rom[self.lo_prg_rom + 1][(address & 0x3FFF) as usize]
+                    Ok(self.prg_rom[self.lo_prg_rom + 1][(address & 0x3FFF) as usize])
                 }
                 PrgRomBankMode::Switch16FirstFixed => {
-                    value = self.prg_rom[self.hi_prg_rom][(address & 0x3FFF) as usize]
+                    Ok(self.prg_rom[self.hi_prg_rom][(address & 0x3FFF) as usize])
                 }
                 PrgRomBankMode::Switch16LastFixed => {
-                    value = self.prg_rom[self.prg_rom.len() - 1][(address & 0x3FFF) as usize]
+                    Ok(self.prg_rom[self.prg_rom.len() - 1][(address & 0x3FFF) as usize])
                 }
             },
         }
-        value
     }
 
-    fn prg_rom_write(&mut self, address: u16, value: u8) {
+    fn prg_rom_write(&mut self, address: u16, value: u8) -> Result<(), Box<dyn Error>> {
         match address {
-            0x0000..=0x401F => panic!("Invalid address given to mapper : {:#X}", address),
-            0x4020..=0x5FFF => warn!("Mapper 1 doesn't use this address : {:#X}", address),
-            0x6000..=0x7FFF => self.ram[(address & 0x1FFF) as usize] = value,
+            0x0000..=0x401F => Err(Box::new(InvalidMapperWriteError(address))),
+            0x4020..=0x5FFF => Err(Box::new(InvalidMapperWriteError(address))),
+            0x6000..=0x7FFF => {
+                self.ram[(address & 0x1FFF) as usize] = value;
+                Ok(())
+            }
             0x8000..=0xFFFF => {
                 if value & 0x80 > 0 {
                     self.shift_register = 0;
@@ -184,46 +187,57 @@ impl Mapper for Mapper1 {
                                     }
                                 }
                             }
-                            _ => panic!("Unreachable pattern"),
+                            _ => unreachable!(),
                         }
                         self.shift_register = 0;
                         self.n_bit_loaded = 0;
                     }
                 }
+                Ok(())
             }
         }
     }
 
-    fn chr_rom_read(&self, address: u16) -> u8 {
+    fn chr_rom_read(&self, address: u16) -> Result<u8, Box<dyn Error>> {
         match self.get_chr_rom_bank_mode() {
             ChrRomBankMode::Switch8 => match address {
-                0x0000..=0x0FFF => self.chr_rom[self.lo_chr_rom][address as usize],
-                0x1000..=0x1FFF => self.chr_rom[self.lo_chr_rom + 1][(address & 0x0FFF) as usize],
-                _ => panic!("Invalid address given to PPU bus : {:#X}", address),
+                0x0000..=0x0FFF => Ok(self.chr_rom[self.lo_chr_rom][address as usize]),
+                0x1000..=0x1FFF => {
+                    Ok(self.chr_rom[self.lo_chr_rom + 1][(address & 0x0FFF) as usize])
+                }
+                _ => Err(Box::new(InvalidMapperReadError(address))),
             },
             ChrRomBankMode::Switch4 => match address {
-                0x0000..=0x0FFF => self.chr_rom[self.lo_chr_rom][address as usize],
-                0x1000..=0x1FFF => self.chr_rom[self.hi_chr_rom][(address & 0x0FFF) as usize],
-                _ => panic!("Invalid address given to PPU bus : {:#X}", address),
+                0x0000..=0x0FFF => Ok(self.chr_rom[self.lo_chr_rom][address as usize]),
+                0x1000..=0x1FFF => Ok(self.chr_rom[self.hi_chr_rom][(address & 0x0FFF) as usize]),
+                _ => Err(Box::new(InvalidMapperReadError(address))),
             },
         }
     }
 
-    fn chr_rom_write(&mut self, address: u16, value: u8) {
+    fn chr_rom_write(&mut self, address: u16, value: u8) -> Result<(), Box<dyn Error>> {
         match self.get_chr_rom_bank_mode() {
             ChrRomBankMode::Switch8 => match address {
-                0x0000..=0x0FFF => self.chr_rom[self.lo_chr_rom][address as usize] = value,
-                0x1000..=0x1FFF => {
-                    self.chr_rom[self.lo_chr_rom + 1][(address & 0x0FFF) as usize] = value
+                0x0000..=0x0FFF => {
+                    self.chr_rom[self.lo_chr_rom][address as usize] = value;
+                    Ok(())
                 }
-                _ => panic!("Invalid address given to PPU bus : {:#X}", address),
+                0x1000..=0x1FFF => {
+                    self.chr_rom[self.lo_chr_rom + 1][(address & 0x0FFF) as usize] = value;
+                    Ok(())
+                }
+                _ => Err(Box::new(InvalidMapperWriteError(address))),
             },
             ChrRomBankMode::Switch4 => match address {
-                0x0000..=0x0FFF => self.chr_rom[self.lo_chr_rom][address as usize] = value,
-                0x1000..=0x1FFF => {
-                    self.chr_rom[self.hi_chr_rom][(address & 0x0FFF) as usize] = value
+                0x0000..=0x0FFF => {
+                    self.chr_rom[self.lo_chr_rom][address as usize] = value;
+                    Ok(())
                 }
-                _ => panic!("Invalid address given to PPU bus : {:#X}", address),
+                0x1000..=0x1FFF => {
+                    self.chr_rom[self.hi_chr_rom][(address & 0x0FFF) as usize] = value;
+                    Ok(())
+                }
+                _ => Err(Box::new(InvalidMapperWriteError(address))),
             },
         }
     }
@@ -234,7 +248,7 @@ impl Mapper for Mapper1 {
             1 => Mirroring::OneScreenUpper,
             2 => Mirroring::Vertical,
             3 => Mirroring::Horizontal,
-            _ => panic!("Unreachable pattern"),
+            _ => unreachable!(),
         }
     }
 

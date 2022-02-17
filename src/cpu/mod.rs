@@ -72,12 +72,18 @@ impl Cpu {
 
     // Reads data from the bus at the given address
     fn read_bus(&self, address: u16) -> u8 {
-        self.p_bus.borrow_mut().read(address)
+        match self.p_bus.borrow_mut().read(address) {
+            Ok(data) => data,
+            Err(e) => panic!("{}", e),
+        }
     }
 
     // Writes data to the bus at the given address
     fn write_bus(&mut self, address: u16, data: u8) {
-        self.p_bus.borrow_mut().write(address, data);
+        match self.p_bus.borrow_mut().write(address, data) {
+            Ok(data) => data,
+            Err(e) => panic!("{}", e),
+        }
     }
 
     // Pushes data to stack
@@ -1226,7 +1232,10 @@ impl Cpu {
     }
 
     fn read_only_bus(&self, address: u16) -> u8 {
-        self.p_bus.borrow().read_only(address)
+        match self.p_bus.borrow().read_only(address) {
+            Ok(data) => data,
+            Err(e) => panic!("{}", e),
+        }
     }
 
     fn dissassemble(&self, opcode: u8, parameters: Vec<u8>) -> String {

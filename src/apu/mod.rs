@@ -7,11 +7,12 @@ pub mod pulse;
 pub mod sweep;
 pub mod triangle;
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, error::Error, rc::Rc};
 
 use crate::{
     bus::Bus,
     cpu::{enums::Interrupt, Cpu},
+    errors::{InvalidAPURegisterReadError, InvalidAPURegisterWriteError},
 };
 
 use {
@@ -109,7 +110,7 @@ impl Apu {
         self.dmc.attach_bus_and_cpu(p_bus, p_cpu);
     }
 
-    pub fn read_register(&mut self, address: u16) -> u8 {
+    pub fn read_register(&mut self, address: u16) -> Result<u8, Box<dyn Error>> {
         match address {
             0x4015 => {
                 let mut status: u8 = 0;
@@ -121,13 +122,13 @@ impl Apu {
                 status |= (self.frame_interrupt as u8) << 6;
                 status |= (self.dmc.interrupt_flag as u8) << 7;
                 self.frame_interrupt = false;
-                status
+                Ok(status)
             }
-            _ => 0,
+            _ => Err(Box::new(InvalidAPURegisterReadError(address))),
         }
     }
 
-    pub fn read_only_register(&self, address: u16) -> u8 {
+    pub fn read_only_register(&self, address: u16) -> Result<u8, Box<dyn Error>> {
         match address {
             0x4015 => {
                 let mut status: u8 = 0;
@@ -138,13 +139,13 @@ impl Apu {
                 status |= (self.dmc.is_active() as u8) << 4;
                 status |= (self.frame_interrupt as u8) << 6;
                 status |= (self.dmc.interrupt_flag as u8) << 7;
-                status
+                Ok(status)
             }
-            _ => 0,
+            _ => Err(Box::new(InvalidAPURegisterReadError(address))),
         }
     }
 
-    pub fn write_register(&mut self, address: u16, value: u8) {
+    pub fn write_register(&mut self, address: u16, value: u8) -> Result<(), Box<dyn Error>> {
         match address {
             0x4000 => self.pulse1.set_control(value),
             0x4001 => self.pulse1.set_sweep(value),
@@ -181,20 +182,21 @@ impl Apu {
                         self.instant_clock = true;
                         Mode::Step5
                     }
-                    _ => panic!("unreachable pattern"),
+                    _ => unreachable!(),
                 };
                 self.interrupt_inhibit = value & 0x40 > 0;
                 if self.interrupt_inhibit {
                     self.frame_interrupt = false;
                 }
             }
-            _ => panic!("Invalid address given to APU: {:#X}", address),
+            _ => return Err(Box::new(InvalidAPURegisterWriteError(address))),
         }
+        Ok(())
     }
 
     pub fn reset(&mut self) {
-        self.write_register(0x4015, 0x00);
-        self.write_register(0x4017, self.last_4017_value);
+        self.write_register(0x4015, 0x00).unwrap();
+        self.write_register(0x4017, self.last_4017_value).unwrap();
         self.triangle.reset();
         self.dmc.reset();
     }

@@ -1,3 +1,7 @@
+use std::error::Error;
+
+use crate::errors::{InvalidPPURegisterReadError, InvalidPPURegisterWriteError};
+
 use super::{
     bus::PPUBus,
     enums::{ControlFlag, MaskFlag, StatusFlag, VRAMAddressMask},
@@ -70,7 +74,13 @@ impl Registers {
     }
 
     // Writes value to one of the PPU registers
-    pub fn write_register(&mut self, ppu_bus: &mut PPUBus, oam: &mut Oam, address: u16, value: u8) {
+    pub fn write_register(
+        &mut self,
+        ppu_bus: &mut PPUBus,
+        oam: &mut Oam,
+        address: u16,
+        value: u8,
+    ) -> Result<(), Box<dyn Error>> {
         match address {
             0x2000 => {
                 let is_previous_nmi_flag_set = self.ctrl & 0x80 > 0;
@@ -140,7 +150,9 @@ impl Registers {
             }
             0x2007 => {
                 self.data = value;
-                ppu_bus.write(ppu_bus.vram_address.address & 0x3FFF, value);
+                ppu_bus
+                    .write(ppu_bus.vram_address.address & 0x3FFF, value)
+                    .unwrap();
                 if self.get_control_flag(ControlFlag::VRAMAddressIncrement) == 0 {
                     ppu_bus.vram_address.address += 1; // Horizontal scrolling
                 } else {
@@ -151,40 +163,47 @@ impl Registers {
                 self.oam_dma = value;
                 self.perform_dma = true;
             }
-            _ => panic!("Wrong address given to PPU : {:#x}", address),
+            _ => return Err(Box::new(InvalidPPURegisterWriteError(address))),
         }
         self.decay = value;
         self.decay_timer = 0;
+        Ok(())
     }
 
     // Reads value from one of the PPU registers
-    pub fn read_register(&mut self, ppu_bus: &mut PPUBus, oam: &Oam, address: u16) -> u8 {
-        let mut value: u8;
+    pub fn read_register(
+        &mut self,
+        ppu_bus: &mut PPUBus,
+        oam: &Oam,
+        address: u16,
+    ) -> Result<u8, Box<dyn Error>> {
         match address {
-            0x2000 => value = self.decay,
-            0x2001 => value = self.decay,
+            0x2000 => Ok(self.decay),
+            0x2001 => Ok(self.decay),
             0x2002 => {
-                value = (self.status & 0xE0) | (self.decay & 0x1F);
+                let value = (self.status & 0xE0) | (self.decay & 0x1F);
                 self.decay = value;
                 self.clear_vbl = true;
                 self.emit_nmi = false;
                 self.w = false;
+                Ok(value)
             }
-            0x2003 => value = self.decay,
+            0x2003 => Ok(self.decay),
             0x2004 => {
-                value = oam.read_primary(self.oam_addr);
+                let value = oam.read_primary(self.oam_addr);
                 self.decay = value;
+                Ok(value)
             }
-            0x2005 => value = self.decay,
-            0x2006 => value = self.decay,
+            0x2005 => Ok(self.decay),
+            0x2006 => Ok(self.decay),
             0x2007 => {
                 // Read to 2007 is delayed by one read except for the palette
-                value = self.data_buffer;
-                self.data_buffer = ppu_bus.read(ppu_bus.vram_address.address);
+                let mut value = self.data_buffer;
+                self.data_buffer = ppu_bus.read(ppu_bus.vram_address.address).unwrap();
                 if ppu_bus.vram_address.address >= 0x3F00 {
                     value = (self.decay & 0xC0) | (self.data_buffer & 0x3F);
                     // Fill the buffer with the mirrored nametable "under" palette RAM
-                    self.data_buffer = ppu_bus.read(ppu_bus.vram_address.address & 0x2FFF);
+                    self.data_buffer = ppu_bus.read(ppu_bus.vram_address.address & 0x2FFF).unwrap();
                 }
                 self.decay = value;
                 // Increment VRAM Address
@@ -193,11 +212,11 @@ impl Registers {
                 } else {
                     ppu_bus.vram_address.address += 32; // Vertical scrolling
                 }
+                Ok(value)
             }
-            0x4014 => panic!("4014 is not readable !"),
-            _ => panic!("Wrong address given to PPU : {:#x}", address),
+            0x4014 => Err(Box::new(InvalidPPURegisterReadError(address))),
+            _ => Err(Box::new(InvalidPPURegisterReadError(address))),
         }
-        value
     }
 
     // Sets the flags for the status register
@@ -228,21 +247,18 @@ impl Registers {
     }
 
     // Used for debugging
-    #[allow(dead_code)]
-    pub fn read_register_without_modification(&self, address: u16) -> u8 {
-        let value: u8;
+    pub fn read_only_register(&self, address: u16) -> Result<u8, Box<dyn Error>> {
         match address {
-            0x2000 => value = self.ctrl,
-            0x2001 => value = self.mask,
-            0x2002 => value = self.status,
-            0x2003 => value = self.oam_addr,
-            0x2004 => value = self.oam_data,
-            0x2005 => value = self.scroll,
-            0x2006 => value = self.addr,
-            0x2007 => value = self.data_buffer,
-            0x4014 => value = self.oam_dma,
-            _ => panic!("Wrong address given to PPU : {:#x}", address),
+            0x2000 => Ok(self.ctrl),
+            0x2001 => Ok(self.mask),
+            0x2002 => Ok(self.status),
+            0x2003 => Ok(self.oam_addr),
+            0x2004 => Ok(self.oam_data),
+            0x2005 => Ok(self.scroll),
+            0x2006 => Ok(self.addr),
+            0x2007 => Ok(self.data_buffer),
+            0x4014 => Ok(self.oam_dma),
+            _ => Err(Box::new(InvalidPPURegisterReadError(address))),
         }
-        value
     }
 }

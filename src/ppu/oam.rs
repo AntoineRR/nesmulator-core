@@ -27,7 +27,7 @@ impl Oam {
             2 => self.primary[sprite_index].attribute = data & 0xE3,
             // X
             3 => self.primary[sprite_index].x = data,
-            _ => panic!("Impossible to reach pattern"),
+            _ => unreachable!(),
         }
     }
 
@@ -42,7 +42,7 @@ impl Oam {
             2 => self.primary[sprite_index].attribute & 0xE3,
             // X
             3 => self.primary[sprite_index].x,
-            _ => panic!("Impossible to reach pattern"),
+            _ => unreachable!(),
         }
     }
 
@@ -57,7 +57,7 @@ impl Oam {
             2 => self.secondary[sprite_index].attribute = data,
             // X
             3 => self.secondary[sprite_index].x = data,
-            _ => panic!("Unreachable pattern"),
+            _ => unreachable!(),
         }
     }
 }

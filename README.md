@@ -45,7 +45,6 @@ See [TESTS.md](./TESTS.md) for details about tests.
 ## To do
 
 * Pass more tests
-* Improve error handling and add more logs
 * Add a save state system
 * Allow to configure the save path
 * Improve mapper 1

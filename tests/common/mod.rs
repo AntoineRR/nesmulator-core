@@ -28,13 +28,13 @@ pub fn run_rom(rom_path: &str) {
         // Check if the data at 0x6000 has a valid value
         // This happens when 0x6001-0x6003 = [0xDE, 0xB0, 0x61]
         for i in 0..3 {
-            if nes.read_memory_at(TEST_RUNNING_ADDRESSES[i]) != TEST_RUNNING_BYTES[i] {
+            if nes.read_memory_at(TEST_RUNNING_ADDRESSES[i]).unwrap() != TEST_RUNNING_BYTES[i] {
                 continue 'test;
             }
         }
 
         // 0x80 means the code is still processing
-        let return_code = nes.read_memory_at(RETURN_CODE_ADDRESS);
+        let return_code = nes.read_memory_at(RETURN_CODE_ADDRESS).unwrap();
         match return_code {
             0x80 => continue,
             0x81 => {
@@ -51,13 +51,13 @@ pub fn run_rom(rom_path: &str) {
     }
 
     println!("{}", read_message(&mut nes));
-    assert_eq!(nes.read_memory_at(RETURN_CODE_ADDRESS), 0x00);
+    assert_eq!(nes.read_memory_at(RETURN_CODE_ADDRESS).unwrap(), 0x00);
 }
 
 fn read_message(nes: &mut NES) -> String {
     let mut msg_bytes = vec![];
     for i in MESSAGE_ADDRESS.. {
-        let byte = nes.read_memory_at(i);
+        let byte = nes.read_memory_at(i).unwrap();
         if byte == END_OF_MESSAGE {
             break;
         }

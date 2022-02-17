@@ -44,7 +44,7 @@ impl Pulse {
             1 => self.duty = Duty::Wave250,
             2 => self.duty = Duty::Wave500,
             3 => self.duty = Duty::WaveInv250,
-            _ => panic!("Unreachable pattern"),
+            _ => unreachable!(),
         }
         self.sequence = DUTIES[self.duty as usize];
         self.length_counter
