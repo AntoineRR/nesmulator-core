@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 use super::{envelope::Envelope, length_counter::LengthCounter, sweep::SweepUnit};
 
 const DUTIES: [u8; 4] = [0b0100_0000, 0b0110_0000, 0b0111_1000, 0b1001_1111];
 
 #[repr(usize)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 enum Duty {
     Wave125 = 0,
     Wave250 = 1,
@@ -11,6 +13,7 @@ enum Duty {
     WaveInv250 = 3,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Pulse {
     pub length_counter: LengthCounter,
     pub sweep: SweepUnit,

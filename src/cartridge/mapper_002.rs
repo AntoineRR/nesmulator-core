@@ -1,23 +1,24 @@
 // Mapper 2 : UNROM
 
-use std::error::Error;
+use std::{any::Any, error::Error};
 
-use super::mapper::{INesHeader, Mapper, Mirroring};
-use crate::errors::{InvalidMapperReadError, InvalidMapperWriteError};
+use serde::{Deserialize, Serialize};
+
+use super::mapper::{INesHeader, Mapper, MapperState, Mirroring};
+use crate::{
+    errors::{InvalidMapperReadError, InvalidMapperWriteError},
+    state::Stateful,
+};
 
 pub struct Mapper2 {
     header: INesHeader,
     lo_prg_rom: usize,
-    prg_rom: Vec<[u8; 16 * 1024]>,
-    chr_rom: Vec<[u8; 8 * 1024]>,
+    prg_rom: Vec<[u8; 0x4000]>,
+    chr_rom: Vec<[u8; 0x2000]>,
 }
 
 impl Mapper2 {
-    pub fn new(
-        prg_rom: Vec<[u8; 16 * 1024]>,
-        chr_rom: Vec<[u8; 8 * 1024]>,
-        header: INesHeader,
-    ) -> Self {
+    pub fn new(prg_rom: Vec<[u8; 0x4000]>, chr_rom: Vec<[u8; 0x2000]>, header: INesHeader) -> Self {
         Mapper2 {
             header,
             lo_prg_rom: 0,
@@ -68,5 +69,45 @@ impl Mapper for Mapper2 {
 
     fn get_mirroring(&self) -> Mirroring {
         self.header.mirroring
+    }
+
+    fn get_mapper_state(&self) -> Box<dyn MapperState> {
+        Box::new(self.get_state())
+    }
+
+    fn set_mapper_state(&mut self, state: &Box<dyn MapperState>) {
+        match state.as_any().downcast_ref::<Mapper2State>() {
+            Some(s) => self.set_state(s),
+            None => panic!("State is not a Mapper2State"),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Mapper2State {
+    header: INesHeader,
+    lo_prg_rom: usize,
+}
+
+#[typetag::serde]
+impl MapperState for Mapper2State {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl Stateful for Mapper2 {
+    type State = Mapper2State;
+
+    fn get_state(&self) -> Self::State {
+        Mapper2State {
+            header: self.header.clone(),
+            lo_prg_rom: self.lo_prg_rom,
+        }
+    }
+
+    fn set_state(&mut self, state: &Self::State) {
+        self.header = state.header.clone();
+        self.lo_prg_rom = state.lo_prg_rom;
     }
 }

@@ -13,6 +13,7 @@ mod controllers;
 mod cpu;
 mod errors;
 mod ppu;
+mod state;
 
 /// Configuration to pass to the emulator.
 #[derive(Clone)]

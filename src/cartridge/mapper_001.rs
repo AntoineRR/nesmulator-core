@@ -1,5 +1,6 @@
 // Mapper 1 : MMC1
 
+use std::any::Any;
 use std::convert::TryInto;
 use std::error::Error;
 use std::fs::{self, File};
@@ -7,10 +8,13 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use log::debug;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::errors::{InvalidMapperReadError, InvalidMapperWriteError};
+use crate::state::Stateful;
 
-use super::mapper::{INesHeader, Mapper, Mirroring};
+use super::mapper::{INesHeader, Mapper, MapperState, Mirroring};
 
 #[derive(Debug)]
 enum PrgRomBankMode {
@@ -271,5 +275,71 @@ impl Mapper for Mapper1 {
             return Ok(());
         }
         Err("ROM has no persistent memory".into())
+    }
+
+    fn get_mapper_state(&self) -> Box<dyn MapperState> {
+        Box::new(self.get_state())
+    }
+
+    fn set_mapper_state(&mut self, state: &Box<dyn MapperState>) {
+        match state.as_any().downcast_ref::<Mapper1State>() {
+            Some(s) => self.set_state(s),
+            None => panic!("State is not a Mapper1State"),
+        }
+    }
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct Mapper1State {
+    header: INesHeader,
+    lo_prg_rom: usize,
+    hi_prg_rom: usize,
+    lo_chr_rom: usize,
+    hi_chr_rom: usize,
+    #[serde_as(as = "[_; 0x2000]")]
+    ram: [u8; 0x2000],
+    ram_disabled: bool,
+    shift_register: u8,
+    n_bit_loaded: u8,
+    control_register: u8,
+}
+
+#[typetag::serde]
+impl MapperState for Mapper1State {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl Stateful for Mapper1 {
+    type State = Mapper1State;
+
+    fn get_state(&self) -> Self::State {
+        Mapper1State {
+            header: self.header.clone(),
+            lo_prg_rom: self.lo_prg_rom,
+            hi_prg_rom: self.hi_prg_rom,
+            lo_chr_rom: self.lo_chr_rom,
+            hi_chr_rom: self.hi_chr_rom,
+            ram: self.ram,
+            ram_disabled: self.ram_disabled,
+            shift_register: self.shift_register,
+            n_bit_loaded: self.n_bit_loaded,
+            control_register: self.control_register,
+        }
+    }
+
+    fn set_state(&mut self, state: &Self::State) {
+        self.header = state.header.clone();
+        self.lo_prg_rom = state.lo_prg_rom;
+        self.hi_prg_rom = state.hi_prg_rom;
+        self.lo_chr_rom = state.lo_chr_rom;
+        self.hi_chr_rom = state.hi_chr_rom;
+        self.ram = state.ram;
+        self.ram_disabled = state.ram_disabled;
+        self.shift_register = state.shift_register;
+        self.n_bit_loaded = state.n_bit_loaded;
+        self.control_register = state.control_register;
     }
 }

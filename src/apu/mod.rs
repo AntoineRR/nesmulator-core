@@ -1,19 +1,26 @@
-pub mod dmc;
-pub mod envelope;
-pub mod filters;
-pub mod length_counter;
-pub mod noise;
-pub mod pulse;
-pub mod sweep;
-pub mod triangle;
+pub mod state;
+
+mod dmc;
+mod envelope;
+mod filters;
+mod length_counter;
+mod noise;
+mod pulse;
+mod sweep;
+mod triangle;
 
 use std::{cell::RefCell, error::Error, rc::Rc};
+
+use serde::{Deserialize, Serialize};
 
 use crate::{
     bus::Bus,
     cpu::{enums::Interrupt, Cpu},
     errors::{InvalidAPURegisterReadError, InvalidAPURegisterWriteError},
+    state::Stateful,
 };
+
+use self::state::ApuState;
 
 use {
     dmc::Dmc,
@@ -29,7 +36,7 @@ const STEP_3: u64 = 22371;
 const STEP_4: u64 = 29829;
 const STEP_5: u64 = 37281;
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 enum Mode {
     Step4,
     Step5,
@@ -103,6 +110,12 @@ impl Apu {
                 Box::new(LowPassFilter::new(14000, sample_rate)),
             ],
         }
+    }
+
+    pub fn from_state(state: &ApuState, ppu_clock_frequency: u64) -> Self {
+        let mut apu = Apu::new(ppu_clock_frequency);
+        apu.set_state(state);
+        apu
     }
 
     pub fn attach_bus_and_cpu(&mut self, p_bus: Rc<RefCell<Bus>>, p_cpu: Rc<RefCell<Cpu>>) {

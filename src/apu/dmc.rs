@@ -2,6 +2,9 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::bus::Bus;
 use crate::cpu::{enums::Interrupt, Cpu};
+use crate::state::Stateful;
+
+use super::state::DmcState;
 
 const DMC_RATE: [u16; 16] = [
     428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54,
@@ -56,6 +59,12 @@ impl Dmc {
 
             output_level: 0,
         }
+    }
+
+    pub fn from_state(state: &DmcState) -> Self {
+        let mut dmc = Dmc::new();
+        dmc.set_state(state);
+        dmc
     }
 
     pub fn attach_bus_and_cpu(&mut self, p_bus: Rc<RefCell<Bus>>, p_cpu: Rc<RefCell<Cpu>>) {
@@ -173,5 +182,45 @@ impl Dmc {
 
     pub fn get_output(&self) -> u8 {
         self.output_level
+    }
+}
+
+impl Stateful for Dmc {
+    type State = DmcState;
+
+    fn get_state(&self) -> Self::State {
+        DmcState {
+            interrupt_flag: self.interrupt_flag,
+            irq_enabled: self.irq_enabled,
+            loop_flag: self.loop_flag,
+            sample_address: self.sample_address,
+            sample_length: self.sample_length,
+            sample_buffer: self.sample_buffer,
+            current_address: self.current_address,
+            bytes_remaining: self.bytes_remaining,
+            silence_flag: self.silence_flag,
+            output_shift_register: self.output_shift_register,
+            bits_remaining: self.bits_remaining,
+            timer: self.timer,
+            rate: self.rate,
+            output_level: self.output_level,
+        }
+    }
+
+    fn set_state(&mut self, state: &Self::State) {
+        self.interrupt_flag = state.interrupt_flag;
+        self.irq_enabled = state.irq_enabled;
+        self.loop_flag = state.loop_flag;
+        self.sample_address = state.sample_address;
+        self.sample_length = state.sample_length;
+        self.sample_buffer = state.sample_buffer;
+        self.current_address = state.current_address;
+        self.bytes_remaining = state.bytes_remaining;
+        self.silence_flag = state.silence_flag;
+        self.output_shift_register = state.output_shift_register;
+        self.bits_remaining = state.bits_remaining;
+        self.timer = state.timer;
+        self.rate = state.rate;
+        self.output_level = state.output_level;
     }
 }

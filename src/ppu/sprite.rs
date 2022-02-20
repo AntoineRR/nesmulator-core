@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use super::enums::SpriteAttribute;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Sprite {
     pub y: u8,
     pub id: u8,

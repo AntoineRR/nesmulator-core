@@ -1,9 +1,14 @@
 // Reprensents the OAM (Object Attribute Memory) of the PPU
 
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+
 use super::sprite::Sprite;
 
-#[derive(Debug)]
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Oam {
+    #[serde_as(as = "[_; 64]")]
     pub primary: [Sprite; 64],
     pub secondary: [Sprite; 8],
 }

@@ -1,15 +1,21 @@
 // Mapper 3 : CNROM
 
-use std::error::Error;
+use std::{any::Any, error::Error};
+
+use serde::{Deserialize, Serialize};
 
 use super::mapper::{INesHeader, Mapper, Mirroring};
-use crate::errors::{InvalidMapperReadError, InvalidMapperWriteError};
+use crate::{
+    cartridge::mapper::MapperState,
+    errors::{InvalidMapperReadError, InvalidMapperWriteError},
+    state::Stateful,
+};
 
 pub struct Mapper3 {
     header: INesHeader,
     selected_chr_rom: usize,
-    prg_rom: Vec<[u8; 16 * 1024]>,
-    chr_rom: Vec<[u8; 8 * 1024]>,
+    prg_rom: Vec<[u8; 0x4000]>,
+    chr_rom: Vec<[u8; 0x2000]>,
 }
 
 impl Mapper3 {
@@ -68,5 +74,45 @@ impl Mapper for Mapper3 {
 
     fn get_mirroring(&self) -> Mirroring {
         self.header.mirroring
+    }
+
+    fn get_mapper_state(&self) -> Box<dyn MapperState> {
+        Box::new(self.get_state())
+    }
+
+    fn set_mapper_state(&mut self, state: &Box<dyn MapperState>) {
+        match state.as_any().downcast_ref::<Mapper3State>() {
+            Some(s) => self.set_state(s),
+            None => panic!("State is not a Mapper3State"),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Mapper3State {
+    header: INesHeader,
+    selected_chr_rom: usize,
+}
+
+#[typetag::serde]
+impl MapperState for Mapper3State {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl Stateful for Mapper3 {
+    type State = Mapper3State;
+
+    fn get_state(&self) -> Self::State {
+        Mapper3State {
+            header: self.header.clone(),
+            selected_chr_rom: self.selected_chr_rom,
+        }
+    }
+
+    fn set_state(&mut self, state: &Self::State) {
+        self.header = state.header.clone();
+        self.selected_chr_rom = state.selected_chr_rom;
     }
 }

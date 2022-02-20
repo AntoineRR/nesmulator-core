@@ -7,11 +7,14 @@ use std::error::Error;
 use std::rc::Rc;
 
 use log::debug;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::apu::Apu;
 use crate::cartridge::mapper::Mapper;
 use crate::controllers::Controller;
 use crate::ppu::Ppu;
+use crate::state::Stateful;
 
 // ===== CONSTANTS =====
 
@@ -42,6 +45,12 @@ impl Bus {
 
             controllers: [Controller::new(); 2],
         }
+    }
+
+    pub fn from_state(state: &BusState, p_ppu: Rc<RefCell<Ppu>>, p_apu: Rc<RefCell<Apu>>) -> Self {
+        let mut bus = Bus::new(p_ppu, p_apu);
+        bus.set_state(state);
+        bus
     }
 
     pub fn set_mapper(&mut self, p_mapper: MapperRc) {
@@ -278,5 +287,29 @@ impl Bus {
             }
         }
         Ok(())
+    }
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct BusState {
+    #[serde_as(as = "[_; 0x0800]")]
+    cpu_ram: [u8; 0x0800],
+    controllers: [Controller; 2],
+}
+
+impl Stateful for Bus {
+    type State = BusState;
+
+    fn get_state(&self) -> Self::State {
+        BusState {
+            cpu_ram: self.cpu_ram,
+            controllers: self.controllers,
+        }
+    }
+
+    fn set_state(&mut self, state: &Self::State) {
+        self.cpu_ram = state.cpu_ram;
+        self.controllers = state.controllers;
     }
 }

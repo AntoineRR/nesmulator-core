@@ -1,5 +1,7 @@
 pub mod enums;
-pub mod instructions;
+pub mod state;
+
+mod instructions;
 
 // Implements the CPU of the NES, i.e. a component
 // with a similar behavior as the rp2A03 / 6502
@@ -11,8 +13,11 @@ use std::rc::Rc;
 
 use crate::bus::Bus;
 use crate::bus::STACK_OFFSET;
+use crate::state::Stateful;
 use enums::{AdressingMode as am, Flag, Interrupt};
 use instructions::{CpuInstruction, INSTRUCTIONS};
+
+use self::state::CpuState;
 
 // ===== CPU STRUCT =====
 
@@ -66,6 +71,12 @@ impl Cpu {
 
             p_bus,
         }
+    }
+
+    pub fn from_state(state: &CpuState, p_bus: Rc<RefCell<Bus>>, display_logs: bool) -> Self {
+        let mut cpu = Cpu::new(p_bus, display_logs);
+        cpu.set_state(state);
+        cpu
     }
 
     // ===== BUS ACCESS =====

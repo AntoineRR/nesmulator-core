@@ -1,23 +1,25 @@
 // Mapper 0 : NROM
 
-use std::error::Error;
+use std::{any::Any, error::Error};
 
-use super::mapper::{INesHeader, Mapper, Mirroring};
-use crate::errors::{InvalidMapperReadError, InvalidMapperWriteError};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+
+use super::mapper::{INesHeader, Mapper, MapperState, Mirroring};
+use crate::{
+    errors::{InvalidMapperReadError, InvalidMapperWriteError},
+    state::Stateful,
+};
 
 pub struct Mapper0 {
     header: INesHeader,
-    prg_rom: Vec<[u8; 16 * 1024]>,
-    chr_rom: Vec<[u8; 8 * 1024]>,
+    prg_rom: Vec<[u8; 0x4000]>,
+    chr_rom: Vec<[u8; 0x2000]>,
     ram: [u8; 0x2000], // There can be RAM on Family Basic ROMs
 }
 
 impl Mapper0 {
-    pub fn new(
-        prg_rom: Vec<[u8; 16 * 1024]>,
-        chr_rom: Vec<[u8; 8 * 1024]>,
-        header: INesHeader,
-    ) -> Self {
+    pub fn new(prg_rom: Vec<[u8; 0x4000]>, chr_rom: Vec<[u8; 0x2000]>, header: INesHeader) -> Self {
         Mapper0 {
             header,
             prg_rom,
@@ -68,5 +70,47 @@ impl Mapper for Mapper0 {
 
     fn get_mirroring(&self) -> Mirroring {
         self.header.mirroring
+    }
+
+    fn get_mapper_state(&self) -> Box<dyn MapperState> {
+        Box::new(self.get_state())
+    }
+
+    fn set_mapper_state(&mut self, state: &Box<dyn MapperState>) {
+        match state.as_any().downcast_ref::<Mapper0State>() {
+            Some(s) => self.set_state(s),
+            None => panic!("State is not a Mapper0State"),
+        }
+    }
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct Mapper0State {
+    header: INesHeader,
+    #[serde_as(as = "[_; 0x2000]")]
+    ram: [u8; 0x2000],
+}
+
+#[typetag::serde]
+impl MapperState for Mapper0State {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl Stateful for Mapper0 {
+    type State = Mapper0State;
+
+    fn get_state(&self) -> Self::State {
+        Mapper0State {
+            header: self.header.clone(),
+            ram: self.ram,
+        }
+    }
+
+    fn set_state(&mut self, state: &Self::State) {
+        self.header = state.header.clone();
+        self.ram = state.ram;
     }
 }

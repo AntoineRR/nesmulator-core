@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use super::length_counter::LengthCounter;
 
 const TRIANGLE_STEPS: [u8; 32] = [
@@ -5,6 +7,7 @@ const TRIANGLE_STEPS: [u8; 32] = [
     13, 14, 15,
 ];
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Triangle {
     pub length_counter: LengthCounter,
 

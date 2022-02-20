@@ -1,9 +1,11 @@
-pub mod bus;
-pub mod enums;
-pub mod oam;
-pub mod palette;
-pub mod registers;
-pub mod sprite;
+pub mod state;
+
+mod bus;
+mod enums;
+mod oam;
+mod palette;
+mod registers;
+mod sprite;
 
 // Represents the PPU of the NES i.e. a component
 // with a similar behaviour as the 2C02
@@ -20,7 +22,9 @@ use oam::Oam;
 use palette::Palette;
 use registers::Registers;
 
-use crate::{cartridge::mapper::Mapper, utils::ARGBColor};
+use crate::{cartridge::mapper::Mapper, state::Stateful, utils::ARGBColor};
+
+use self::state::PpuState;
 
 // ===== CONSTANTS =====
 
@@ -135,6 +139,12 @@ impl Ppu {
 
             debug_palette_id: 0,
         }
+    }
+
+    pub fn from_state(state: &PpuState, palette_path: &Option<String>) -> Self {
+        let mut ppu = Ppu::new(palette_path);
+        ppu.set_state(state);
+        ppu
     }
 
     pub fn set_mapper(&mut self, p_mapper: MapperRc) {

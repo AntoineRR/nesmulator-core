@@ -1,5 +1,7 @@
 use std::error::Error;
 
+use serde::{Deserialize, Serialize};
+
 use crate::errors::{InvalidPPURegisterReadError, InvalidPPURegisterWriteError};
 
 use super::{
@@ -10,7 +12,7 @@ use super::{
 
 // Reprensents the PPU registers
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Registers {
     // PPU registers
     ctrl: u8,

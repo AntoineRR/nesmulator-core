@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 /// A utiliy struct to represent an color.
 /// The alpha channel is not calculated by the emulator (set to 255).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ARGBColor {
     pub alpha: u8,
     pub red: u8,

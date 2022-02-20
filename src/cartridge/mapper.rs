@@ -1,21 +1,28 @@
+use std::any::Any;
 use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 
 use log::debug;
+use serde::{Deserialize, Serialize};
 
 use crate::cartridge::mapper_000::Mapper0;
 use crate::cartridge::mapper_001::Mapper1;
 use crate::cartridge::mapper_002::Mapper2;
 use crate::cartridge::mapper_003::Mapper3;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Mirroring {
     Horizontal,
     Vertical,
     OneScreenLower,
     OneScreenUpper,
     FourScreens,
+}
+
+#[typetag::serde(tag = "type")]
+pub trait MapperState {
+    fn as_any(&self) -> &dyn Any;
 }
 
 pub trait Mapper {
@@ -30,10 +37,12 @@ pub trait Mapper {
     fn save_persistent_memory(&self) -> Result<(), Box<dyn Error>> {
         Err("ROM has no persistent memory".into())
     }
+    fn get_mapper_state(&self) -> Box<dyn MapperState>;
+    fn set_mapper_state(&mut self, state: &Box<dyn MapperState>);
 }
 
 // Header of the iNES format
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct INesHeader {
     pub path_to_rom: String,
 

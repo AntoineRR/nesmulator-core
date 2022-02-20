@@ -4,18 +4,21 @@
 
 use std::{cell::RefCell, error::Error, rc::Rc};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     cartridge::mapper::{Mapper, Mirroring},
     errors::{InvalidPPUBusReadError, InvalidPPUBusWriteError},
+    state::Stateful,
 };
 
-use super::enums::VRAMAddressMask;
+use super::{enums::VRAMAddressMask, state::PpuBusState};
 
 type MapperRc = Rc<RefCell<Box<dyn Mapper>>>;
 
 // ===== STRUCT =====
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct VRAMAddress {
     pub address: u16,
 }
@@ -92,6 +95,12 @@ impl PPUBus {
 
             o_p_mapper: None,
         }
+    }
+
+    pub fn from_state(state: &PpuBusState) -> Self {
+        let mut bus = PPUBus::new();
+        bus.set_state(state);
+        bus
     }
 
     pub fn set_mapper(&mut self, p_mapper: MapperRc) {
@@ -202,5 +211,25 @@ impl PPUBus {
         };
         self.palette_table[index as usize] = value;
         Ok(())
+    }
+}
+
+impl Stateful for PPUBus {
+    type State = PpuBusState;
+
+    fn get_state(&self) -> Self::State {
+        PpuBusState {
+            name_tables: self.name_tables,
+            palette_table: self.palette_table,
+            vram_address: self.vram_address,
+            tmp_vram_address: self.tmp_vram_address,
+        }
+    }
+
+    fn set_state(&mut self, state: &Self::State) {
+        self.name_tables = state.name_tables;
+        self.palette_table = state.palette_table;
+        self.vram_address = state.vram_address;
+        self.tmp_vram_address = state.tmp_vram_address;
     }
 }

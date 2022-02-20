@@ -22,6 +22,7 @@ I would also like to pass most of the tests from some tests roms listed in the N
 * [X] Mapper 0, 1, 2 and 3 are implemented
 * [X] A palette in the .pal format can be loaded into the emulator, otherwise a default palette is hardcoded into the emulator
 * [X] ROM from cartridges that had a saving system can save the game in a file with the .sav extension
+* [X] The current state of the emulator can be saved and loaded back at any moment, allowing saving games that do not support saves otherwise
 
 ## How to use
 
@@ -45,7 +46,6 @@ See [TESTS.md](./TESTS.md) for details about tests.
 ## To do
 
 * Pass more tests
-* Add a save state system
 * Allow to configure the save path
 * Improve mapper 1
 

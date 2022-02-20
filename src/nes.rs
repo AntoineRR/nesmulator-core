@@ -2,14 +2,18 @@
 
 use std::cell::RefCell;
 use std::error::Error;
+use std::fs::File;
 use std::rc::Rc;
 use std::time::Duration;
+
+use log::debug;
 
 use crate::apu::Apu;
 use crate::bus::Bus;
 use crate::cartridge::mapper::{get_mapper, Mapper};
 use crate::cpu::{enums::Interrupt, Cpu};
 use crate::ppu::Ppu;
+use crate::state::{NesState, Stateful};
 use crate::utils::ARGBColor;
 use crate::Config;
 
@@ -103,6 +107,7 @@ impl NES {
         }
     }
 
+    /// Restart the NES. This is different from reseting it.
     pub fn restart(&mut self) {
         *self = NES::from_config(self.config.clone());
     }
@@ -286,6 +291,32 @@ impl NES {
         }
     }
 
+    /// Load a NES state from a previously saved state.
+    pub fn load_state(&mut self, state_path: &str, rom_path: &str) -> Result<(), Box<dyn Error>> {
+        let state_file = File::open(state_path)?;
+        let state = &serde_json::from_reader(state_file)?;
+        self.set_state(state);
+        let mut mapper = get_mapper(rom_path)?;
+        mapper.set_mapper_state(&state.mapper);
+        let p_mapper = Rc::new(RefCell::new(mapper));
+
+        self.p_bus.borrow_mut().set_mapper(p_mapper.clone());
+        self.p_ppu.borrow_mut().set_mapper(p_mapper.clone());
+        self.o_p_mapper = Some(p_mapper.clone());
+        self.reset();
+        Ok(())
+    }
+
+    /// Save the current state of the NES.
+    pub fn save_state(&self, state_path: &str) -> Result<(), Box<dyn Error>> {
+        debug!("Saving NES state...");
+        let state = self.get_state();
+        let state_file = File::create(state_path)?;
+        serde_json::to_writer(state_file, &state)?;
+        debug!("Current NES state saved in {}.", state_path);
+        Ok(())
+    }
+
     /// Get the current pattern table.
     /// The number parameter allows to choose a pattern table.
     /// Will return an error if number is not 0 or 1.
@@ -341,5 +372,62 @@ impl NES {
                 }
             }
         }
+    }
+}
+
+impl Stateful for NES {
+    type State = NesState;
+
+    fn get_state(&self) -> Self::State {
+        NesState {
+            bus: self.p_bus.borrow().get_state(),
+            cpu: self.p_cpu.borrow().get_state(),
+            ppu: self.p_ppu.borrow().get_state(),
+            apu: self.p_apu.borrow().get_state(),
+            mapper: self
+                .o_p_mapper
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .get_mapper_state(),
+            total_clock: self.total_clock,
+            dma_started: self.dma_started,
+            dma_hi_address: self.dma_hi_address,
+            dma_base_address: self.dma_base_address,
+            dma_address_offset: self.dma_address_offset,
+            dma_data: self.dma_data,
+            add_samples: self.add_samples,
+        }
+    }
+
+    fn set_state(&mut self, state: &Self::State) {
+        self.p_ppu = Rc::new(RefCell::new(Ppu::from_state(
+            &state.ppu,
+            &self.config.palette_path,
+        )));
+        self.p_apu = Rc::new(RefCell::new(Apu::from_state(
+            &state.apu,
+            PPU_CLOCK_FREQUENCY,
+        )));
+        self.p_bus = Rc::new(RefCell::new(Bus::from_state(
+            &state.bus,
+            self.p_ppu.clone(),
+            self.p_apu.clone(),
+        )));
+        self.p_cpu = Rc::new(RefCell::new(Cpu::from_state(
+            &state.cpu,
+            self.p_bus.clone(),
+            self.config.display_cpu_logs,
+        )));
+        self.p_apu
+            .borrow_mut()
+            .attach_bus_and_cpu(self.p_bus.clone(), self.p_cpu.clone());
+        self.total_clock = state.total_clock;
+        self.dma_started = state.dma_started;
+        self.dma_hi_address = state.dma_hi_address;
+        self.dma_base_address = state.dma_base_address;
+        self.dma_address_offset = state.dma_address_offset;
+        self.dma_data = state.dma_data;
+        self.add_samples = state.add_samples;
     }
 }
