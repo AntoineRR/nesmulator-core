@@ -293,6 +293,7 @@ impl NES {
 
     /// Load a NES state from a previously saved state.
     pub fn load_state(&mut self, state_path: &str, rom_path: &str) -> Result<(), Box<dyn Error>> {
+        debug!("Loading NES state from {}...", state_path);
         let state_file = File::open(state_path)?;
         let state = &serde_json::from_reader(state_file)?;
         self.set_state(state);
@@ -303,7 +304,7 @@ impl NES {
         self.p_bus.borrow_mut().set_mapper(p_mapper.clone());
         self.p_ppu.borrow_mut().set_mapper(p_mapper.clone());
         self.o_p_mapper = Some(p_mapper.clone());
-        self.reset();
+        debug!("State successfully loaded.");
         Ok(())
     }
 
