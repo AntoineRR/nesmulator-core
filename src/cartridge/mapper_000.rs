@@ -90,6 +90,8 @@ pub struct Mapper0State {
     header: INesHeader,
     #[serde_as(as = "[_; 0x2000]")]
     ram: [u8; 0x2000],
+    #[serde_as(as = "Vec<[_; 0x2000]>")]
+    chr_rom: Vec<[u8; 0x2000]>,
 }
 
 #[typetag::serde]
@@ -106,11 +108,13 @@ impl Stateful for Mapper0 {
         Mapper0State {
             header: self.header.clone(),
             ram: self.ram,
+            chr_rom: self.chr_rom.clone(),
         }
     }
 
     fn set_state(&mut self, state: &Self::State) {
         self.header = state.header.clone();
         self.ram = state.ram;
+        self.chr_rom = state.chr_rom.clone();
     }
 }

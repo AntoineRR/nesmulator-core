@@ -303,6 +303,8 @@ pub struct Mapper1State {
     shift_register: u8,
     n_bit_loaded: u8,
     control_register: u8,
+    #[serde_as(as = "Vec<[_; 0x1000]>")]
+    chr_rom: Vec<[u8; 0x1000]>,
 }
 
 #[typetag::serde]
@@ -327,6 +329,7 @@ impl Stateful for Mapper1 {
             shift_register: self.shift_register,
             n_bit_loaded: self.n_bit_loaded,
             control_register: self.control_register,
+            chr_rom: self.chr_rom.clone(),
         }
     }
 
@@ -341,5 +344,6 @@ impl Stateful for Mapper1 {
         self.shift_register = state.shift_register;
         self.n_bit_loaded = state.n_bit_loaded;
         self.control_register = state.control_register;
+        self.chr_rom = state.chr_rom.clone();
     }
 }

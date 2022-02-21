@@ -3,6 +3,7 @@
 use std::{any::Any, error::Error};
 
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use super::mapper::{INesHeader, Mapper, MapperState, Mirroring};
 use crate::{
@@ -10,6 +11,7 @@ use crate::{
     state::Stateful,
 };
 
+#[derive(Debug)]
 pub struct Mapper2 {
     header: INesHeader,
     lo_prg_rom: usize,
@@ -83,10 +85,13 @@ impl Mapper for Mapper2 {
     }
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct Mapper2State {
     header: INesHeader,
     lo_prg_rom: usize,
+    #[serde_as(as = "Vec<[_; 0x2000]>")]
+    chr_rom: Vec<[u8; 0x2000]>,
 }
 
 #[typetag::serde]
@@ -103,11 +108,13 @@ impl Stateful for Mapper2 {
         Mapper2State {
             header: self.header.clone(),
             lo_prg_rom: self.lo_prg_rom,
+            chr_rom: self.chr_rom.clone(),
         }
     }
 
     fn set_state(&mut self, state: &Self::State) {
         self.header = state.header.clone();
         self.lo_prg_rom = state.lo_prg_rom;
+        self.chr_rom = state.chr_rom.clone();
     }
 }
