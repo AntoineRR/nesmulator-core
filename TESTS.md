@@ -102,17 +102,17 @@ Here are some of the results :
 * [X] apu_test/rom_singles/1-len_ctr
 * [ ] apu_test/rom_singles/2-len_table
 * [X] apu_test/rom_singles/3-irq_flag
-* [ ] apu_test/rom_singles/4-jitter
+* [X] apu_test/rom_singles/4-jitter
 * [ ] apu_test/rom_singles/5-len_timing
 * [ ] apu_test/rom_singles/6-irq_flag_timing
 * [X] apu_test/rom_singles/7-dmc_basics
 * [ ] apu_test/rom_singles/8-dmc_rates
 * [X] apu_reset/4015_cleared
-* [ ] apu_reset/4017_timing
+* [X] apu_reset/4017_timing
 * [ ] apu_reset/4017_written
-* [ ] apu_reset/irq_flag_cleared
+* [X] apu_reset/irq_flag_cleared
 * [ ] apu_reset/len_ctrs_enabled
-* [ ] apu_reset/works_immediately
+* [X] apu_reset/works_immediately
 
 #### Manually tested
 

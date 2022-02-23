@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{envelope::Envelope, length_counter::LengthCounter, sweep::SweepUnit};
 
-const DUTIES: [u8; 4] = [0b0100_0000, 0b0110_0000, 0b0111_1000, 0b1001_1111];
+const DUTIES: [u8; 4] = [0b0000_0001, 0b0000_0011, 0b0000_1111, 0b1111_1100];
 
 #[repr(usize)]
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -67,6 +67,7 @@ impl Pulse {
     pub fn set_high_timer(&mut self, value: u8) {
         self.length_counter.set_length_counter((value & 0xF8) >> 3);
         self.period = (self.period & 0x00FF) | ((value & 0x07) as u16) << 8;
+        self.sequence = DUTIES[self.duty as usize];
         self.envelope.start_flag = true;
     }
 

@@ -33,7 +33,7 @@ use {
 const STEP_1: u64 = 7457;
 const STEP_2: u64 = 14913;
 const STEP_3: u64 = 22371;
-const STEP_4: u64 = 29829;
+const STEP_4: u64 = 29830;
 const STEP_5: u64 = 37281;
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
@@ -56,6 +56,7 @@ pub struct Apu {
 
     sample_rate: u64,
     frame_clock: u64,
+    cycles_before_frame_clock_reset: Option<u64>,
     mode: Mode,
     instant_clock: bool,
 
@@ -92,10 +93,11 @@ impl Apu {
             dmc: Dmc::new(),
 
             interrupt_inhibit: false,
-            frame_interrupt: true,
+            frame_interrupt: false,
 
             sample_rate: sample_rate as u64,
             frame_clock: 0,
+            cycles_before_frame_clock_reset: None,
             mode: Mode::Step4,
             instant_clock: false,
 
@@ -201,6 +203,7 @@ impl Apu {
                 if self.interrupt_inhibit {
                     self.frame_interrupt = false;
                 }
+                self.cycles_before_frame_clock_reset = Some(self.frame_clock % 2);
             }
             _ => return Err(Box::new(InvalidAPURegisterWriteError(address))),
         }
@@ -210,6 +213,7 @@ impl Apu {
     pub fn reset(&mut self) {
         self.write_register(0x4015, 0x00).unwrap();
         self.write_register(0x4017, self.last_4017_value).unwrap();
+        self.frame_interrupt = false;
         self.triangle.reset();
         self.dmc.reset();
     }
@@ -234,6 +238,15 @@ impl Apu {
     }
 
     pub fn clock(&mut self) -> Option<f32> {
+        if let Some(c) = self.cycles_before_frame_clock_reset {
+            if c == 0 {
+                self.cycles_before_frame_clock_reset = None;
+                self.frame_clock = 0;
+            } else {
+                self.cycles_before_frame_clock_reset = Some(c - 1);
+            }
+        }
+
         if self.instant_clock {
             self.instant_clock = false;
             self.clock_half_frame();
