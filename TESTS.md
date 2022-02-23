@@ -100,7 +100,7 @@ Here are some of the results :
 #### Automatically tested (see [Integration tests](#Integration-tests))
 
 * [X] apu_test/rom_singles/1-len_ctr
-* [ ] apu_test/rom_singles/2-len_table
+* [X] apu_test/rom_singles/2-len_table
 * [X] apu_test/rom_singles/3-irq_flag
 * [X] apu_test/rom_singles/4-jitter
 * [ ] apu_test/rom_singles/5-len_timing
@@ -108,8 +108,8 @@ Here are some of the results :
 * [X] apu_test/rom_singles/7-dmc_basics
 * [ ] apu_test/rom_singles/8-dmc_rates
 * [X] apu_reset/4015_cleared
-* [X] apu_reset/4017_timing
-* [ ] apu_reset/4017_written
+* [ ] apu_reset/4017_timing
+* [X] apu_reset/4017_written
 * [X] apu_reset/irq_flag_cleared
 * [ ] apu_reset/len_ctrs_enabled
 * [X] apu_reset/works_immediately
@@ -119,7 +119,7 @@ Here are some of the results :
 * [X] blargg_apu_2005.07.30/01.len_ctr
 * [X] blargg_apu_2005.07.30/02.len_table
 * [X] blargg_apu_2005.07.30/03.irq_flag
-* [ ] blargg_apu_2005.07.30/04.clock_jitter
+* [X] blargg_apu_2005.07.30/04.clock_jitter
 * [ ] blargg_apu_2005.07.30/05.len_timing_mode0
 * [ ] blargg_apu_2005.07.30/06.len_timing_mode1
 * [ ] blargg_apu_2005.07.30/07.irq_flag_timing
