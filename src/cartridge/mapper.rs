@@ -31,10 +31,10 @@ pub trait Mapper {
     fn chr_rom_read(&self, address: u16) -> Result<u8, Box<dyn Error>>;
     fn chr_rom_write(&mut self, address: u16, value: u8) -> Result<(), Box<dyn Error>>;
     fn get_mirroring(&self) -> Mirroring;
-    fn load_persistent_memory(&mut self) -> Result<(), Box<dyn Error>> {
+    fn load_persistent_memory(&mut self, save_path: &str) -> Result<(), Box<dyn Error>> {
         Err("ROM has no persistent memory".into())
     }
-    fn save_persistent_memory(&self) -> Result<(), Box<dyn Error>> {
+    fn save_persistent_memory(&self, save_path: &str) -> Result<(), Box<dyn Error>> {
         Err("ROM has no persistent memory".into())
     }
     fn get_mapper_state(&self) -> Box<dyn MapperState>;

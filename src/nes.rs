@@ -274,18 +274,18 @@ impl NES {
     }
 
     /// Load a save in the ".sav" format.
-    pub fn load_save(&self) -> Result<(), Box<dyn Error>> {
+    pub fn load_save(&self, save_path: &str) -> Result<(), Box<dyn Error>> {
         if let Some(m) = &self.o_p_mapper {
-            m.borrow_mut().load_persistent_memory()
+            m.borrow_mut().load_persistent_memory(save_path)
         } else {
             Err("Insert a cartridge before trying to save".into())
         }
     }
 
     /// Save the game in the ".sav" format.
-    pub fn save(&self) -> Result<(), Box<dyn Error>> {
+    pub fn save(&self, save_path: &str) -> Result<(), Box<dyn Error>> {
         if let Some(m) = &self.o_p_mapper {
-            m.borrow().save_persistent_memory()
+            m.borrow().save_persistent_memory(save_path)
         } else {
             Err("Insert a cartridge before trying to save".into())
         }

@@ -46,7 +46,6 @@ See [TESTS.md](./TESTS.md) for details about tests.
 ## To do
 
 * Pass more tests
-* Allow to configure the save path
 * Improve mapper 1
 
 ## License

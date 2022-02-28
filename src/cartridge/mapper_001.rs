@@ -5,7 +5,7 @@ use std::convert::TryInto;
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -96,15 +96,6 @@ impl Mapper1 {
             1 => ChrRomBankMode::Switch4,
             _ => unreachable!(),
         }
-    }
-
-    fn get_path_to_save(&self) -> PathBuf {
-        let path_to_rom = Path::new(&self.header.path_to_rom);
-        path_to_rom
-            .parent()
-            .unwrap()
-            .join(path_to_rom.file_stem().unwrap())
-            .with_extension("sav")
     }
 }
 
@@ -256,9 +247,9 @@ impl Mapper for Mapper1 {
         }
     }
 
-    fn load_persistent_memory(&mut self) -> Result<(), Box<dyn Error>> {
+    fn load_persistent_memory(&mut self, save_path: &str) -> Result<(), Box<dyn Error>> {
         if self.header.has_persistent_memory {
-            let path_to_save = self.get_path_to_save();
+            let path_to_save = Path::new(save_path);
             if path_to_save.exists() {
                 self.ram = fs::read(path_to_save)?[..].try_into()?;
                 return Ok(());
@@ -268,9 +259,9 @@ impl Mapper for Mapper1 {
         Err("ROM has no persistent memory".into())
     }
 
-    fn save_persistent_memory(&self) -> Result<(), Box<dyn Error>> {
+    fn save_persistent_memory(&self, save_path: &str) -> Result<(), Box<dyn Error>> {
         if self.header.has_persistent_memory {
-            let mut save_file = File::create(self.get_path_to_save())?;
+            let mut save_file = File::create(save_path)?;
             save_file.write_all(&self.ram)?;
             return Ok(());
         }
