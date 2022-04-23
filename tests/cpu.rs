@@ -57,6 +57,7 @@ mod nes_instr_test {
     }
 
     #[test]
+    #[ignore]
     fn special() {
         run_rom(&get_path("11-special.nes"));
     }
@@ -104,6 +105,7 @@ mod instr_misc {
     }
 
     #[test]
+    #[ignore]
     fn dummy_reads() {
         run_rom(&get_path("03-dummy_reads.nes"));
     }
@@ -146,11 +148,13 @@ mod cpu_exec_space {
     const DIR_PATH: &str = "cpu_exec_space/";
 
     #[test]
+    #[ignore]
     fn apu() {
         run_rom(&get_path("test_cpu_exec_space_apu.nes"))
     }
 
     #[test]
+    #[ignore]
     fn ppuio() {
         run_rom(&get_path("test_cpu_exec_space_ppuio.nes"))
     }
@@ -167,26 +171,31 @@ mod cpu_interrupts_v2 {
     const DIR_PATH: &str = "cpu_interrupts_v2/rom_singles/";
 
     #[test]
+    #[ignore]
     fn cli_latency() {
         run_rom(&get_path("1-cli_latency.nes"))
     }
 
     #[test]
+    #[ignore]
     fn nmi_and_brk() {
         run_rom(&get_path("2-nmi_and_brk.nes"))
     }
 
     #[test]
+    #[ignore]
     fn nmi_and_irq() {
         run_rom(&get_path("3-nmi_and_irq.nes"))
     }
 
     #[test]
+    #[ignore]
     fn irq_and_dma() {
         run_rom(&get_path("4-irq_and_dma.nes"))
     }
 
     #[test]
+    #[ignore]
     fn branch_delays_irq() {
         run_rom(&get_path("5-branch_delays_irq.nes"))
     }

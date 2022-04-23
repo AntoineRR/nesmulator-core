@@ -535,12 +535,11 @@ impl Ppu {
         // 3 cycles are available for each 64 sprites
         if (self.cycles - 65) % 3 == 0 {
             let sprite_index: usize = ((self.cycles - 65) / 3) as usize;
-            let sprite_size: u16;
-            match self.registers.get_control_flag(ControlFlag::SpriteSize) {
-                0 => sprite_size = 8,
-                1 => sprite_size = 16,
+            let sprite_size = match self.registers.get_control_flag(ControlFlag::SpriteSize) {
+                0 => 8,
+                1 => 16,
                 _ => panic!("Invalid sprite size value"),
-            }
+            };
             // If the sprite should appear on the next scanline
             if self.scanline % 261 >= (self.oam.primary[sprite_index].y as u16)
                 && self.scanline % 261 < (self.oam.primary[sprite_index].y as u16) + sprite_size

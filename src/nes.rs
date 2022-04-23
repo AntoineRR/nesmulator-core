@@ -184,46 +184,6 @@ impl NES {
     /// Clock the NES for one PPU cycle.
     /// The CPU and the APU are clocked every 3 PPU cycles.
     /// This call may have to be delayed to achieve an emulation running at the desired speed.
-    ///
-    /// # Example
-    ///
-    /// For emulating the NES at the speed of a real NES, one might do the following:
-    /// ```
-    /// use std::time::{Duration, Instant};
-    ///
-    /// use nes_emulator::nes::NES;
-    ///
-    /// let mut nes = NES::new();
-    ///
-    /// let target_time = nes.get_1000_clock_duration();
-    /// let mut elapsed_time = Duration::new(0, 0);
-    /// let mut clocks = 0;
-    ///
-    /// loop {
-    ///     let time = Instant::now();
-    ///     
-    ///     // Run one clock of emulation
-    ///     nes.clock();
-    ///
-    ///     // Get frame
-    ///     // Synchronize sound
-    ///     // Handle inputs
-    ///
-    ///     // Synchronize to emulate at the desired speed
-    ///     elapsed_time += time.elapsed();
-    ///     clocks += 1;
-    ///     if clocks >= 1000 {
-    ///         if elapsed_time < target_time {
-    ///             spin_sleep::sleep(target_time - elapsed_time);
-    ///         }
-    ///         elapsed_time = Duration::new(0, 0);
-    ///         clocks = 0;
-    ///     }
-    ///
-    ///     // Break the loop when you want to stop emulation
-    ///     break;
-    /// }
-    /// ```
     pub fn clock(&mut self) {
         // CPU and APU are clocked every 3 PPU cycles
         if self.total_clock % 3 == 0 {
@@ -298,7 +258,7 @@ impl NES {
         let state = &serde_json::from_reader(state_file)?;
         self.set_state(state);
         let mut mapper = get_mapper(rom_path)?;
-        mapper.set_mapper_state(&state.mapper);
+        mapper.set_mapper_state(&*state.mapper);
         let p_mapper = Rc::new(RefCell::new(mapper));
 
         self.p_bus.borrow_mut().set_mapper(p_mapper.clone());

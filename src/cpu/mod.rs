@@ -563,8 +563,7 @@ impl Cpu {
     pub fn cmp(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: i16;
-        result = self.a as i16 - data as i16;
+        let result = self.a as i16 - data as i16;
         self.set_flag(Flag::Zero, result as u8 == 0x00);
         self.set_flag(Flag::Carry, self.a >= data);
         self.set_flag(Flag::Negative, result as u8 & 0x80 > 0);
@@ -575,8 +574,7 @@ impl Cpu {
     pub fn cpx(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: i16;
-        result = self.x as i16 - data as i16;
+        let result = self.x as i16 - data as i16;
         self.set_flag(Flag::Zero, result as u8 == 0x00);
         self.set_flag(Flag::Carry, self.x >= data);
         self.set_flag(Flag::Negative, result as u8 & 0x80 > 0);
@@ -587,8 +585,7 @@ impl Cpu {
     pub fn cpy(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u8 = self.read_bus(address);
-        let result: i16;
-        result = self.y as i16 - data as i16;
+        let result = self.y as i16 - data as i16;
         self.set_flag(Flag::Zero, result as u8 == 0x00);
         self.set_flag(Flag::Carry, self.y >= data);
         self.set_flag(Flag::Negative, result as u8 & 0x80 > 0);
@@ -1178,8 +1175,7 @@ impl Cpu {
     pub fn slo(&mut self, mode: am) {
         let address: u16 = self.fetch_address(mode);
         let data: u16 = self.read_bus(address) as u16;
-        let result: u16;
-        result = (data as u16) << 1;
+        let result = (data as u16) << 1;
         self.write_bus(address, result as u8);
         self.a |= result as u8;
         self.set_flag(Flag::Carry, (result & 0xFF00) > 0);

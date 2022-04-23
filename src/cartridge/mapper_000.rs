@@ -76,7 +76,7 @@ impl Mapper for Mapper0 {
         Box::new(self.get_state())
     }
 
-    fn set_mapper_state(&mut self, state: &Box<dyn MapperState>) {
+    fn set_mapper_state(&mut self, state: &dyn MapperState) {
         match state.as_any().downcast_ref::<Mapper0State>() {
             Some(s) => self.set_state(s),
             None => panic!("State is not a Mapper0State"),

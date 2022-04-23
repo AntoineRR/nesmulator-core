@@ -27,11 +27,13 @@ mod apu_test {
     }
 
     #[test]
+    #[ignore]
     fn length_timing() {
         run_rom(&get_path("5-len_timing.nes"));
     }
 
     #[test]
+    #[ignore]
     fn irq_flag_timing() {
         run_rom(&get_path("6-irq_flag_timing.nes"));
     }
@@ -42,6 +44,7 @@ mod apu_test {
     }
 
     #[test]
+    #[ignore]
     fn dmc_rates() {
         run_rom(&get_path("8-dmc_rates.nes"));
     }
@@ -63,6 +66,7 @@ mod apu_reset {
     }
 
     #[test]
+    #[ignore]
     fn time_4017() {
         run_rom(&get_path("4017_timing.nes"));
     }
@@ -78,6 +82,7 @@ mod apu_reset {
     }
 
     #[test]
+    #[ignore]
     fn length_counters_enabled() {
         run_rom(&get_path("len_ctrs_enabled.nes"));
     }

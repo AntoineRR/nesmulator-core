@@ -22,11 +22,13 @@ mod ppu_vbl_nmi {
     }
 
     #[test]
+    #[ignore]
     fn nmi_control() {
         run_rom(&get_path("04-nmi_control.nes"));
     }
 
     #[test]
+    #[ignore]
     fn nmi_timing() {
         run_rom(&get_path("05-nmi_timing.nes"));
     }
@@ -37,6 +39,7 @@ mod ppu_vbl_nmi {
     }
 
     #[test]
+    #[ignore]
     fn nmi_on_timing() {
         run_rom(&get_path("07-nmi_on_timing.nes"));
     }
@@ -52,6 +55,7 @@ mod ppu_vbl_nmi {
     }
 
     #[test]
+    #[ignore]
     fn even_odd_timing() {
         run_rom(&get_path("10-even_odd_timing.nes"));
     }
@@ -68,6 +72,7 @@ mod ppu_read_buffer {
     const DIR_PATH: &str = "ppu_read_buffer/";
 
     #[test]
+    #[ignore]
     fn ppu_read_buffer() {
         run_rom(&get_path("test_ppu_read_buffer.nes"));
     }

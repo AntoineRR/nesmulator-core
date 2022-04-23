@@ -10,7 +10,7 @@ pub enum StatusFlag {
 #[derive(PartialEq, Clone, Copy)]
 pub enum ControlFlag {
     VBlank = 1 << 7, // Should we generate a NMI at the start of VBlank
-    MasterSlaveSelect = 1 << 6,
+    // MasterSlaveSelect = 1 << 6,          // This is currently unused
     SpriteSize = 1 << 5,                    // 0 => 8*8, 1 => 8*16
     BackgroundPatternTableAddress = 1 << 4, // 0 => 0x0000, 1 => 0x1000
     SpritePatternTableAddress = 1 << 3,     // 0 => 0x0000, 1 => 0x1000
