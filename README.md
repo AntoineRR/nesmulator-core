@@ -47,6 +47,8 @@ See [TESTS.md](./TESTS.md) for details about tests.
 
 * Pass more tests
 * Improve mapper 1
+* Improve general architecture to remove `Rc`
+* Expose API to retrieve instructions that are being executed
 
 ## License
 
