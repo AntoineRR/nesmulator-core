@@ -4,7 +4,7 @@ mod nes_instr_test {
     use crate::common::run_rom;
     use crate::common::ROM_PATH_PREFIX;
 
-    const DIR_PATH: &str = "nes_instr_test/rom_singles/";
+    const DIR_PATH: &str = "nes_instr_test/";
 
     #[test]
     fn implied() {
@@ -71,7 +71,7 @@ mod instr_timing {
     use crate::common::run_rom;
     use crate::common::ROM_PATH_PREFIX;
 
-    const DIR_PATH: &str = "instr_timing/rom_singles/";
+    const DIR_PATH: &str = "instr_timing/";
 
     #[test]
     fn instr_timing() {
@@ -92,7 +92,7 @@ mod instr_misc {
     use crate::common::run_rom;
     use crate::common::ROM_PATH_PREFIX;
 
-    const DIR_PATH: &str = "instr_misc/rom_singles/";
+    const DIR_PATH: &str = "instr_misc/";
 
     #[test]
     fn absolute_x_wrap() {
@@ -168,7 +168,7 @@ mod cpu_interrupts_v2 {
     use crate::common::run_rom;
     use crate::common::ROM_PATH_PREFIX;
 
-    const DIR_PATH: &str = "cpu_interrupts_v2/rom_singles/";
+    const DIR_PATH: &str = "cpu_interrupts_v2/";
 
     #[test]
     #[ignore]

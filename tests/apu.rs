@@ -4,7 +4,7 @@ mod apu_test {
     use crate::common::run_rom;
     use crate::common::ROM_PATH_PREFIX;
 
-    const DIR_PATH: &str = "apu_test/rom_singles/";
+    const DIR_PATH: &str = "apu_test/";
 
     #[test]
     fn length_counter() {

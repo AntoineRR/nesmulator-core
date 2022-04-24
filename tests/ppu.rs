@@ -4,7 +4,7 @@ mod ppu_vbl_nmi {
     use crate::common::run_rom;
     use crate::common::ROM_PATH_PREFIX;
 
-    const DIR_PATH: &str = "ppu_vbl_nmi/rom_singles/";
+    const DIR_PATH: &str = "ppu_vbl_nmi/";
 
     #[test]
     fn vbl_basics() {
